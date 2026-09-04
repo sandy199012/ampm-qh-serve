@@ -5,7 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllersWithViews(options => {
     options.Filters.Add(new IgnoreAntiforgeryTokenAttribute());
-});
+}).AddRazorRuntimeCompilation();
+
 builder.Services.AddSingleton<DbService>();
 builder.Services.AddSingleton<AuthService>();
 
