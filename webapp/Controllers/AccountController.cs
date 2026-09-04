@@ -20,13 +20,19 @@ public class AccountController : Controller
             ViewBag.Error = "Invalid username or password!";
             return View();
         }
-        // Simple cookie - no encryption
-        Response.Cookies.Append("ampm_user", user.Username, new CookieOptions { 
-            Expires = DateTimeOffset.UtcNow.AddHours(8), HttpOnly = true });
-        Response.Cookies.Append("ampm_name", user.Name, new CookieOptions { 
-            Expires = DateTimeOffset.UtcNow.AddHours(8) });
-        Response.Cookies.Append("ampm_role", user.Role, new CookieOptions { 
-            Expires = DateTimeOffset.UtcNow.AddHours(8) });
+
+        var opts = new CookieOptions {
+            Expires = DateTimeOffset.UtcNow.AddHours(8),
+            HttpOnly = false,  // JS readable for checks
+            SameSite = SameSiteMode.Lax,
+            Secure = false,    // Works on both HTTP and HTTPS
+            Path = "/"
+        };
+
+        Response.Cookies.Append("ampm_user", user.Username, opts);
+        Response.Cookies.Append("ampm_name", user.Name, opts);
+        Response.Cookies.Append("ampm_role", user.Role, opts);
+
         return RedirectToAction("Index", "Home");
     }
 
