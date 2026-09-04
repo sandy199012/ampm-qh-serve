@@ -10,7 +10,11 @@ var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
-app.Services.GetRequiredService<DbService>().Init();
+var dbService = app.Services.GetRequiredService<DbService>();
+var dbPath = Environment.GetEnvironmentVariable("DB_PATH") 
+    ?? System.IO.Path.Combine(AppContext.BaseDirectory, "Data", "ampm.db");
+SeedDb.RestoreIfEmpty(dbPath);
+dbService.Init();
 
 app.UseStaticFiles();
 app.UseRouting();
