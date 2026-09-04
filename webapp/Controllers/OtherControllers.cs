@@ -100,31 +100,36 @@ public class ITStoreController : Controller
         if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
 
-        // Get from both tables
-        string sql = string.IsNullOrEmpty(type)
-            ? "SELECT data FROM it_stock_items ORDER BY item_type, name"
-            : "SELECT data FROM it_stock_items WHERE item_type=@t ORDER BY name";
-        var items = _db.Query<string>(sql, new { t = type })
-            .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
-            .ToList();
-
-        // Also get from stock_items
-        string sql2 = string.IsNullOrEmpty(type)
-            ? "SELECT data FROM stock_items ORDER BY item_type, name"
-            : "SELECT data FROM stock_items WHERE item_type=@t ORDER BY name";
-        var items2 = _db.Query<string>(sql2, new { t = type })
-            .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
-            .ToList();
-        items.AddRange(items2.Where(i2 => !items.Any(i1 => i1.GetValueOrDefault("name")?.ToString() == i2.GetValueOrDefault("name")?.ToString())));
-
-        // Issues from both tables
-        var issues = _db.Query<string>("SELECT data FROM it_stock_issues ORDER BY rowid DESC")
-            .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
-            .ToList();
-        var issues2 = _db.Query<string>("SELECT data FROM stock_issues ORDER BY ts DESC")
-            .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
-            .ToList();
-        issues.AddRange(issues2.Where(i2 => !issues.Any(i1 => i1.GetValueOrDefault("issueNo")?.ToString() == i2.GetValueOrDefault("issueNo")?.ToString())));
+        var items = new List<Dictionary<string,object?>>();
+        var issues = new List<Dictionary<string,object?>>();
+        try {
+            string sql = string.IsNullOrEmpty(type)
+                ? "SELECT data FROM it_stock_items ORDER BY item_type, name"
+                : "SELECT data FROM it_stock_items WHERE item_type=@t ORDER BY name";
+            items = _db.Query<string>(sql, new { t = type })
+                .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
+                .ToList();
+        } catch {}
+        try {
+            string sql2 = string.IsNullOrEmpty(type)
+                ? "SELECT data FROM stock_items ORDER BY item_type, name"
+                : "SELECT data FROM stock_items WHERE item_type=@t ORDER BY name";
+            var items2 = _db.Query<string>(sql2, new { t = type })
+                .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
+                .ToList();
+            items.AddRange(items2.Where(i2 => !items.Any(i1 => i1.GetValueOrDefault("name")?.ToString() == i2.GetValueOrDefault("name")?.ToString())));
+        } catch {}
+        try {
+            issues = _db.Query<string>("SELECT data FROM it_stock_issues ORDER BY rowid DESC")
+                .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
+                .ToList();
+        } catch {}
+        try {
+            var issues2 = _db.Query<string>("SELECT data FROM stock_issues ORDER BY ts DESC")
+                .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
+                .ToList();
+            issues.AddRange(issues2.Where(i2 => !issues.Any(i1 => i1.GetValueOrDefault("issueNo")?.ToString() == i2.GetValueOrDefault("issueNo")?.ToString())));
+        } catch {}
 
         if (!string.IsNullOrEmpty(type))
             issues = issues.Where(i => i.GetValueOrDefault("itemType")?.ToString() == type).ToList();

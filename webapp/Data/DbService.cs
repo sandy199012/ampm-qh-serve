@@ -47,6 +47,12 @@ public class DbService
             CREATE TABLE IF NOT EXISTS goals (id TEXT PRIMARY KEY, week_no INTEGER, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS stock_items (id TEXT PRIMARY KEY, item_type TEXT, name TEXT NOT NULL, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS stock_issues (id TEXT PRIMARY KEY, item_id TEXT, issue_no TEXT, data TEXT NOT NULL, ts TEXT);
+            CREATE TABLE IF NOT EXISTS it_stock_items (id TEXT PRIMARY KEY, item_type TEXT, name TEXT NOT NULL, data TEXT NOT NULL, ts TEXT);
+            CREATE TABLE IF NOT EXISTS it_stock_issues (id TEXT PRIMARY KEY, item_id TEXT, issue_no TEXT, data TEXT NOT NULL, ts TEXT);
+            CREATE TABLE IF NOT EXISTS peripheral_items (id TEXT PRIMARY KEY, data TEXT NOT NULL, ts TEXT);
+            CREATE TABLE IF NOT EXISTS peripheral_issues (id TEXT PRIMARY KEY, data TEXT NOT NULL, ts TEXT);
+            CREATE TABLE IF NOT EXISTS issue_counter (k TEXT PRIMARY KEY, v INTEGER);
+            CREATE TABLE IF NOT EXISTS goals2 (id TEXT PRIMARY KEY, week_no INTEGER, data TEXT NOT NULL, ts TEXT);
         ");
 
         // Always ensure sandy user exists with correct password
@@ -136,6 +142,9 @@ public class DbService
     {
         using var conn = GetConn();
         var assets = KGetObj<List<Dictionary<string,object?>>>("asset_stock") ?? new();
+        int stockCount = 0;
+        try { stockCount = conn.QueryFirst<int>("SELECT COUNT(*) FROM it_stock_items"); } catch {}
+        try { stockCount += conn.QueryFirst<int>("SELECT COUNT(*) FROM stock_items"); } catch {}
         return new DashboardStats
         {
             TotalEmployees = conn.QueryFirst<int>("SELECT COUNT(*) FROM employees"),
@@ -144,29 +153,35 @@ public class DbService
             TotalVendors   = conn.QueryFirst<int>("SELECT COUNT(*) FROM vendors"),
             TotalGoals     = conn.QueryFirst<int>("SELECT COUNT(*) FROM goals"),
             TotalAssets    = assets.Count,
-            TotalStockItems= conn.QueryFirst<int>("SELECT COUNT(*) FROM it_stock_items") +
-                             conn.QueryFirst<int>("SELECT COUNT(*) FROM stock_items"),
+            TotalStockItems= stockCount,
         };
     }
 
     public List<Dictionary<string,object?>> GetLowStockItems()
     {
-        var items = Query<string>("SELECT data FROM it_stock_items")
-            .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
-            .Where(i => {
-                int.TryParse(i.GetValueOrDefault("totalQty")?.ToString(), out var t);
-                int.TryParse(i.GetValueOrDefault("issuedQty")?.ToString(), out var iss);
-                return (t - iss) <= 2;
-            }).ToList();
-        return items;
+        try
+        {
+            var items = Query<string>("SELECT data FROM it_stock_items")
+                .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
+                .Where(i => {
+                    int.TryParse(i.GetValueOrDefault("totalQty")?.ToString(), out var t);
+                    int.TryParse(i.GetValueOrDefault("issuedQty")?.ToString(), out var iss);
+                    return (t - iss) <= 2;
+                }).ToList();
+            return items;
+        }
+        catch { return new(); }
     }
 
     public int GetPendingGoalsCount()
     {
-        var goals = Query<string>("SELECT data FROM goals")
-            .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
-            .Count(g => g.GetValueOrDefault("status")?.ToString() is "Not Started" or "In Progress");
-        return goals;
+        try
+        {
+            return Query<string>("SELECT data FROM goals")
+                .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
+                .Count(g => g.GetValueOrDefault("status")?.ToString() is "Not Started" or "In Progress");
+        }
+        catch { return 0; }
     }
 
     // ── Assets ────────────────────────────────────────────────
