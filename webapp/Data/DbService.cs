@@ -189,6 +189,8 @@ public class DbService
     }
 
     public string DbFilePath => _connStr.Replace("Data Source=", "");
+}  // end DbService class
+
 public static class SqliteExtensions
 {
     public static List<T> Query<T>(this SqliteConnection conn, string sql, object? param = null)
