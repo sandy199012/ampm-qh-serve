@@ -8,14 +8,13 @@
     </a>
 </div>
 
-<!-- Stats Row -->
+@{
+    var open     = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "Open");
+    var inprog   = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "In Progress");
+    var resolved = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "Resolved");
+    var critical = Model.Count(t => t.GetValueOrDefault("priority")?.ToString() == "Critical");
+}
 <div class="row g-2 mb-3">
-    @{
-        var open     = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "Open");
-        var inprog   = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "In Progress");
-        var resolved = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "Resolved");
-        var critical = Model.Count(t => t.GetValueOrDefault("priority")?.ToString() == "Critical");
-    }
     <div class="col-6 col-md-3">
         <div class="card border-0 bg-danger-subtle text-center py-2">
             <div class="fw-bold fs-4 text-danger">@open</div>
@@ -42,26 +41,29 @@
     </div>
 </div>
 
-<!-- Filters -->
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
         <form method="get" class="row g-2 align-items-center">
             <div class="col-auto">
                 <select name="status" class="form-select form-select-sm">
                     <option value="">All Status</option>
-                    <option value="Open"        @(ViewBag.Status=="Open"?"selected":"")>Open</option>
-                    <option value="In Progress" @(ViewBag.Status=="In Progress"?"selected":"")>In Progress</option>
-                    <option value="Resolved"    @(ViewBag.Status=="Resolved"?"selected":"")>Resolved</option>
-                    <option value="Closed"      @(ViewBag.Status=="Closed"?"selected":"")>Closed</option>
+                    @{ var curStatus = ViewBag.Status?.ToString() ?? ""; }
+                    @foreach (var s in new[]{"Open","In Progress","Resolved","Closed"})
+                    {
+                        if (curStatus == s) { <option selected>@s</option> }
+                        else { <option>@s</option> }
+                    }
                 </select>
             </div>
             <div class="col-auto">
                 <select name="priority" class="form-select form-select-sm">
                     <option value="">All Priority</option>
-                    <option value="Critical">Critical</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
+                    @{ var curPrio = ViewBag.Priority?.ToString() ?? ""; }
+                    @foreach (var p in new[]{"Critical","High","Medium","Low"})
+                    {
+                        if (curPrio == p) { <option selected>@p</option> }
+                        else { <option>@p</option> }
+                    }
                 </select>
             </div>
             <div class="col-auto">
@@ -82,9 +84,8 @@
                     <th>Employee</th>
                     <th>Department</th>
                     <th>Issue</th>
-                    <th>Type</th>
                     <th>Priority</th>
-                    <th>Assigned To</th>
+                    <th>Assigned</th>
                     <th>Status</th>
                     <th></th>
                 </tr>
@@ -92,7 +93,7 @@
             <tbody>
             @if (!Model.Any())
             {
-                <tr><td colspan="10" class="text-center text-muted py-5">No tickets found</td></tr>
+                <tr><td colspan="9" class="text-center text-muted py-5">No tickets found</td></tr>
             }
             @foreach (var t in Model)
             {
@@ -106,18 +107,13 @@
                     <td class="small text-muted">@t.GetValueOrDefault("dateRaised")</td>
                     <td><strong class="small">@t.GetValueOrDefault("empName")</strong></td>
                     <td><span class="badge bg-light text-dark border small">@t.GetValueOrDefault("empDept")</span></td>
-                    <td class="text-truncate small" style="max-width:180px">@t.GetValueOrDefault("title")</td>
-                    <td class="small text-muted">@t.GetValueOrDefault("issueType")</td>
+                    <td class="small text-truncate" style="max-width:180px">@t.GetValueOrDefault("title")</td>
                     <td><span class="badge bg-@pBadge">@priority</span></td>
                     <td class="small">@t.GetValueOrDefault("assignedTo")</td>
-                    <td>
-                        <span class="badge bg-@sBadge">@status</span>
-                    </td>
+                    <td><span class="badge bg-@sBadge">@status</span></td>
                     <td>
                         <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                                Action
-                            </button>
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Act</button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="/Helpdesk/Details/@tid"><i class="bi bi-eye"></i> View</a></li>
                                 <li><hr class="dropdown-divider"/></li>
@@ -141,9 +137,7 @@ function updateStatus(id, status) {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: 'status=' + encodeURIComponent(status)
-    }).then(r => r.json()).then(d => {
-        if (d.ok) location.reload();
-    });
+    }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
 }
 </script>
 }

@@ -1,24 +1,25 @@
 @model List<Dictionary<string,object?>>
-@{
-    ViewData["Title"] = "Employees";
-}
+@{ViewData["Title"] = "Employees";}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold mb-0"><i class="bi bi-people text-primary"></i> Employees — @Model.Count records</h5>
+    <h5 class="fw-bold mb-0"><i class="bi bi-people text-primary"></i> Employees &mdash; @Model.Count records</h5>
 </div>
 
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
         <form method="get" class="row g-2 align-items-center">
             <div class="col-md-5">
-                <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Search name, emp code, designation..."/>
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Search name, emp code..."/>
             </div>
             <div class="col-md-4">
                 <select name="dept" class="form-select form-select-sm">
                     <option value="">All Departments</option>
                     @foreach (var d in (List<string>)ViewBag.Departments)
                     {
-                        <option value="@d" @(ViewBag.Dept == d ? "selected" : "")>@d</option>
+                        if (ViewBag.Dept == d)
+                        { <option value="@d" selected>@d</option> }
+                        else
+                        { <option value="@d">@d</option> }
                     }
                 </select>
             </div>
@@ -41,7 +42,7 @@
                     <th>Designation</th>
                     <th>Manager</th>
                     <th>Mobile</th>
-                    <th>Hostname</th>
+                    <th>PC/Hostname</th>
                     <th></th>
                 </tr>
             </thead>
@@ -59,7 +60,6 @@
                 string mgr  = e.GetValueOrDefault("manager")?.ToString() ?? "";
                 string mob  = e.GetValueOrDefault("mobile")?.ToString() ?? "";
                 string host = e.GetValueOrDefault("hostname")?.ToString() ?? "";
-                bool hasPC  = !string.IsNullOrEmpty(host);
                 <tr>
                     <td class="ps-3 font-monospace fw-bold small">@emp</td>
                     <td><strong>@name</strong></td>
@@ -68,7 +68,7 @@
                     <td class="small">@mgr</td>
                     <td class="small">@mob</td>
                     <td>
-                        @if (hasPC)
+                        @if (!string.IsNullOrEmpty(host))
                         {
                             <span class="badge bg-success-subtle text-success border border-success-subtle">
                                 <i class="bi bi-pc-display"></i> @host
