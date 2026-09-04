@@ -1,4 +1,4 @@
-using Microsoft.Data.Sqlite;
+using Npgsql;
 using Newtonsoft.Json;
 
 namespace AMPMWeb.Data;
@@ -9,18 +9,16 @@ public class DbService
 
     public DbService(IConfiguration config)
     {
-        // Render pe /tmp, local pe Data folder
-        string dbPath = Environment.GetEnvironmentVariable("DB_PATH")
-            ?? config["DatabasePath"]
-            ?? Path.Combine(AppContext.BaseDirectory, "Data", "ampm.db");
-
-        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-        _connStr = $"Data Source={dbPath}";
+        // Supabase PostgreSQL connection
+        var connStr = Environment.GetEnvironmentVariable("DATABASE_URL")
+            ?? config["DatabaseUrl"]
+            ?? "Host=db.nczpdiyhtuegpznpjwth.supabase.co;Port=5432;Database=postgres;Username=postgres;Password=Admin@@1990##;SSL Mode=Require;Trust Server Certificate=true";
+        _connStr = connStr;
     }
 
-    public SqliteConnection GetConn()
+    public NpgsqlConnection GetConn()
     {
-        var conn = new SqliteConnection(_connStr);
+        var conn = new NpgsqlConnection(_connStr);
         conn.Open();
         return conn;
     }
@@ -28,9 +26,12 @@ public class DbService
     public void Init()
     {
         using var conn = GetConn();
-        conn.Execute(@"
+        using var cmd = conn.CreateCommand();
+
+        // Create all tables
+        cmd.CommandText = @"
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 name TEXT, role TEXT DEFAULT 'user',
@@ -49,55 +50,77 @@ public class DbService
             CREATE TABLE IF NOT EXISTS stock_issues (id TEXT PRIMARY KEY, item_id TEXT, issue_no TEXT, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS it_stock_items (id TEXT PRIMARY KEY, item_type TEXT, name TEXT NOT NULL, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS it_stock_issues (id TEXT PRIMARY KEY, item_id TEXT, issue_no TEXT, data TEXT NOT NULL, ts TEXT);
-            CREATE TABLE IF NOT EXISTS peripheral_items (id TEXT PRIMARY KEY, data TEXT NOT NULL, ts TEXT);
-            CREATE TABLE IF NOT EXISTS peripheral_issues (id TEXT PRIMARY KEY, data TEXT NOT NULL, ts TEXT);
-            CREATE TABLE IF NOT EXISTS issue_counter (k TEXT PRIMARY KEY, v INTEGER);
-            CREATE TABLE IF NOT EXISTS goals2 (id TEXT PRIMARY KEY, week_no INTEGER, data TEXT NOT NULL, ts TEXT);
-        ");
+        ";
+        cmd.ExecuteNonQuery();
 
-        // Always ensure sandy user exists with correct password
-        string hash = BCrypt.Net.BCrypt.HashPassword("AMPM@Sandy2026");
-        var existing = conn.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM users WHERE username='sandy'");
-        if (existing == 0)
+        // Ensure admin user
+        cmd.CommandText = "SELECT COUNT(*) FROM users WHERE username='sandy'";
+        var count = (long)cmd.ExecuteScalar()!;
+        if (count == 0)
         {
-            conn.Execute("INSERT INTO users (username,password_hash,name,role,department,is_active,created_at) VALUES ('sandy',@h,'Sandeep Kumar Singh Kushwaha','superadmin','IT',1,@t)",
-                new { h = hash, t = DateTime.Now.ToString("o") });
-        }
-        else
-        {
-            // Update hash in case it's corrupted
-            conn.Execute("UPDATE users SET password_hash=@h WHERE username='sandy'", new { h = hash });
+            var hash = BCrypt.Net.BCrypt.HashPassword("AMPM@Sandy2026");
+            cmd.CommandText = "INSERT INTO users (username,password_hash,name,role,department,is_active,created_at) VALUES (@u,@h,@n,@r,@d,1,@t)";
+            cmd.Parameters.Clear();
+            cmd.Parameters.AddWithValue("@u", "sandy");
+            cmd.Parameters.AddWithValue("@h", hash);
+            cmd.Parameters.AddWithValue("@n", "Sandeep Kumar Singh Kushwaha");
+            cmd.Parameters.AddWithValue("@r", "superadmin");
+            cmd.Parameters.AddWithValue("@d", "IT");
+            cmd.Parameters.AddWithValue("@t", DateTime.Now.ToString("o"));
+            cmd.ExecuteNonQuery();
         }
     }
 
-    // ── Generic query helpers ─────────────────────────────────
+    // ── Generic Helpers ───────────────────────────────────────
     public List<T> Query<T>(string sql, object? param = null)
     {
         using var conn = GetConn();
-        return conn.Query<T>(sql, param).ToList();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        AddParams(cmd, param);
+        var list = new List<T>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            if (typeof(T) == typeof(string))
+                list.Add((T)(object)(reader.IsDBNull(0) ? "" : reader.GetString(0)));
+            else if (typeof(T) == typeof(int))
+                list.Add((T)(object)Convert.ToInt32(reader.GetValue(0)));
+            else if (typeof(T) == typeof(long))
+                list.Add((T)(object)Convert.ToInt64(reader.GetValue(0)));
+            else
+                list.Add((T)reader.GetValue(0));
+        }
+        return list;
     }
 
     public T? QueryFirst<T>(string sql, object? param = null)
-    {
-        using var conn = GetConn();
-        return conn.QueryFirstOrDefault<T>(sql, param);
-    }
+        => Query<T>(sql, param).FirstOrDefault();
 
     public int Execute(string sql, object? param = null)
     {
         using var conn = GetConn();
-        return conn.Execute(sql, param);
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        AddParams(cmd, param);
+        return cmd.ExecuteNonQuery();
     }
 
-    // ── Employee ──────────────────────────────────────────────
+    void AddParams(NpgsqlCommand cmd, object? param)
+    {
+        if (param == null) return;
+        foreach (var prop in param.GetType().GetProperties())
+        {
+            var val = prop.GetValue(param);
+            cmd.Parameters.AddWithValue("@" + prop.Name, val ?? DBNull.Value);
+        }
+    }
+
+    // ── Employees ─────────────────────────────────────────────
     public List<Dictionary<string,object?>> GetEmployees()
     {
-        var rows = Query<(string emp, string data)>("SELECT emp, data FROM employees ORDER BY emp");
-        return rows.Select(r => {
-            var d = JsonConvert.DeserializeObject<Dictionary<string,object?>>(r.data) ?? new();
-            d["emp"] = r.emp;
-            return d;
-        }).ToList();
+        var rows = Query<string>("SELECT data FROM employees ORDER BY emp");
+        return rows.Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList();
     }
 
     // ── Tickets ───────────────────────────────────────────────
@@ -116,7 +139,7 @@ public class DbService
         string status = ticket.GetValueOrDefault("status")?.ToString() ?? "Open";
         ticket["ticketId"] = id;
         string json = JsonConvert.SerializeObject(ticket);
-        Execute("INSERT OR REPLACE INTO tickets VALUES(@id,@data,@status,@ts)",
+        Execute("INSERT INTO tickets VALUES(@id,@data,@status,@ts) ON CONFLICT(ticket_id) DO UPDATE SET data=@data,status=@status,ts=@ts",
             new { id, data=json, status, ts=DateTime.Now.ToString("o") });
     }
 
@@ -137,53 +160,6 @@ public class DbService
         return v == null ? default : JsonConvert.DeserializeObject<T>(v);
     }
 
-    // ── Dashboard Stats ───────────────────────────────────────
-    public DashboardStats GetStats()
-    {
-        using var conn = GetConn();
-        var assets = KGetObj<List<Dictionary<string,object?>>>("asset_stock") ?? new();
-        int stockCount = 0;
-        try { stockCount = conn.QueryFirst<int>("SELECT COUNT(*) FROM it_stock_items"); } catch {}
-        try { stockCount += conn.QueryFirst<int>("SELECT COUNT(*) FROM stock_items"); } catch {}
-        return new DashboardStats
-        {
-            TotalEmployees = conn.QueryFirst<int>("SELECT COUNT(*) FROM employees"),
-            TotalPOs       = conn.QueryFirst<int>("SELECT COUNT(*) FROM po_list"),
-            OpenTickets    = conn.QueryFirst<int>("SELECT COUNT(*) FROM tickets WHERE status='Open'"),
-            TotalVendors   = conn.QueryFirst<int>("SELECT COUNT(*) FROM vendors"),
-            TotalGoals     = conn.QueryFirst<int>("SELECT COUNT(*) FROM goals"),
-            TotalAssets    = assets.Count,
-            TotalStockItems= stockCount,
-        };
-    }
-
-    public List<Dictionary<string,object?>> GetLowStockItems()
-    {
-        try
-        {
-            var items = Query<string>("SELECT data FROM it_stock_items")
-                .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
-                .Where(i => {
-                    int.TryParse(i.GetValueOrDefault("totalQty")?.ToString(), out var t);
-                    int.TryParse(i.GetValueOrDefault("issuedQty")?.ToString(), out var iss);
-                    return (t - iss) <= 2;
-                }).ToList();
-            return items;
-        }
-        catch { return new(); }
-    }
-
-    public int GetPendingGoalsCount()
-    {
-        try
-        {
-            return Query<string>("SELECT data FROM goals")
-                .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
-                .Count(g => g.GetValueOrDefault("status")?.ToString() is "Not Started" or "In Progress");
-        }
-        catch { return 0; }
-    }
-
     // ── Assets ────────────────────────────────────────────────
     public List<Dictionary<string,object?>> GetAssets()
         => KGetObj<List<Dictionary<string,object?>>>("asset_stock") ?? new();
@@ -192,7 +168,6 @@ public class DbService
     public List<Dictionary<string,object?>> GetBudget()
         => KGetObj<List<Dictionary<string,object?>>>("budget") ?? new();
 
-    // ── Bills ─────────────────────────────────────────────────
     public List<Dictionary<string,object?>> GetBills()
         => KGetObj<List<Dictionary<string,object?>>>("bills") ?? new();
 
@@ -203,60 +178,44 @@ public class DbService
         return rows.Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList();
     }
 
-    public string DbFilePath => _connStr.Replace("Data Source=", "");
-}  // end DbService class
-
-public static class SqliteExtensions
-{
-    public static List<T> Query<T>(this SqliteConnection conn, string sql, object? param = null)
+    // ── Stats ─────────────────────────────────────────────────
+    public DashboardStats GetStats()
     {
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = sql;
-        AddParams(cmd, param);
-        var list = new List<T>();
-        using var reader = cmd.ExecuteReader();
-        while (reader.Read())
+        var assets = GetAssets();
+        int stockCount = 0;
+        try { stockCount = QueryFirst<int>("SELECT COUNT(*) FROM it_stock_items"); } catch {}
+        return new DashboardStats
         {
-            if (typeof(T) == typeof(string)) list.Add((T)(object)reader.GetString(0));
-            else if (typeof(T) == typeof(int))  list.Add((T)(object)reader.GetInt32(0));
-            else if (typeof(T).IsValueType || typeof(T) == typeof(string)) list.Add((T)reader.GetValue(0));
-            else list.Add(MapToObject<T>(reader));
-        }
-        return list;
+            TotalEmployees  = QueryFirst<int>("SELECT COUNT(*) FROM employees"),
+            TotalPOs        = QueryFirst<int>("SELECT COUNT(*) FROM po_list"),
+            OpenTickets     = QueryFirst<int>("SELECT COUNT(*) FROM tickets WHERE status='Open'"),
+            TotalVendors    = QueryFirst<int>("SELECT COUNT(*) FROM vendors"),
+            TotalGoals      = QueryFirst<int>("SELECT COUNT(*) FROM goals"),
+            TotalAssets     = assets.Count,
+            TotalStockItems = stockCount,
+        };
     }
 
-    public static T QueryFirst<T>(this SqliteConnection conn, string sql, object? param = null)
-        => conn.Query<T>(sql, param).FirstOrDefault()!;
-
-    public static T? QueryFirstOrDefault<T>(this SqliteConnection conn, string sql, object? param = null)
-        => conn.Query<T>(sql, param).FirstOrDefault();
-
-    public static int Execute(this SqliteConnection conn, string sql, object? param = null)
+    public List<Dictionary<string,object?>> GetLowStockItems()
     {
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = sql;
-        AddParams(cmd, param);
-        return cmd.ExecuteNonQuery();
+        try {
+            return Query<string>("SELECT data FROM it_stock_items")
+                .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
+                .Where(i => {
+                    int.TryParse(i.GetValueOrDefault("totalQty")?.ToString(), out var t);
+                    int.TryParse(i.GetValueOrDefault("issuedQty")?.ToString(), out var iss);
+                    return (t - iss) <= 2;
+                }).ToList();
+        } catch { return new(); }
     }
 
-    static void AddParams(SqliteCommand cmd, object? param)
+    public int GetPendingGoalsCount()
     {
-        if (param == null) return;
-        foreach (var prop in param.GetType().GetProperties())
-            cmd.Parameters.AddWithValue("@" + prop.Name, prop.GetValue(param) ?? DBNull.Value);
-    }
-
-    static T MapToObject<T>(SqliteDataReader reader)
-    {
-        var obj = Activator.CreateInstance<T>();
-        var props = typeof(T).GetProperties();
-        for (int i = 0; i < reader.FieldCount; i++)
-        {
-            var prop = props.FirstOrDefault(p => p.Name.Equals(reader.GetName(i), StringComparison.OrdinalIgnoreCase));
-            if (prop != null && !reader.IsDBNull(i))
-                prop.SetValue(obj, Convert.ChangeType(reader.GetValue(i), prop.PropertyType));
-        }
-        return obj;
+        try {
+            return Query<string>("SELECT data FROM goals")
+                .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
+                .Count(g => g.GetValueOrDefault("status")?.ToString() is "Not Started" or "In Progress");
+        } catch { return 0; }
     }
 }
 
