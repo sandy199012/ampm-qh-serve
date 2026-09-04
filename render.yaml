@@ -1,6 +1,24 @@
-services: 
-  - type: web 
-    name: ampm-qh-server 
-    env: python 
-    buildCommand: pip install -r requirements.txt 
-    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1 
+services:
+  # QH Monitor Server
+  - type: web
+    name: ampm-qh-server
+    env: python
+    rootDir: qh_server
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 1
+
+  # IT Management Web App
+  - type: web
+    name: ampm-it-web
+    env: docker
+    rootDir: webapp
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: DB_PATH
+        value: /data/ampm.db
+    disk:
+      name: ampm-webapp-data
+      mountPath: /data
+      sizeGB: 1

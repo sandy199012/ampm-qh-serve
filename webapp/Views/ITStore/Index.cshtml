@@ -1,0 +1,114 @@
+@model List<Dictionary<string,object?>>
+@{ViewData["Title"] = "IT Store";}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0"><i class="bi bi-box-seam text-warning"></i> IT Store</h5>
+</div>
+
+<!-- Type Filter Tabs -->
+<ul class="nav nav-tabs mb-3">
+    @foreach(var t in new[]{"","Cartridge","Keyboard","Mouse","Cable","Other"})
+    {
+        var label = string.IsNullOrEmpty(t) ? "All Items" : t;
+        var active = (ViewBag.TypeFilter?.ToString() ?? "") == t;
+        <li class="nav-item">
+            <a class="nav-link @(active?"active":"")" href="/ITStore?type=@t">@label</a>
+        </li>
+    }
+</ul>
+
+<!-- Stock Items -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-bold border-0">
+        <i class="bi bi-archive text-warning"></i> Stock Inventory — @Model.Count items
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead style="background:#0A192F;color:white">
+                <tr>
+                    <th class="ps-3">Type</th>
+                    <th>Item Name</th>
+                    <th>Brand</th>
+                    <th>Model</th>
+                    <th class="text-center">Total</th>
+                    <th class="text-center">Issued</th>
+                    <th class="text-center">Balance</th>
+                    <th>Vendor</th>
+                    <th>Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Any())
+            {<tr><td colspan="9" class="text-center text-muted py-4">No stock items</td></tr>}
+            @foreach (var s in Model)
+            {
+                int bal = 0, total = 0, issued = 0;
+                int.TryParse(s.GetValueOrDefault("totalQty")?.ToString(), out total);
+                int.TryParse(s.GetValueOrDefault("issuedQty")?.ToString(), out issued);
+                bal = total - issued;
+                var balClass = bal <= 0 ? "danger" : bal <= 2 ? "warning" : "success";
+                <tr>
+                    <td class="ps-3"><span class="badge bg-secondary">@s.GetValueOrDefault("itemType")</span></td>
+                    <td><strong>@s.GetValueOrDefault("name")</strong></td>
+                    <td class="small text-muted">@s.GetValueOrDefault("brand")</td>
+                    <td class="small text-muted">@s.GetValueOrDefault("model")</td>
+                    <td class="text-center">@total</td>
+                    <td class="text-center text-muted">@issued</td>
+                    <td class="text-center"><span class="badge bg-@balClass">@bal</span></td>
+                    <td class="small">@s.GetValueOrDefault("vendor")</td>
+                    <td class="small">@(s.GetValueOrDefault("unitCost")?.ToString() != "0" ? "₹"+s.GetValueOrDefault("unitCost") : "")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Issue History -->
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white fw-bold border-0">
+        <i class="bi bi-arrow-up-right-circle text-primary"></i> Issue History — @((List<Dictionary<string,object?>>)ViewBag.Issues).Count records
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead style="background:#1e3a5f;color:white">
+                <tr>
+                    <th class="ps-3">Issue No.</th>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Type</th>
+                    <th class="text-center">Qty</th>
+                    <th>Department</th>
+                    <th>Issued To</th>
+                    <th>Purpose</th>
+                    <th>Issued By</th>
+                    <th>Scan</th>
+                </tr>
+            </thead>
+            <tbody>
+            @{var issues = (List<Dictionary<string,object?>>)ViewBag.Issues;}
+            @if (!issues.Any())
+            {<tr><td colspan="10" class="text-center text-muted py-4">No issues yet</td></tr>}
+            @foreach (var i in issues)
+            {
+                bool hasScan = !string.IsNullOrEmpty(i.GetValueOrDefault("scanFileName")?.ToString());
+                <tr>
+                    <td class="ps-3 font-monospace fw-bold text-primary small">@i.GetValueOrDefault("issueNo")</td>
+                    <td class="small text-muted">@i.GetValueOrDefault("issueDate")</td>
+                    <td class="small"><strong>@i.GetValueOrDefault("itemName")</strong></td>
+                    <td><span class="badge bg-secondary small">@i.GetValueOrDefault("itemType")</span></td>
+                    <td class="text-center fw-bold">@i.GetValueOrDefault("qty")</td>
+                    <td class="small">@i.GetValueOrDefault("issuedTo")</td>
+                    <td class="small">@i.GetValueOrDefault("issuedToEmp")</td>
+                    <td class="small text-muted">@i.GetValueOrDefault("purpose")</td>
+                    <td class="small">@i.GetValueOrDefault("issuedBy")</td>
+                    <td>
+                        @if (hasScan)
+                        {<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-paperclip"></i> Yes</span>}
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

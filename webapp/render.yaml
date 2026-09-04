@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: ampm-it-tool
+    env: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: DB_PATH
+        value: /data/ampm.db
+    disk:
+      name: ampm-data
+      mountPath: /data
+      sizeGB: 1

@@ -1,0 +1,18 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+appsettings.Development.json
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# DB files (use Render persistent disk)
+*.db
+
+# OS
+.DS_Store
+Thumbs.db

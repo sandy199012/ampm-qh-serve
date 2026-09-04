@@ -1,0 +1,99 @@
+@{ViewData["Title"] = "New Ticket";}
+
+<div class="d-flex align-items-center mb-4">
+    <a href="/Helpdesk" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0"><i class="bi bi-plus-circle text-danger"></i> Raise New Helpdesk Ticket</h5>
+</div>
+
+<div class="row justify-content-center">
+<div class="col-lg-8">
+<div class="card border-0 shadow-sm">
+<div class="card-body p-4">
+<form method="post">
+
+    <!-- Employee Info -->
+    <div class="p-3 mb-4 rounded" style="background:#F8FAFC;border-left:4px solid #2563EB">
+        <h6 class="fw-bold mb-3" style="color:#0A192F">Employee Information</h6>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Employee Name *</label>
+                <input type="text" name="empName" class="form-control" required placeholder="Full name"/>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Employee Code</label>
+                <input type="text" name="empId" class="form-control" placeholder="EMP001"/>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Department</label>
+                <select name="empDept" class="form-select">
+                    <option value="">Select Department</option>
+                    @foreach(var d in new[]{"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING"})
+                    {<option>@d</option>}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Email</label>
+                <input type="email" name="empEmail" class="form-control" placeholder="employee@ampm.in"/>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Mobile</label>
+                <input type="text" name="empMobile" class="form-control" placeholder="9XXXXXXXXX"/>
+            </div>
+        </div>
+    </div>
+
+    <!-- Issue Details -->
+    <div class="p-3 mb-4 rounded" style="background:#FFF7F7;border-left:4px solid #DC2626">
+        <h6 class="fw-bold mb-3 text-danger">Issue Details</h6>
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Issue Title *</label>
+                <input type="text" name="title" class="form-control" required placeholder="Brief description of the issue"/>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Issue Type *</label>
+                <select name="issueType" class="form-select" required>
+                    <option value="">Select Type</option>
+                    @foreach(var t in new[]{"Hardware - Laptop/Desktop","Hardware - Monitor","Hardware - Keyboard/Mouse","Hardware - Printer","Software - Installation","Software - Error","Network - Internet","Network - WiFi","Email - Outlook","Email - Access","Access - System Login","Access - Application","Other"})
+                    {<option>@t</option>}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Category</label>
+                <select name="category" class="form-select">
+                    <option value="">Select Category</option>
+                    @foreach(var c in new[]{"Hardware","Software","Network","Email","Access","Other"})
+                    {<option>@c</option>}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Priority *</label>
+                <select name="priority" class="form-select" required>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                    <option value="High">High</option>
+                    <option value="Critical">Critical</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Assigned To</label>
+                <input type="text" name="assignedTo" class="form-control" value="Sandy" placeholder="IT Person"/>
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold small">Description</label>
+                <textarea name="description" class="form-control" rows="4" placeholder="Detailed description of the issue..."></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-danger px-4">
+            <i class="bi bi-check-circle"></i> Submit Ticket
+        </button>
+        <a href="/Helpdesk" class="btn btn-outline-secondary px-4">Cancel</a>
+    </div>
+</form>
+</div>
+</div>
+</div>
+</div>

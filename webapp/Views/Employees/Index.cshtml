@@ -1,0 +1,88 @@
+@model List<Dictionary<string,object?>>
+@{
+    ViewData["Title"] = "Employees";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0"><i class="bi bi-people text-primary"></i> Employees — @Model.Count records</h5>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Search name, emp code, designation..."/>
+            </div>
+            <div class="col-md-4">
+                <select name="dept" class="form-select form-select-sm">
+                    <option value="">All Departments</option>
+                    @foreach (var d in (List<string>)ViewBag.Departments)
+                    {
+                        <option value="@d" @(ViewBag.Dept == d ? "selected" : "")>@d</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary btn-sm px-3">Filter</button>
+                <a href="/Employees" class="btn btn-outline-secondary btn-sm">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead style="background:#0A192F;color:white">
+                <tr>
+                    <th class="ps-3">Emp Code</th>
+                    <th>Name</th>
+                    <th>Department</th>
+                    <th>Designation</th>
+                    <th>Manager</th>
+                    <th>Mobile</th>
+                    <th>Hostname</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Any())
+            {
+                <tr><td colspan="8" class="text-center text-muted py-5">No employees found</td></tr>
+            }
+            @foreach (var e in Model)
+            {
+                string emp  = e.GetValueOrDefault("emp")?.ToString() ?? "";
+                string name = e.GetValueOrDefault("name")?.ToString() ?? "";
+                string dept = e.GetValueOrDefault("dept")?.ToString() ?? "";
+                string desig= e.GetValueOrDefault("designation")?.ToString() ?? "";
+                string mgr  = e.GetValueOrDefault("manager")?.ToString() ?? "";
+                string mob  = e.GetValueOrDefault("mobile")?.ToString() ?? "";
+                string host = e.GetValueOrDefault("hostname")?.ToString() ?? "";
+                bool hasPC  = !string.IsNullOrEmpty(host);
+                <tr>
+                    <td class="ps-3 font-monospace fw-bold small">@emp</td>
+                    <td><strong>@name</strong></td>
+                    <td><span class="badge bg-light text-dark border">@dept</span></td>
+                    <td class="small text-muted">@desig</td>
+                    <td class="small">@mgr</td>
+                    <td class="small">@mob</td>
+                    <td>
+                        @if (hasPC)
+                        {
+                            <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                <i class="bi bi-pc-display"></i> @host
+                            </span>
+                        }
+                    </td>
+                    <td>
+                        <a href="/Employees/Details/@emp" class="btn btn-outline-primary btn-sm">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
