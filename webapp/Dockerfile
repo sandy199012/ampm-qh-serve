@@ -8,8 +8,7 @@ RUN dotnet publish -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
-COPY --from=build /src/Data/ampm.db /data/ampm.db
-RUN mkdir -p /data
+RUN mkdir -p /data && cp /app/wwwroot/seed.db /data/ampm.db
 
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DB_PATH=/data/ampm.db
