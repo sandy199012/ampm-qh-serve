@@ -10,62 +10,54 @@
 </head>
 <body class="bg-light">
 
-@if (User.Identity?.IsAuthenticated == true)
-{
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background:#0A192F">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="/">
-                <img src="~/images/logo.png" height="28" onerror="this.style.display='none'"/>
-                AMPM IT Tool
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="nav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/Employees"><i class="bi bi-people"></i> Employees</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/Helpdesk"><i class="bi bi-headset"></i> Helpdesk</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/Assets"><i class="bi bi-pc-display"></i> Assets</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/PurchaseOrders"><i class="bi bi-file-earmark-text"></i> PO</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/ITStore"><i class="bi bi-box-seam"></i> IT Store</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/Goals"><i class="bi bi-bullseye"></i> Goals</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/Budget"><i class="bi bi-wallet2"></i> Budget</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/Vendors"><i class="bi bi-shop"></i> Vendors</a></li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i>
-                            @User.FindFirst("FullName")?.Value
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><span class="dropdown-item-text text-muted small">@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</span></li>
-                            <li><hr class="dropdown-divider"/></li>
-                            <li><a class="dropdown-item text-danger" href="/Account/Logout"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
-                        </ul>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+@{
+    var loggedIn = !string.IsNullOrEmpty(Context.Request.Cookies["ampm_user"]);
+    var userName = Context.Request.Cookies["ampm_name"] ?? "";
+    var userRole = Context.Request.Cookies["ampm_role"] ?? "";
 }
 
-<main class="@(User.Identity?.IsAuthenticated == true ? "container-fluid py-3 px-4" : "")">
+@if (loggedIn)
+{
+<nav class="navbar navbar-expand-lg navbar-dark" style="background:#0A192F">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold" href="/"><i class="bi bi-shield-check text-info"></i> AMPM IT Tool</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="nav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/Employees"><i class="bi bi-people"></i> Employees</a></li>
+                <li class="nav-item"><a class="nav-link" href="/Helpdesk"><i class="bi bi-headset"></i> Helpdesk</a></li>
+                <li class="nav-item"><a class="nav-link" href="/Assets"><i class="bi bi-pc-display"></i> Assets</a></li>
+                <li class="nav-item"><a class="nav-link" href="/PurchaseOrders"><i class="bi bi-file-earmark-text"></i> PO</a></li>
+                <li class="nav-item"><a class="nav-link" href="/ITStore"><i class="bi bi-box-seam"></i> IT Store</a></li>
+                <li class="nav-item"><a class="nav-link" href="/Goals"><i class="bi bi-bullseye"></i> Goals</a></li>
+                <li class="nav-item"><a class="nav-link" href="/Budget"><i class="bi bi-wallet2"></i> Budget</a></li>
+                <li class="nav-item"><a class="nav-link" href="/Vendors"><i class="bi bi-shop"></i> Vendors</a></li>
+            </ul>
+            <ul class="navbar-nav">
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle"></i> @userName
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><span class="dropdown-item-text text-muted small">@userRole</span></li>
+                        <li><hr class="dropdown-divider"/></li>
+                        <li><a class="dropdown-item text-danger" href="/Account/Logout"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+}
+
+<main class="@(loggedIn ? "container-fluid py-3 px-4" : "")">
     @if (TempData["Success"] != null)
-    {
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="bi bi-check-circle"></i> @TempData["Success"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    }
+    {<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle"></i> @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>}
     @if (TempData["Error"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-circle"></i> @TempData["Error"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-    }
+    {<div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-exclamation-circle"></i> @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>}
     @RenderBody()
 </main>
 

@@ -59,7 +59,7 @@ public class HelpdeskController : Controller
             ["assignedTo"] = form["assignedTo"].ToString(),
             ["status"]     = "Open",
             ["dateRaised"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
-            ["raisedBy"]   = User.FindFirst("FullName")?.Value
+            ["raisedBy"]   = HttpContext.Request.Cookies["ampm_name"]
         };
         _db.SaveTicket(ticket);
         TempData["Success"] = "Ticket created: " + ticket["ticketId"];
