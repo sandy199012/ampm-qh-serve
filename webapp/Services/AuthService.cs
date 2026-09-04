@@ -15,7 +15,13 @@ public class AuthService
             new { u = username.ToLower().Trim() });
 
         if (user == null) return null;
-        if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)) return null;
+        if (string.IsNullOrWhiteSpace(user.PasswordHash)) return null;
+        
+        try
+        {
+            if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)) return null;
+        }
+        catch { return null; }
 
         return new UserSession
         {

@@ -49,13 +49,18 @@ public class DbService
             CREATE TABLE IF NOT EXISTS stock_issues (id TEXT PRIMARY KEY, item_id TEXT, issue_no TEXT, data TEXT NOT NULL, ts TEXT);
         ");
 
-        // Default admin user
-        var existing = conn.QueryFirst<int>("SELECT COUNT(*) FROM users WHERE username='sandy'");
+        // Always ensure sandy user exists with correct password
+        string hash = BCrypt.Net.BCrypt.HashPassword("AMPM@Sandy2026");
+        var existing = conn.QueryFirstOrDefault<int>("SELECT COUNT(*) FROM users WHERE username='sandy'");
         if (existing == 0)
         {
-            string hash = BCrypt.Net.BCrypt.HashPassword("AMPM@Sandy2026");
-            conn.Execute("INSERT INTO users (username,password_hash,name,role,department,created_at) VALUES (@u,@h,@n,@r,@d,@t)",
-                new { u="sandy", h=hash, n="Sandeep Kumar Singh Kushwaha", r="superadmin", d="IT", t=DateTime.Now.ToString("o") });
+            conn.Execute("INSERT INTO users (username,password_hash,name,role,department,is_active,created_at) VALUES ('sandy',@h,'Sandeep Kumar Singh Kushwaha','superadmin','IT',1,@t)",
+                new { h = hash, t = DateTime.Now.ToString("o") });
+        }
+        else
+        {
+            // Update hash in case it's corrupted
+            conn.Execute("UPDATE users SET password_hash=@h WHERE username='sandy'", new { h = hash });
         }
     }
 
