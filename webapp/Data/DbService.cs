@@ -135,6 +135,7 @@ public class DbService
     public DashboardStats GetStats()
     {
         using var conn = GetConn();
+        var assets = KGetObj<List<Dictionary<string,object?>>>("asset_stock") ?? new();
         return new DashboardStats
         {
             TotalEmployees = conn.QueryFirst<int>("SELECT COUNT(*) FROM employees"),
@@ -142,11 +143,52 @@ public class DbService
             OpenTickets    = conn.QueryFirst<int>("SELECT COUNT(*) FROM tickets WHERE status='Open'"),
             TotalVendors   = conn.QueryFirst<int>("SELECT COUNT(*) FROM vendors"),
             TotalGoals     = conn.QueryFirst<int>("SELECT COUNT(*) FROM goals"),
+            TotalAssets    = assets.Count,
+            TotalStockItems= conn.QueryFirst<int>("SELECT COUNT(*) FROM it_stock_items") +
+                             conn.QueryFirst<int>("SELECT COUNT(*) FROM stock_items"),
         };
     }
-}
 
-// Dapper-style extension for SqliteConnection
+    public List<Dictionary<string,object?>> GetLowStockItems()
+    {
+        var items = Query<string>("SELECT data FROM it_stock_items")
+            .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
+            .Where(i => {
+                int.TryParse(i.GetValueOrDefault("totalQty")?.ToString(), out var t);
+                int.TryParse(i.GetValueOrDefault("issuedQty")?.ToString(), out var iss);
+                return (t - iss) <= 2;
+            }).ToList();
+        return items;
+    }
+
+    public int GetPendingGoalsCount()
+    {
+        var goals = Query<string>("SELECT data FROM goals")
+            .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new())
+            .Count(g => g.GetValueOrDefault("status")?.ToString() is "Not Started" or "In Progress");
+        return goals;
+    }
+
+    // ── Assets ────────────────────────────────────────────────
+    public List<Dictionary<string,object?>> GetAssets()
+        => KGetObj<List<Dictionary<string,object?>>>("asset_stock") ?? new();
+
+    // ── Budget ────────────────────────────────────────────────
+    public List<Dictionary<string,object?>> GetBudget()
+        => KGetObj<List<Dictionary<string,object?>>>("budget") ?? new();
+
+    // ── Bills ─────────────────────────────────────────────────
+    public List<Dictionary<string,object?>> GetBills()
+        => KGetObj<List<Dictionary<string,object?>>>("bills") ?? new();
+
+    // ── Vendors ───────────────────────────────────────────────
+    public List<Dictionary<string,object?>> GetVendors()
+    {
+        var rows = Query<string>("SELECT data FROM vendors ORDER BY name");
+        return rows.Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList();
+    }
+
+    public string DbFilePath => _connStr.Replace("Data Source=", "");
 public static class SqliteExtensions
 {
     public static List<T> Query<T>(this SqliteConnection conn, string sql, object? param = null)
@@ -208,4 +250,6 @@ public class DashboardStats
     public int OpenTickets { get; set; }
     public int TotalVendors { get; set; }
     public int TotalGoals { get; set; }
+    public int TotalAssets { get; set; }
+    public int TotalStockItems { get; set; }
 }

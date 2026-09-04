@@ -18,6 +18,8 @@ public class HomeController : Controller
         ViewBag.User          = _auth.GetCurrentUser(HttpContext);
         ViewBag.Stats         = _db.GetStats();
         ViewBag.RecentTickets = _db.GetTickets().Take(8).ToList();
+        ViewBag.LowStock      = _db.GetLowStockItems();
+        ViewBag.PendingGoals  = _db.GetPendingGoalsCount();
         return View();
     }
 }

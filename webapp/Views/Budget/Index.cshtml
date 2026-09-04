@@ -1,0 +1,142 @@
+@model List<Dictionary<string,object?>>
+@{
+    ViewData["Title"] = "IT Budget";
+    double totalBudget = ViewBag.TotalBudget ?? 0;
+    double totalSpent  = ViewBag.TotalSpent ?? 0;
+    double remaining   = ViewBag.Remaining ?? 0;
+    int usedPct = totalBudget > 0 ? (int)Math.Round(totalSpent / totalBudget * 100) : 0;
+    var bills  = (List<Dictionary<string,object?>>)(ViewBag.Bills ?? new List<Dictionary<string,object?>>());
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0"><i class="bi bi-wallet2 text-secondary"></i> IT Budget</h5>
+</div>
+
+<!-- Budget Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center py-3" style="border-top:4px solid #2563EB!important">
+            <div class="small text-muted">Total Allocated</div>
+            <div class="fw-bold fs-3 text-primary">&#8377;@totalBudget.ToString("N0")</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center py-3" style="border-top:4px solid #DC2626!important">
+            <div class="small text-muted">Total Spent</div>
+            <div class="fw-bold fs-3 text-danger">&#8377;@totalSpent.ToString("N0")</div>
+            <div class="small text-muted">@usedPct% used</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm text-center py-3" style="border-top:4px solid #059669!important">
+            <div class="small text-muted">Remaining</div>
+            <div class="fw-bold fs-3 @(remaining >= 0 ? "text-success" : "text-danger")">&#8377;@remaining.ToString("N0")</div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Bar -->
+<div class="card border-0 shadow-sm mb-4 p-3">
+    <div class="d-flex justify-content-between mb-1">
+        <small class="fw-semibold">Budget Utilization</small>
+        <small class="fw-bold @(usedPct>90?"text-danger":usedPct>70?"text-warning":"text-success")">@usedPct%</small>
+    </div>
+    <div class="progress" style="height:12px">
+        <div class="progress-bar @(usedPct>90?"bg-danger":usedPct>70?"bg-warning":"bg-success")" style="width:@Math.Min(usedPct,100)%"></div>
+    </div>
+</div>
+
+<!-- Budget Items -->
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-bold border-0">
+        <i class="bi bi-list-check text-primary"></i> Budget Line Items
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead style="background:#0A192F;color:white">
+                <tr>
+                    <th class="ps-3">#</th>
+                    <th>Item / Description</th>
+                    <th>Category</th>
+                    <th class="text-end">Allocated (&#8377;)</th>
+                    <th class="text-end">Spent (&#8377;)</th>
+                    <th class="text-end">Balance (&#8377;)</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Any())
+            {<tr><td colspan="7" class="text-center text-muted py-4">No budget items</td></tr>}
+            @{ int sno = 0; }
+            @foreach (var b in Model)
+            {
+                sno++;
+                double alloc = 0, spent = 0;
+                double.TryParse(b.GetValueOrDefault("allocated")?.ToString(), out alloc);
+                double.TryParse(b.GetValueOrDefault("spent")?.ToString(), out spent);
+                double bal = alloc - spent;
+                var status = b.GetValueOrDefault("status")?.ToString() ?? "";
+                var rowClass = bal < 0 ? "table-danger" : spent > 0 && bal == 0 ? "table-warning" : "";
+                <tr class="@rowClass">
+                    <td class="ps-3 text-muted">@sno</td>
+                    <td><strong class="small">@b.GetValueOrDefault("item")</strong>
+                        @if(!string.IsNullOrEmpty(b.GetValueOrDefault("notes")?.ToString()))
+                        {<br/><small class="text-muted">@b.GetValueOrDefault("notes")</small>}
+                    </td>
+                    <td><span class="badge bg-light text-dark border small">@b.GetValueOrDefault("category")</span></td>
+                    <td class="text-end fw-semibold">&#8377;@alloc.ToString("N0")</td>
+                    <td class="text-end text-danger">&#8377;@spent.ToString("N0")</td>
+                    <td class="text-end fw-bold @(bal<0?"text-danger":"text-success")">&#8377;@bal.ToString("N0")</td>
+                    <td><span class="badge @(status=="Approved"?"bg-success":status=="Pending"?"bg-warning text-dark":"bg-secondary")">@status</span></td>
+                </tr>
+            }
+            </tbody>
+            <tfoot class="table-dark fw-bold">
+                <tr>
+                    <td colspan="3" class="ps-3">TOTAL</td>
+                    <td class="text-end">&#8377;@totalBudget.ToString("N0")</td>
+                    <td class="text-end">&#8377;@totalSpent.ToString("N0")</td>
+                    <td class="text-end @(remaining<0?"text-danger":"text-success")">&#8377;@remaining.ToString("N0")</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<!-- Bills & Utilities -->
+@if (bills.Any())
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white fw-bold border-0">
+            <i class="bi bi-receipt text-warning"></i> Bills & Utilities
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead style="background:#1e3a5f;color:white">
+                    <tr>
+                        <th class="ps-3">Description</th>
+                        <th>Vendor</th>
+                        <th>Due Date</th>
+                        <th class="text-end">Amount (&#8377;)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var b in bills)
+                {
+                    var bs = b.GetValueOrDefault("status")?.ToString() ?? "";
+                    double amt = 0; double.TryParse(b.GetValueOrDefault("amount")?.ToString(), out amt);
+                    <tr>
+                        <td class="ps-3 small"><strong>@b.GetValueOrDefault("description")</strong></td>
+                        <td class="small">@b.GetValueOrDefault("vendor")</td>
+                        <td class="small text-muted">@b.GetValueOrDefault("dueDate")</td>
+                        <td class="text-end fw-semibold">&#8377;@amt.ToString("N0")</td>
+                        <td><span class="badge @(bs=="Paid"?"bg-success":bs=="Overdue"?"bg-danger":"bg-warning text-dark")">@bs</span></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
