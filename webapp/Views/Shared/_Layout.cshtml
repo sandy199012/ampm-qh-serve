@@ -51,7 +51,7 @@
     </nav>
 }
 
-<main class="@(Context.Session.GetString("username") != null ? "container-fluid py-3 px-4" : "")">
+<main class="@(User.Identity?.IsAuthenticated == true ? "container-fluid py-3 px-4" : "")">
     @if (TempData["Success"] != null)
     {
         <div class="alert alert-success alert-dismissible fade show" role="alert">
