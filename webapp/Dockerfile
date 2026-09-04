@@ -4,6 +4,8 @@ COPY AMPMWeb.csproj .
 RUN dotnet restore
 COPY . .
 RUN dotnet publish -c Release -o /app/publish
+# Explicitly copy Views to publish output
+RUN cp -r /src/Views /app/publish/Views
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
