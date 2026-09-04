@@ -3,6 +3,7 @@ using AMPMWeb.Services;
 
 namespace AMPMWeb.Controllers;
 
+[IgnoreAntiforgeryToken]
 public class AccountController : Controller
 {
     private readonly AuthService _auth;
@@ -15,6 +16,9 @@ public class AccountController : Controller
     [HttpPost]
     public IActionResult Login(string username, string password)
     {
+        // Clear old session first
+        HttpContext.Session.Clear();
+        
         var user = _auth.Login(username, password);
         if (user == null)
         {
