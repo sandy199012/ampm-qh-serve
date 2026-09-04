@@ -8,10 +8,10 @@ RUN dotnet publish -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
-RUN mkdir -p /data && cp /app/wwwroot/seed.db /data/ampm.db
+RUN mkdir -p /data
 
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV DB_PATH=/data/ampm.db
+ENV DOTNET_RUNNING_IN_CONTAINER=true
 
 EXPOSE 8080
 ENTRYPOINT ["dotnet", "AMPMWeb.dll"]
