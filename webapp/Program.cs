@@ -5,32 +5,29 @@ using Microsoft.AspNetCore.DataProtection;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
-
-// Ephemeral Data Protection - works on Render free tier (no persistent disk)
-builder.Services.AddDataProtection()
-    .UseEphemeralDataProtectionProvider();
-
-builder.Services.AddSession(opt => {
-    opt.IdleTimeout = TimeSpan.FromHours(8);
-    opt.Cookie.HttpOnly = true;
-    opt.Cookie.IsEssential = true;
-    opt.Cookie.Name = "AMPM.Session";
-});
-
+builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
 builder.Services.AddSingleton<DbService>();
 builder.Services.AddSingleton<AuthService>();
+
+// Simple cookie auth - no session needed
+builder.Services.AddAuthentication("CookieAuth")
+    .AddCookie("CookieAuth", options => {
+        options.Cookie.Name = "AMPM.Auth";
+        options.LoginPath = "/Account/Login";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+    });
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
 var app = builder.Build();
-
-var db = app.Services.GetRequiredService<DbService>();
-db.Init();
+app.Services.GetRequiredService<DbService>().Init();
 
 app.UseStaticFiles();
 app.UseRouting();
-app.UseSession();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(

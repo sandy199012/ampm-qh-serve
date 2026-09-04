@@ -10,7 +10,7 @@
 </head>
 <body class="bg-light">
 
-@if (Context.Session.GetString("username") != null)
+@if (User.Identity?.IsAuthenticated == true)
 {
     <nav class="navbar navbar-expand-lg navbar-dark" style="background:#0A192F">
         <div class="container-fluid">
@@ -37,10 +37,10 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle"></i>
-                            @Context.Session.GetString("name")
+                            @User.FindFirst("FullName")?.Value
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><span class="dropdown-item-text text-muted small">@Context.Session.GetString("role")</span></li>
+                            <li><span class="dropdown-item-text text-muted small">@User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value</span></li>
                             <li><hr class="dropdown-divider"/></li>
                             <li><a class="dropdown-item text-danger" href="/Account/Logout"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                         </ul>

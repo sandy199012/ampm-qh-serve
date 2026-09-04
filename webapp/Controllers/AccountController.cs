@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication;
+using System.Security.Claims;
 using AMPMWeb.Services;
 
 namespace AMPMWeb.Controllers;
@@ -10,31 +12,43 @@ public class AccountController : Controller
     public AccountController(AuthService auth) { _auth = auth; }
 
     [HttpGet]
-    public IActionResult Login() =>
-        _auth.IsLoggedIn(HttpContext) ? RedirectToAction("Index","Home") : View();
+    public IActionResult Login()
+    {
+        if (User.Identity?.IsAuthenticated == true)
+            return RedirectToAction("Index", "Home");
+        return View();
+    }
 
     [HttpPost]
-    public IActionResult Login(string username, string password)
+    public async Task<IActionResult> Login(string username, string password)
     {
-        // Clear old session first
-        HttpContext.Session.Clear();
-        
         var user = _auth.Login(username, password);
         if (user == null)
         {
             ViewBag.Error = "Invalid username or password!";
             return View();
         }
-        HttpContext.Session.SetString("username",   user.Username);
-        HttpContext.Session.SetString("name",       user.Name);
-        HttpContext.Session.SetString("role",       user.Role);
-        HttpContext.Session.SetString("department", user.Department);
+
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name,     user.Username),
+            new Claim("FullName",          user.Name),
+            new Claim(ClaimTypes.Role,     user.Role),
+            new Claim("Department",        user.Department),
+        };
+
+        var identity  = new ClaimsIdentity(claims, "CookieAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        await HttpContext.SignInAsync("CookieAuth", principal,
+            new AuthenticationProperties { IsPersistent = true, ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8) });
+
         return RedirectToAction("Index", "Home");
     }
 
-    public IActionResult Logout()
+    public async Task<IActionResult> Logout()
     {
-        HttpContext.Session.Clear();
+        await HttpContext.SignOutAsync("CookieAuth");
         return RedirectToAction("Login");
     }
 }
