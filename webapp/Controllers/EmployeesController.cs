@@ -15,7 +15,6 @@ public class EmployeesController : Controller
 
     public IActionResult Index(string? search, string? dept)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
 
         var emps = _db.GetEmployees();
@@ -46,7 +45,6 @@ public class EmployeesController : Controller
 
     public IActionResult Details(string id)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var emp = _db.QueryFirst<string>("SELECT data FROM employees WHERE emp=@e", new { e = id });
         if (emp == null) return NotFound();

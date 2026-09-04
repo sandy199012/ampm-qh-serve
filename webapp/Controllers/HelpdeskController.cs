@@ -15,7 +15,6 @@ public class HelpdeskController : Controller
 
     public IActionResult Index(string? status, string? priority)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
 
         var tickets = _db.GetTickets(status);
@@ -33,7 +32,6 @@ public class HelpdeskController : Controller
     [HttpGet]
     public IActionResult Create()
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         ViewBag.Employees = _db.GetEmployees();
         return View();
@@ -42,7 +40,6 @@ public class HelpdeskController : Controller
     [HttpPost]
     public IActionResult Create(IFormCollection form)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         var ticket = new Dictionary<string,object?>
         {
             ["ticketId"]   = "TKT-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
@@ -68,7 +65,6 @@ public class HelpdeskController : Controller
 
     public IActionResult Details(string id)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var t = _db.QueryFirst<string>("SELECT data FROM tickets WHERE ticket_id=@id", new { id });
         if (t == null) return NotFound();

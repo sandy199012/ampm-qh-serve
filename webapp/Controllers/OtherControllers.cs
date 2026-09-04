@@ -13,7 +13,6 @@ public class PurchaseOrdersController : Controller
 
     public IActionResult Index(string? status, string? search)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var pos = _db.GetPOs();
         if (!string.IsNullOrEmpty(status))
@@ -35,7 +34,6 @@ public class PurchaseOrdersController : Controller
 
     public IActionResult Details(string id)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var po = _db.QueryFirst<string>("SELECT data FROM po_list WHERE po_number=@id", new { id });
         if (po == null) return NotFound();
@@ -51,7 +49,6 @@ public class AssetsController : Controller
 
     public IActionResult Index(string? search, string? type)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
 
         var assets = _db.GetAssets();
@@ -80,7 +77,6 @@ public class AssetsController : Controller
 
     public IActionResult Details(string id)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var asset = _db.GetAssets().FirstOrDefault(a => a.GetValueOrDefault("id")?.ToString() == id ||
                                                          a.GetValueOrDefault("assetTag")?.ToString() == id);
@@ -97,7 +93,6 @@ public class ITStoreController : Controller
 
     public IActionResult Index(string? type)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
 
         var items = new List<Dictionary<string,object?>>();
@@ -149,7 +144,6 @@ public class GoalsController : Controller
 
     public IActionResult Index(int? week, string? status)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
 
         var goals = _db.Query<string>("SELECT data FROM goals ORDER BY week_no, ts")
@@ -204,7 +198,6 @@ public class BudgetController : Controller
 
     public IActionResult Index()
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var budget = _db.GetBudget();
         var bills  = _db.GetBills();
@@ -226,7 +219,6 @@ public class VendorsController : Controller
 
     public IActionResult Index(string? search)
     {
-        if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var vendors = _db.GetVendors();
         if (!string.IsNullOrEmpty(search))
