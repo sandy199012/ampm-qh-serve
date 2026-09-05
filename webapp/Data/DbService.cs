@@ -60,10 +60,23 @@ public class DbService
         cmd.CommandText = "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT;";
         cmd.ExecuteNonQuery();
 
-        // Ensure admin user
-        cmd.CommandText = "SELECT COUNT(*) FROM users WHERE username='sandy'";
-        var count = (long)cmd.ExecuteScalar()!;
-        if (count == 0)
+        // Ensure admin user — and self-repair it. Login used to bypass this table entirely
+        // (hardcoded username/password check), so an existing 'sandy' row could have a
+        // stale/blank/invalid password hash that nobody ever noticed. Now that Login()
+        // actually verifies against this row, make sure it always has a working hash.
+        cmd.CommandText = "SELECT id, password_hash, role FROM users WHERE username='sandy'";
+        int? existingId = null; string? existingHash = null; string? existingRole = null;
+        using (var reader = cmd.ExecuteReader())
+        {
+            if (reader.Read())
+            {
+                existingId = reader.GetInt32(0);
+                existingHash = reader.IsDBNull(1) ? null : reader.GetString(1);
+                existingRole = reader.IsDBNull(2) ? null : reader.GetString(2);
+            }
+        }
+
+        if (existingId == null)
         {
             var hash = BCrypt.Net.BCrypt.HashPassword("AMPM@Sandy2026");
             cmd.CommandText = "INSERT INTO users (username,password_hash,name,role,department,is_active,created_at) VALUES (@u,@h,@n,@r,@d,1,@t)";
@@ -75,6 +88,24 @@ public class DbService
             cmd.Parameters.AddWithValue("@d", "IT");
             cmd.Parameters.AddWithValue("@t", DateTime.Now.ToString("o"));
             cmd.ExecuteNonQuery();
+        }
+        else
+        {
+            bool hashOk = false;
+            if (!string.IsNullOrWhiteSpace(existingHash))
+            {
+                try { hashOk = BCrypt.Net.BCrypt.Verify("AMPM@Sandy2026", existingHash); }
+                catch { hashOk = false; }
+            }
+            if (!hashOk || existingRole != "superadmin")
+            {
+                var hash = BCrypt.Net.BCrypt.HashPassword("AMPM@Sandy2026");
+                cmd.CommandText = "UPDATE users SET password_hash=@h, role='superadmin', is_active=1 WHERE id=@id";
+                cmd.Parameters.Clear();
+                cmd.Parameters.AddWithValue("@h", hash);
+                cmd.Parameters.AddWithValue("@id", existingId.Value);
+                cmd.ExecuteNonQuery();
+            }
         }
     }
 
