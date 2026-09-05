@@ -49,7 +49,9 @@ public class HelpdeskController : Controller
         };
         _db.SaveTicket(ticket);
         TempData["Success"] = "Ticket created: " + ticket["ticketId"];
-        return RedirectToAction("Index");
+        var es = GetEmailSettingsObj();
+        var sendOnRaise = es.GetValueOrDefault("sendOnRaise")?.ToString()?.ToLower() != "false";
+        return RedirectToAction("Details", new { id = ticket["ticketId"], openEmail = sendOnRaise ? "1" : null });
     }
 
     public IActionResult Details(string id)
@@ -57,7 +59,48 @@ public class HelpdeskController : Controller
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var raw = _db.QueryFirst<string>("SELECT data FROM tickets WHERE ticket_id=@id", new { id });
         if (raw == null) return NotFound();
+        var es = GetEmailSettingsObj();
+        ViewBag.ItEmail = es.GetValueOrDefault("itEmail")?.ToString() ?? "itsupport@ampm.in";
+        ViewBag.CcEmails = es.GetValueOrDefault("ccEmails")?.ToString() ?? "";
+        ViewBag.SendOnClose = es.GetValueOrDefault("sendOnClose")?.ToString()?.ToLower() != "false";
         return View(JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new());
+    }
+
+    [HttpPost]
+    public IActionResult SetEmpEmail(string id, string email)
+    {
+        var raw = _db.QueryFirst<string>("SELECT data FROM tickets WHERE ticket_id=@id", new { id });
+        if (raw == null) return NotFound();
+        var ticket = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
+        ticket["empEmail"] = email;
+        _db.SaveTicket(ticket);
+        return Json(new { ok = true });
+    }
+
+    // ── Email Settings (IT/CC address used when emailing tickets) ────
+    Dictionary<string,object?> GetEmailSettingsObj()
+        => _db.KGetObj<Dictionary<string,object?>>("helpdesk_email_settings")
+           ?? new Dictionary<string,object?> { ["itEmail"]="itsupport@ampm.in", ["ccEmails"]="", ["sendOnRaise"]=true, ["sendOnClose"]=true };
+
+    [HttpGet]
+    public IActionResult EmailSettings()
+    {
+        ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        return View(GetEmailSettingsObj());
+    }
+
+    [HttpPost]
+    public IActionResult EmailSettings(IFormCollection form)
+    {
+        var settings = new Dictionary<string,object?> {
+            ["itEmail"] = form["itEmail"].ToString(),
+            ["ccEmails"] = form["ccEmails"].ToString(),
+            ["sendOnRaise"] = form["sendOnRaise"] == "on",
+            ["sendOnClose"] = form["sendOnClose"] == "on"
+        };
+        _db.KSet("helpdesk_email_settings", settings);
+        TempData["Success"] = "Email settings saved.";
+        return RedirectToAction("EmailSettings");
     }
 
     [HttpPost]

@@ -1,0 +1,45 @@
+@model Dictionary<string,object?>
+@{
+    ViewData["Title"] = "Email Settings";
+    var itEmail = Model.GetValueOrDefault("itEmail")?.ToString() ?? "itsupport@ampm.in";
+    var ccEmails = Model.GetValueOrDefault("ccEmails")?.ToString() ?? "";
+    var sendOnRaise = Model.GetValueOrDefault("sendOnRaise")?.ToString()?.ToLower() != "false";
+    var sendOnClose = Model.GetValueOrDefault("sendOnClose")?.ToString()?.ToLower() != "false";
+}
+
+<div class="d-flex align-items-center mb-4">
+    <a href="/Helpdesk" class="btn btn-outline-secondary btn-sm me-3"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0"><i class="bi bi-envelope-gear text-danger"></i> Helpdesk Email Settings</h5>
+</div>
+
+<div class="row justify-content-center">
+<div class="col-lg-7">
+<div class="card border-0 shadow-sm">
+    <div class="card-header fw-bold" style="background:#0A192F;color:white">IT / CC Address for Ticket Emails</div>
+    <div class="card-body p-4">
+        <form method="post">
+            <div class="mb-3">
+                <label class="form-label fw-semibold small">IT / Support Email (CC on every ticket email)</label>
+                <input type="email" name="itEmail" class="form-control" value="@itEmail" placeholder="itsupport@ampm.in"/>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold small">Extra CC Emails (optional, comma separated)</label>
+                <input type="text" name="ccEmails" class="form-control" value="@ccEmails" placeholder="manager@ampm.in, hod@ampm.in"/>
+            </div>
+            <div class="form-check mb-2">
+                <input type="checkbox" class="form-check-input" id="sendOnRaise" name="sendOnRaise" @(sendOnRaise ? "checked" : "")/>
+                <label class="form-check-label small" for="sendOnRaise">Ask to send an email when a new ticket is raised</label>
+            </div>
+            <div class="form-check mb-4">
+                <input type="checkbox" class="form-check-input" id="sendOnClose" name="sendOnClose" @(sendOnClose ? "checked" : "")/>
+                <label class="form-check-label small" for="sendOnClose">Ask to send an email when a ticket is resolved</label>
+            </div>
+            <div class="alert alert-info small">
+                <i class="bi bi-info-circle"></i> The web tool doesn't send email on its own — clicking "Email Ticket" opens a ready-made message (To the employee, CC to the address above) in your default mail app or Gmail in the browser, exactly like the old desktop tool's Outlook/Gmail choice. You review it and hit Send yourself.
+            </div>
+            <button class="btn btn-danger px-4" type="submit"><i class="bi bi-save"></i> Save Settings</button>
+        </form>
+    </div>
+</div>
+</div>
+</div>

@@ -3,6 +3,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><i class="bi bi-headset text-danger"></i> Helpdesk Tickets</h5>
+    <a href="/Helpdesk/EmailSettings" class="btn btn-outline-secondary btn-sm px-3" title="Email Settings"><i class="bi bi-envelope-gear"></i></a>
     <a href="/Helpdesk/Export" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Export CSV</a>
     <a href="/Helpdesk/Create" class="btn btn-danger btn-sm px-3">
         <i class="bi bi-plus-circle"></i> New Ticket
@@ -117,6 +118,7 @@
                             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Act</button>
                             <ul class="dropdown-menu dropdown-menu-end">
                                 <li><a class="dropdown-item" href="/Helpdesk/Details/@tid"><i class="bi bi-eye"></i> View</a></li>
+                                <li><a class="dropdown-item text-danger" href="/Helpdesk/Details/@tid?openEmail=1"><i class="bi bi-envelope"></i> Email</a></li>
                                 <li><hr class="dropdown-divider"/></li>
                                 <li><a class="dropdown-item text-primary" href="#" onclick="updateStatus('@tid','In Progress')"><i class="bi bi-play-circle"></i> In Progress</a></li>
                                 <li><a class="dropdown-item text-success" href="#" onclick="updateStatus('@tid','Resolved')"><i class="bi bi-check-circle"></i> Resolved</a></li>

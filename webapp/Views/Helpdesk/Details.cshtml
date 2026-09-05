@@ -13,6 +13,8 @@
     <h5 class="fw-bold mb-0 font-monospace">@tid</h5>
     <span class="badge bg-@sBadge">@status</span>
     <span class="badge bg-@pBadge">@priority</span>
+    <button class="btn btn-outline-danger btn-sm ms-auto" onclick="openEmailModal()"><i class="bi bi-envelope"></i> Email Ticket</button>
+    <a href="/Helpdesk/EmailSettings" class="btn btn-outline-secondary btn-sm" title="Email Settings"><i class="bi bi-gear"></i></a>
 </div>
 
 <div class="row g-3">
@@ -86,8 +88,49 @@
     </div>
 </div>
 
+<!-- ═══ Email Ticket Modal ═══ -->
+<div class="modal fade" id="emailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0A192F;color:white">
+                <h5 class="modal-title"><i class="bi bi-envelope"></i> Email Ticket @tid</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">To (Employee Email)</label>
+                    <input type="email" id="emailTo" class="form-control" placeholder="employee@ampm.in"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">CC</label>
+                    <input type="text" id="emailCc" class="form-control" readonly/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold small">Subject</label>
+                    <input type="text" id="emailSubject" class="form-control" readonly/>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-bold small">Message Preview</label>
+                    <textarea id="emailBody" class="form-control" rows="10" readonly style="font-size:12px;font-family:Consolas,monospace"></textarea>
+                </div>
+                <div class="alert alert-info small mb-0"><i class="bi bi-info-circle"></i> Opens a ready-made message in your mail app / Gmail — review and hit Send there. Nothing is sent automatically from here.</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="sendViaOutlook()"><i class="bi bi-envelope"></i> Outlook / Default Mail</button>
+                <button class="btn btn-danger" onclick="sendViaGmail()"><i class="bi bi-google"></i> Gmail (Browser)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
+const ticket = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
+const itEmail = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.ItEmail));
+const ccEmails = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.CcEmails));
+const sendOnClose = @Html.Raw(ViewBag.SendOnClose ? "true" : "false");
+
 function updateStatus(id, status) {
     fetch('/Helpdesk/UpdateStatus/' + id, {
         method: 'POST',
@@ -104,7 +147,103 @@ function submitResolve(id) {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: 'status=Resolved&resolution=' + encodeURIComponent(res)
-    }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
+    }).then(r => r.json()).then(d => {
+        if (!d.ok) return;
+        if (sendOnClose && confirm('Ticket resolved! Employee ko resolution email bhejni hai?')) {
+            location.href = '/Helpdesk/Details/' + id + '?openEmail=1';
+        } else {
+            location.reload();
+        }
+    });
 }
+
+// ───────────── Email Ticket ─────────────
+function buildEmailBody() {
+    const div  = '='.repeat(59);
+    const div2 = '-'.repeat(59);
+    const isResolved = ticket.status === 'Resolved' || ticket.status === 'Closed';
+    let body = `Dear ${ticket.empName || ''},\n\n`;
+    body += isResolved
+        ? `Your IT support request has been resolved. Please find the details below.\n\n`
+        : `Your IT support request has been registered. Our team will get back to you shortly.\n\n`;
+    body += `${div}\n  IT HELPDESK - SUPPORT TICKET\n  AMPM FASHIONS PVT LTD\n${div}\n\n`;
+    body += `  TICKET REFERENCE   :  ${ticket.ticketId || ''}\n`;
+    body += `  STATUS             :  ${(ticket.status || '').toUpperCase()}\n`;
+    body += `  PRIORITY           :  ${(ticket.priority || '').toUpperCase()}\n`;
+    body += `  DATE RAISED        :  ${ticket.dateRaised || ''}\n`;
+    if (ticket.dateAcknowledged) body += `  ACKNOWLEDGED       :  ${ticket.dateAcknowledged}\n`;
+    if (ticket.dateResolved) body += `  RESOLVED ON        :  ${ticket.dateResolved}\n`;
+    if (ticket.dateClosed) body += `  CLOSED ON          :  ${ticket.dateClosed}\n`;
+    if (ticket.resolutionHrs) body += `  RESOLUTION TIME    :  ${ticket.resolutionHrs} hrs\n`;
+    body += `\n${div2}\n  EMPLOYEE DETAILS\n${div2}\n`;
+    body += `  Name               :  ${ticket.empName || ''}\n`;
+    body += `  Employee ID        :  ${ticket.empId || ''}\n`;
+    body += `  Designation        :  ${ticket.empDesig || ''}\n`;
+    body += `  Department         :  ${ticket.empDept || ''}\n`;
+    body += `  HOD / Manager      :  ${ticket.empHod || ''}\n`;
+    body += `  Mobile             :  ${ticket.empMobile || ''}\n`;
+    body += `\n${div2}\n  ISSUE DETAILS\n${div2}\n`;
+    body += `  Issue Type         :  ${ticket.issueType || ''}\n`;
+    body += `  Category           :  ${ticket.category || ''}\n`;
+    body += `  Title              :  ${ticket.title || ''}\n`;
+    body += `  Assigned To        :  ${ticket.assignedTo || ''}\n`;
+    body += `\n${div2}\n  DESCRIPTION\n${div2}\n  ${ticket.description || ''}\n`;
+    if (ticket.resolution) body += `\n${div2}\n  RESOLUTION / FIX APPLIED\n${div2}\n  ${ticket.resolution}\n`;
+    body += `\n${div}\n\n  Sandeep Kumar Singh Kushwaha\n  IT - System Administrator\n  AMPM Fashions Pvt Ltd\n  B-144, Sector 10, Noida - 201301\n\n`;
+    body += `${div}\n  This is a system-generated email from AMPM IT Helpdesk.\n  Please do not reply directly to this message.\n${div}`;
+    return body;
+}
+
+function openEmailModal() {
+    document.getElementById('emailTo').value = ticket.empEmail || '';
+    const cc = [itEmail, ccEmails].filter(Boolean).join(', ');
+    document.getElementById('emailCc').value = cc;
+    document.getElementById('emailSubject').value = `[${ticket.ticketId}] [${ticket.priority}] ${ticket.title}`;
+    document.getElementById('emailBody').value = buildEmailBody();
+    new bootstrap.Modal(document.getElementById('emailModal')).show();
+}
+
+function ensureEmpEmail() {
+    let to = document.getElementById('emailTo').value.trim();
+    if (!to) {
+        to = prompt('Employee ka email address:', '');
+        if (!to) return null;
+        document.getElementById('emailTo').value = to;
+        fetch('/Helpdesk/SetEmpEmail', {
+            method: 'POST',
+            headers: {'Content-Type':'application/x-www-form-urlencoded'},
+            body: 'id=' + encodeURIComponent(ticket.ticketId) + '&email=' + encodeURIComponent(to)
+        });
+        ticket.empEmail = to;
+    }
+    return to;
+}
+
+function sendViaOutlook() {
+    const to = ensureEmpEmail();
+    if (!to) return;
+    const cc = document.getElementById('emailCc').value;
+    const subject = document.getElementById('emailSubject').value;
+    const body = document.getElementById('emailBody').value;
+    let mailto = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    if (cc) mailto += '&cc=' + encodeURIComponent(cc);
+    window.location.href = mailto;
+}
+
+function sendViaGmail() {
+    const to = ensureEmpEmail();
+    if (!to) return;
+    const cc = document.getElementById('emailCc').value;
+    const subject = document.getElementById('emailSubject').value;
+    const body = document.getElementById('emailBody').value;
+    let url = 'https://mail.google.com/mail/?view=cm&to=' + encodeURIComponent(to) + '&su=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    if (cc) url += '&cc=' + encodeURIComponent(cc);
+    window.open(url, '_blank');
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('openEmail') === '1') openEmailModal();
+});
 </script>
 }
