@@ -97,6 +97,12 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                @if (ViewBag.EmailConfigured != true)
+                {
+                    <div class="alert alert-warning small">
+                        <i class="bi bi-exclamation-triangle"></i> SMTP abhi set nahi hai, isliye "Send Email" kaam nahi karega — pehle <a href="/Helpdesk/EmailSettings">Email Settings</a> mein apna Office 365 account jodo. Tab tak neeche diye Outlook/Gmail buttons se manually bhej sakte ho (plain text).
+                    </div>
+                }
                 <div class="mb-3">
                     <label class="form-label fw-bold small">To (Employee Email)</label>
                     <input type="email" id="emailTo" class="form-control" placeholder="employee@ampm.in"/>
@@ -110,15 +116,16 @@
                     <input type="text" id="emailSubject" class="form-control" readonly/>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label fw-bold small">Message Preview</label>
-                    <textarea id="emailBody" class="form-control" rows="10" readonly style="font-size:12px;font-family:Consolas,monospace"></textarea>
+                    <label class="form-label fw-bold small">Message Preview (this exact formatted email is what gets sent)</label>
+                    <iframe id="emailPreviewFrame" style="width:100%;height:340px;border:1px solid #E5E7EB;border-radius:4px"></iframe>
                 </div>
-                <div class="alert alert-info small mb-0"><i class="bi bi-info-circle"></i> Opens a ready-made message in your mail app / Gmail — review and hit Send there. Nothing is sent automatically from here.</div>
+                <div id="emailStatusMsg"></div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer flex-wrap">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary" onclick="sendViaOutlook()"><i class="bi bi-envelope"></i> Outlook / Default Mail</button>
-                <button class="btn btn-danger" onclick="sendViaGmail()"><i class="bi bi-google"></i> Gmail (Browser)</button>
+                <button class="btn btn-outline-primary btn-sm" onclick="sendViaOutlook()"><i class="bi bi-envelope"></i> Outlook / Default Mail (plain text)</button>
+                <button class="btn btn-outline-danger btn-sm" onclick="sendViaGmail()"><i class="bi bi-google"></i> Gmail (plain text)</button>
+                <button class="btn btn-success" id="sendEmailBtn" onclick="sendEmailNow()"><i class="bi bi-send"></i> Send Email</button>
             </div>
         </div>
     </div>
@@ -199,7 +206,8 @@ function openEmailModal() {
     const cc = [itEmail, ccEmails].filter(Boolean).join(', ');
     document.getElementById('emailCc').value = cc;
     document.getElementById('emailSubject').value = `[${ticket.ticketId}] [${ticket.priority}] ${ticket.title}`;
-    document.getElementById('emailBody').value = buildEmailBody();
+    document.getElementById('emailPreviewFrame').src = '/Helpdesk/EmailPreview/' + encodeURIComponent(ticket.ticketId);
+    document.getElementById('emailStatusMsg').innerHTML = '';
     new bootstrap.Modal(document.getElementById('emailModal')).show();
 }
 
@@ -224,7 +232,7 @@ function sendViaOutlook() {
     if (!to) return;
     const cc = document.getElementById('emailCc').value;
     const subject = document.getElementById('emailSubject').value;
-    const body = document.getElementById('emailBody').value;
+    const body = buildEmailBody();
     let mailto = 'mailto:' + encodeURIComponent(to) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
     if (cc) mailto += '&cc=' + encodeURIComponent(cc);
     window.location.href = mailto;
@@ -235,10 +243,37 @@ function sendViaGmail() {
     if (!to) return;
     const cc = document.getElementById('emailCc').value;
     const subject = document.getElementById('emailSubject').value;
-    const body = document.getElementById('emailBody').value;
+    const body = buildEmailBody();
     let url = 'https://mail.google.com/mail/?view=cm&to=' + encodeURIComponent(to) + '&su=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
     if (cc) url += '&cc=' + encodeURIComponent(cc);
     window.open(url, '_blank');
+}
+
+function sendEmailNow() {
+    const to = ensureEmpEmail();
+    if (!to) return;
+    const btn = document.getElementById('sendEmailBtn');
+    const statusEl = document.getElementById('emailStatusMsg');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sending...';
+    statusEl.innerHTML = '';
+    fetch('/Helpdesk/SendTicketEmail', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: 'id=' + encodeURIComponent(ticket.ticketId) + '&to=' + encodeURIComponent(to)
+    }).then(r => r.json()).then(d => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send"></i> Send Email';
+        if (d.ok) {
+            statusEl.innerHTML = '<div class="alert alert-success small mb-0"><i class="bi bi-check-circle"></i> Email bhej diya gaya ' + to + ' ko!</div>';
+        } else {
+            statusEl.innerHTML = '<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle"></i> Bhej nahi paya: ' + (d.error || 'Unknown error') + '</div>';
+        }
+    }).catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-send"></i> Send Email';
+        statusEl.innerHTML = '<div class="alert alert-danger small mb-0">Error: ' + err + '</div>';
+    });
 }
 
 window.addEventListener('DOMContentLoaded', () => {

@@ -9,7 +9,8 @@ public class HelpdeskController : Controller
 {
     private readonly DbService _db;
     private readonly AuthService _auth;
-    public HelpdeskController(DbService db, AuthService auth) { _db=db; _auth=auth; }
+    private readonly EmailService _email;
+    public HelpdeskController(DbService db, AuthService auth, EmailService email) { _db=db; _auth=auth; _email=email; }
 
     public IActionResult Index(string? status, string? priority)
     {
@@ -63,7 +64,129 @@ public class HelpdeskController : Controller
         ViewBag.ItEmail = es.GetValueOrDefault("itEmail")?.ToString() ?? "itsupport@ampm.in";
         ViewBag.CcEmails = es.GetValueOrDefault("ccEmails")?.ToString() ?? "";
         ViewBag.SendOnClose = es.GetValueOrDefault("sendOnClose")?.ToString()?.ToLower() != "false";
+        ViewBag.EmailConfigured = _email.IsConfigured;
         return View(JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new());
+    }
+
+    [HttpGet]
+    public IActionResult EmailPreview(string id)
+    {
+        var raw = _db.QueryFirst<string>("SELECT data FROM tickets WHERE ticket_id=@id", new { id });
+        if (raw == null) return NotFound();
+        var ticket = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
+        return Content(BuildTicketHtml(ticket), "text/html");
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SendTicketEmail(string id, string? to)
+    {
+        var raw = _db.QueryFirst<string>("SELECT data FROM tickets WHERE ticket_id=@id", new { id });
+        if (raw == null) return Json(new { ok = false, error = "Ticket not found." });
+        var ticket = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
+
+        var toEmail = !string.IsNullOrWhiteSpace(to) ? to : ticket.GetValueOrDefault("empEmail")?.ToString() ?? "";
+        if (!string.IsNullOrWhiteSpace(to) && to != ticket.GetValueOrDefault("empEmail")?.ToString())
+        {
+            ticket["empEmail"] = to;
+            _db.SaveTicket(ticket);
+        }
+
+        var es = GetEmailSettingsObj();
+        var itEmail = es.GetValueOrDefault("itEmail")?.ToString() ?? "itsupport@ampm.in";
+        var ccEmails = es.GetValueOrDefault("ccEmails")?.ToString() ?? "";
+        var cc = string.Join(",", new[] { itEmail, ccEmails }.Where(x => !string.IsNullOrWhiteSpace(x)));
+
+        var subject = $"[{ticket.GetValueOrDefault("ticketId")}] [{ticket.GetValueOrDefault("priority")}] {ticket.GetValueOrDefault("title")}";
+        var html = BuildTicketHtml(ticket);
+
+        var (ok, error) = await _email.SendAsync(toEmail, cc, subject, html);
+        return Json(new { ok, error });
+    }
+
+    static string BuildTicketHtml(Dictionary<string,object?> t)
+    {
+        string S(string k) => System.Net.WebUtility.HtmlEncode(t.GetValueOrDefault(k)?.ToString() ?? "");
+        string SOr(string k, string fallback) { var v = t.GetValueOrDefault(k)?.ToString(); return string.IsNullOrWhiteSpace(v) ? fallback : System.Net.WebUtility.HtmlEncode(v); }
+        var status = t.GetValueOrDefault("status")?.ToString() ?? "Open";
+        var priority = t.GetValueOrDefault("priority")?.ToString() ?? "Medium";
+        string priBg = priority switch { "Critical" => "#FEE2E2", "High" => "#FFEDD5", "Medium" => "#FEF3C7", _ => "#DCFCE7" };
+        string priColor = priority switch { "Critical" => "#DC2626", "High" => "#EA580C", "Medium" => "#D97706", _ => "#16A34A" };
+        string stBg = status switch { "Open" => "#FEE2E2", "In Progress" => "#DBEAFE", "Resolved" => "#DCFCE7", _ => "#F3F4F6" };
+        string stColor = status switch { "Open" => "#DC2626", "In Progress" => "#2563EB", "Resolved" => "#16A34A", _ => "#4B5563" };
+
+        string resolutionBlock = !string.IsNullOrWhiteSpace(t.GetValueOrDefault("resolution")?.ToString()) ? $@"
+        <div style='font-size:11px;font-weight:700;color:#6B7280;letter-spacing:1px;margin-bottom:6px'>&#9989; RESOLUTION / FIX APPLIED</div>
+        <div style='border-top:1px solid #E5E7EB;margin-bottom:12px'></div>
+        <div style='border-left:3px solid #16A34A;padding:10px 14px;background:#F0FDF4;font-size:13px;color:#1F2937;white-space:pre-wrap;margin-bottom:16px'>{S("resolution")}</div>" : "";
+
+        return $@"
+<div style='font-family:Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;padding:24px;background:#ffffff'>
+  <table width='100%' cellpadding='0' cellspacing='0'><tr>
+    <td style='vertical-align:top'>
+      <div style='font-size:20px;font-weight:700;color:#4B5563'>AMPM Fashions Pvt Ltd</div>
+      <div style='font-size:12px;color:#0EA5E9;letter-spacing:1px;margin-top:2px'>IT HELPDESK &mdash; SUPPORT TICKET</div>
+    </td>
+    <td style='text-align:right;vertical-align:top'>
+      <div style='font-size:11px;color:#9CA3AF;letter-spacing:1px'>TICKET ID</div>
+      <div style='font-size:15px;font-weight:700;color:#111827'>{S("ticketId")}</div>
+    </td>
+  </tr></table>
+  <div style='border-top:1px solid #E5E7EB;margin:14px 0'></div>
+  <table width='100%' cellpadding='0' cellspacing='0'><tr>
+    <td>
+      <span style='display:inline-block;background:{stBg};color:{stColor};font-size:11px;font-weight:700;padding:4px 10px;border-radius:3px;letter-spacing:.5px'>{S("status").ToUpper()}</span>
+      &nbsp;
+      <span style='display:inline-block;background:{priBg};color:{priColor};font-size:11px;font-weight:700;padding:4px 10px;border-radius:3px;letter-spacing:.5px'>{S("priority").ToUpper()} PRIORITY</span>
+    </td>
+    <td style='text-align:right;font-size:12px;color:#6B7280'>{DateTime.Now:dd MMM yyyy, hh:mm tt}</td>
+  </tr></table>
+  <div style='font-size:19px;font-weight:700;color:#111827;margin:18px 0 14px 0'>{S("title")}</div>
+
+  <div style='font-size:11px;font-weight:700;color:#6B7280;letter-spacing:1px;margin-bottom:6px'>&#128100; EMPLOYEE DETAILS</div>
+  <div style='border-top:1px solid #E5E7EB;margin-bottom:12px'></div>
+  <table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:16px'>
+    <tr>
+      <td width='50%' style='padding-bottom:12px;vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>NAME</div><div style='font-size:13px;color:#111827;font-weight:600;margin-top:2px'>{S("empName")}</div></td>
+      <td width='50%' style='padding-bottom:12px;vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>EMPLOYEE ID</div><div style='font-size:13px;color:#111827;font-weight:600;margin-top:2px'>{S("empId")}</div></td>
+    </tr>
+    <tr>
+      <td width='50%' style='padding-bottom:12px;vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>DEPARTMENT</div><div style='font-size:13px;color:#111827;margin-top:2px'>{S("empDept")}</div></td>
+      <td width='50%' style='padding-bottom:12px;vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>HOD / MANAGER</div><div style='font-size:13px;color:#111827;margin-top:2px'>{S("empHod")}</div></td>
+    </tr>
+    <tr>
+      <td width='50%' style='vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>MOBILE</div><div style='font-size:13px;color:#111827;margin-top:2px'>{S("empMobile")}</div></td>
+      <td width='50%' style='vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>EMAIL</div><div style='font-size:13px;color:#111827;margin-top:2px'>{S("empEmail")}</div></td>
+    </tr>
+  </table>
+
+  <div style='font-size:11px;font-weight:700;color:#6B7280;letter-spacing:1px;margin-bottom:6px'>&#127991; TICKET DETAILS</div>
+  <div style='border-top:1px solid #E5E7EB;margin-bottom:12px'></div>
+  <table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:16px'>
+    <tr>
+      <td width='50%' style='padding-bottom:12px;vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>ISSUE TYPE</div><div style='font-size:13px;color:#111827;margin-top:2px'>{S("issueType")}</div></td>
+      <td width='50%' style='padding-bottom:12px;vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>CATEGORY</div><div style='font-size:13px;color:#111827;margin-top:2px'>{S("category")}</div></td>
+    </tr>
+    <tr>
+      <td width='50%' style='padding-bottom:12px;vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>ASSIGNED TO</div><div style='font-size:13px;color:#111827;margin-top:2px'>{S("assignedTo")}</div></td>
+      <td width='50%' style='padding-bottom:12px;vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>DATE RAISED</div><div style='font-size:13px;color:#111827;margin-top:2px'>{S("dateRaised")}</div></td>
+    </tr>
+    <tr>
+      <td width='50%' style='vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>ACKNOWLEDGED</div><div style='font-size:13px;color:#111827;margin-top:2px'>{SOr("dateAcknowledged","&mdash;")}</div></td>
+      <td width='50%' style='vertical-align:top'><div style='font-size:10px;color:#9CA3AF;letter-spacing:.5px'>RESOLVED ON</div><div style='font-size:13px;color:#111827;margin-top:2px'>{SOr("dateResolved","&mdash;")}</div></td>
+    </tr>
+  </table>
+
+  <div style='font-size:11px;font-weight:700;color:#6B7280;letter-spacing:1px;margin-bottom:6px'>&#128203; ISSUE DESCRIPTION</div>
+  <div style='border-top:1px solid #E5E7EB;margin-bottom:12px'></div>
+  <div style='border-left:3px solid #2563EB;padding:10px 14px;background:#F8FAFC;font-size:13px;color:#1F2937;white-space:pre-wrap;margin-bottom:16px'>{S("description")}</div>
+  {resolutionBlock}
+
+  <div style='border-top:1px solid #E5E7EB;margin:20px 0 14px 0'></div>
+  <div style='font-size:13px;font-weight:700;color:#111827'>Sandeep Kumar Singh Kushwaha</div>
+  <div style='font-size:12px;color:#2563EB;margin-top:2px'>IT &mdash; System Administrator</div>
+  <div style='font-size:11px;color:#6B7280;margin-top:6px'>AMPM Fashions Pvt Ltd, B-144, Sector 10, Noida - 201301</div>
+  <div style='font-size:10px;color:#9CA3AF;margin-top:10px'>This is a system-generated email from AMPM IT Helpdesk. Please do not reply directly to this email.</div>
+</div>";
     }
 
     [HttpPost]
@@ -86,6 +209,9 @@ public class HelpdeskController : Controller
     public IActionResult EmailSettings()
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        ViewBag.Smtp = _db.KGetObj<Dictionary<string,object?>>("smtp_settings") ?? new();
+        ViewBag.EmailConfigured = _email.IsConfigured;
+        ViewBag.SmtpFromEnv = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("SMTP_USER"));
         return View(GetEmailSettingsObj());
     }
 
@@ -99,8 +225,37 @@ public class HelpdeskController : Controller
             ["sendOnClose"] = form["sendOnClose"] == "on"
         };
         _db.KSet("helpdesk_email_settings", settings);
+
+        if (!string.IsNullOrWhiteSpace(form["smtpUser"]))
+        {
+            var smtp = new Dictionary<string,object?> {
+                ["smtpHost"] = string.IsNullOrWhiteSpace(form["smtpHost"].ToString()) ? "smtp.office365.com" : form["smtpHost"].ToString(),
+                ["smtpPort"] = string.IsNullOrWhiteSpace(form["smtpPort"].ToString()) ? "587" : form["smtpPort"].ToString(),
+                ["smtpUser"] = form["smtpUser"].ToString(),
+                ["smtpFrom"] = string.IsNullOrWhiteSpace(form["smtpFrom"].ToString()) ? form["smtpUser"].ToString() : form["smtpFrom"].ToString(),
+                ["smtpFromName"] = string.IsNullOrWhiteSpace(form["smtpFromName"].ToString()) ? "AMPM IT Helpdesk" : form["smtpFromName"].ToString()
+            };
+            // Keep the existing saved password if the field was left blank (so re-saving other settings doesn't wipe it)
+            if (!string.IsNullOrWhiteSpace(form["smtpPass"].ToString()))
+                smtp["smtpPass"] = form["smtpPass"].ToString();
+            else
+            {
+                var existing = _db.KGetObj<Dictionary<string,object?>>("smtp_settings");
+                if (existing != null && existing.TryGetValue("smtpPass", out var oldPass)) smtp["smtpPass"] = oldPass;
+            }
+            _db.KSet("smtp_settings", smtp);
+        }
+
         TempData["Success"] = "Email settings saved.";
         return RedirectToAction("EmailSettings");
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> SendTestEmail(string to)
+    {
+        var html = "<div style='font-family:Segoe UI,Arial,sans-serif;padding:16px'><h3>AMPM IT Helpdesk &mdash; Test Email</h3><p>Agar ye email aapko mil raha hai, to SMTP settings sahi se kaam kar rahi hain.</p></div>";
+        var (ok, error) = await _email.SendAsync(to, null, "AMPM Helpdesk — Test Email", html);
+        return Json(new { ok, error });
     }
 
     [HttpPost]

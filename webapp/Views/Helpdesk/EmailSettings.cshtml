@@ -5,6 +5,15 @@
     var ccEmails = Model.GetValueOrDefault("ccEmails")?.ToString() ?? "";
     var sendOnRaise = Model.GetValueOrDefault("sendOnRaise")?.ToString()?.ToLower() != "false";
     var sendOnClose = Model.GetValueOrDefault("sendOnClose")?.ToString()?.ToLower() != "false";
+    var smtp = (Dictionary<string,object?>)ViewBag.Smtp;
+    var smtpHost = smtp.GetValueOrDefault("smtpHost")?.ToString() ?? "smtp.office365.com";
+    var smtpPort = smtp.GetValueOrDefault("smtpPort")?.ToString() ?? "587";
+    var smtpUser = smtp.GetValueOrDefault("smtpUser")?.ToString() ?? "";
+    var smtpFrom = smtp.GetValueOrDefault("smtpFrom")?.ToString() ?? "";
+    var smtpFromName = smtp.GetValueOrDefault("smtpFromName")?.ToString() ?? "AMPM IT Helpdesk";
+    var hasSavedPass = !string.IsNullOrWhiteSpace(smtp.GetValueOrDefault("smtpPass")?.ToString());
+    bool emailConfigured = ViewBag.EmailConfigured == true;
+    bool smtpFromEnv = ViewBag.SmtpFromEnv == true;
 }
 
 <div class="d-flex align-items-center mb-4">
@@ -12,12 +21,77 @@
     <h5 class="fw-bold mb-0"><i class="bi bi-envelope-gear text-danger"></i> Helpdesk Email Settings</h5>
 </div>
 
-<div class="row justify-content-center">
+<div class="row justify-content-center g-3">
 <div class="col-lg-7">
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header fw-bold" style="background:#0A192F;color:white"><i class="bi bi-microsoft"></i> Outlook / Office 365 — Send Email Account</div>
+    <div class="card-body p-4">
+        @if (emailConfigured)
+        {
+            <div class="alert alert-success small"><i class="bi bi-check-circle"></i> Email sending is configured@(smtpFromEnv ? " (via Render environment variables)" : "") — tickets can be emailed directly with one click.</div>
+        }
+        else
+        {
+            <div class="alert alert-warning small"><i class="bi bi-exclamation-triangle"></i> Not configured yet — fill in your Office 365 account below so tickets can be emailed automatically, exactly like the old desktop tool.</div>
+        }
+        <form method="post">
+            <input type="hidden" name="itEmail" value="@itEmail"/>
+            <input type="hidden" name="ccEmails" value="@ccEmails"/>
+            <input type="hidden" name="sendOnRaise" value="@(sendOnRaise ? "on" : "")"/>
+            <input type="hidden" name="sendOnClose" value="@(sendOnClose ? "on" : "")"/>
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label class="form-label fw-semibold small">SMTP Server</label>
+                    <input type="text" name="smtpHost" class="form-control" value="@smtpHost" placeholder="smtp.office365.com"/>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Port</label>
+                    <input type="text" name="smtpPort" class="form-control" value="@smtpPort" placeholder="587"/>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Outlook Email Address</label>
+                    <input type="email" name="smtpUser" class="form-control" value="@smtpUser" placeholder="itsupport@ampm.in"/>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">Password @(hasSavedPass ? "(saved — leave blank to keep it)" : "")</label>
+                    <input type="password" name="smtpPass" class="form-control" placeholder="@(hasSavedPass ? "••••••••" : "Outlook password or app password")"/>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">"From" Email (usually same as above)</label>
+                    <input type="email" name="smtpFrom" class="form-control" value="@smtpFrom" placeholder="itsupport@ampm.in"/>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold small">"From" Display Name</label>
+                    <input type="text" name="smtpFromName" class="form-control" value="@smtpFromName"/>
+                </div>
+            </div>
+            <div class="alert alert-info small mt-3 mb-3">
+                <i class="bi bi-info-circle"></i> Agar "authentication failed" error aaye, to ho sakta hai aapke Office 365 tenant mein SMTP AUTH disabled ho (Microsoft ki default security policy) — Microsoft 365 admin center → Users → apna mailbox → Mail → "Manage email apps" mein SMTP AUTH enable karo, ya MFA on ho to ek App Password banao aur wahi yahan daalo.
+            </div>
+            <button class="btn btn-danger px-4" type="submit"><i class="bi bi-save"></i> Save</button>
+        </form>
+        @if (!string.IsNullOrWhiteSpace(smtpUser))
+        {
+            <hr/>
+            <div class="d-flex gap-2 align-items-center">
+                <input type="email" id="testEmailTo" class="form-control form-control-sm" style="max-width:280px" placeholder="test@ampm.in" value="@smtpUser"/>
+                <button class="btn btn-outline-dark btn-sm" onclick="sendTest()"><i class="bi bi-send"></i> Send Test Email</button>
+                <span id="testResult" class="small"></span>
+            </div>
+        }
+    </div>
+</div>
+
 <div class="card border-0 shadow-sm">
-    <div class="card-header fw-bold" style="background:#0A192F;color:white">IT / CC Address for Ticket Emails</div>
+    <div class="card-header fw-bold" style="background:#1e3a5f;color:white">IT / CC Address &amp; Prompts</div>
     <div class="card-body p-4">
         <form method="post">
+            <input type="hidden" name="smtpHost" value="@smtpHost"/>
+            <input type="hidden" name="smtpPort" value="@smtpPort"/>
+            <input type="hidden" name="smtpUser" value="@smtpUser"/>
+            <input type="hidden" name="smtpFrom" value="@smtpFrom"/>
+            <input type="hidden" name="smtpFromName" value="@smtpFromName"/>
             <div class="mb-3">
                 <label class="form-label fw-semibold small">IT / Support Email (CC on every ticket email)</label>
                 <input type="email" name="itEmail" class="form-control" value="@itEmail" placeholder="itsupport@ampm.in"/>
@@ -28,18 +102,36 @@
             </div>
             <div class="form-check mb-2">
                 <input type="checkbox" class="form-check-input" id="sendOnRaise" name="sendOnRaise" @(sendOnRaise ? "checked" : "")/>
-                <label class="form-check-label small" for="sendOnRaise">Ask to send an email when a new ticket is raised</label>
+                <label class="form-check-label small" for="sendOnRaise">Open the Email popup automatically when a new ticket is raised</label>
             </div>
             <div class="form-check mb-4">
                 <input type="checkbox" class="form-check-input" id="sendOnClose" name="sendOnClose" @(sendOnClose ? "checked" : "")/>
-                <label class="form-check-label small" for="sendOnClose">Ask to send an email when a ticket is resolved</label>
+                <label class="form-check-label small" for="sendOnClose">Ask to open the Email popup when a ticket is resolved</label>
             </div>
-            <div class="alert alert-info small">
-                <i class="bi bi-info-circle"></i> The web tool doesn't send email on its own — clicking "Email Ticket" opens a ready-made message (To the employee, CC to the address above) in your default mail app or Gmail in the browser, exactly like the old desktop tool's Outlook/Gmail choice. You review it and hit Send yourself.
-            </div>
-            <button class="btn btn-danger px-4" type="submit"><i class="bi bi-save"></i> Save Settings</button>
+            <button class="btn btn-outline-dark px-4" type="submit"><i class="bi bi-save"></i> Save</button>
         </form>
     </div>
 </div>
+
 </div>
 </div>
+
+@section Scripts {
+<script>
+function sendTest() {
+    const to = document.getElementById('testEmailTo').value.trim();
+    const result = document.getElementById('testResult');
+    if (!to) return;
+    result.textContent = 'Sending...';
+    fetch('/Helpdesk/SendTestEmail', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: 'to=' + encodeURIComponent(to)
+    }).then(r => r.json()).then(d => {
+        result.innerHTML = d.ok
+            ? '<span class="text-success"><i class="bi bi-check-circle"></i> Sent! Check inbox.</span>'
+            : '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + (d.error || 'Failed') + '</span>';
+    });
+}
+</script>
+}

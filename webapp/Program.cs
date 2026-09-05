@@ -12,6 +12,7 @@ builder.Services.AddControllersWithViews(o =>
 builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
 builder.Services.AddSingleton<DbService>();
 builder.Services.AddSingleton<AuthService>();
+builder.Services.AddSingleton<EmailService>();
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
