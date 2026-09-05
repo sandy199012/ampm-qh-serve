@@ -3,22 +3,27 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-text text-success"></i> Purchase Orders &mdash; @Model.Count</h5>
+    <a href="/PurchaseOrders/Create" class="btn btn-success btn-sm px-3"><i class="bi bi-plus-circle"></i> New PO</a>
 </div>
 
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="d-flex gap-2">
-            <select name="status" class="form-select form-select-sm" style="width:180px">
-                <option value="">All Status</option>
-                @{ var curS = ViewBag.Status?.ToString() ?? ""; }
-                @foreach(var s in new[]{"Draft","Pending","Approved","Ordered","Received","Cancelled"})
-                {
-                    if(curS == s){ <option selected>@s</option> }
-                    else { <option>@s</option> }
-                }
-            </select>
-            <button class="btn btn-primary btn-sm px-3">Filter</button>
-            <a href="/PurchaseOrders" class="btn btn-outline-secondary btn-sm">Clear</a>
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-4">
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Search PO number, vendor..."/>
+            </div>
+            <div class="col-auto">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All Status</option>
+                    @{var curS = ViewBag.Status?.ToString() ?? "";}
+                    @foreach(var s in new[]{"Draft","Pending","Approved","Ordered","Received","Cancelled"})
+                    {if(curS==s){<option selected>@s</option>}else{<option>@s</option>}}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary btn-sm">Filter</button>
+                <a href="/PurchaseOrders/Index" class="btn btn-outline-secondary btn-sm">Clear</a>
+            </div>
         </form>
     </div>
 </div>
@@ -28,40 +33,36 @@
         <table class="table table-hover mb-0">
             <thead style="background:#0A192F;color:white">
                 <tr>
-                    <th class="ps-3">PO Number</th>
-                    <th>Date</th>
-                    <th>Vendor</th>
-                    <th class="text-center">Items</th>
-                    <th class="text-end">Sub Total</th>
-                    <th class="text-end">GST</th>
-                    <th class="text-end">Grand Total</th>
-                    <th>Status</th>
-                    <th></th>
+                    <th class="ps-3">PO Number</th><th>Date</th><th>Vendor</th>
+                    <th>Purpose</th><th class="text-center">Items</th>
+                    <th class="text-end">Grand Total</th><th>Priority</th><th>Status</th><th></th>
                 </tr>
             </thead>
             <tbody>
-            @if (!Model.Any())
-            {<tr><td colspan="9" class="text-center text-muted py-5">No purchase orders found</td></tr>}
+            @if (!Model.Any()){<tr><td colspan="9" class="text-center text-muted py-5">No POs found</td></tr>}
             @foreach (var p in Model)
             {
                 var status = p.GetValueOrDefault("status")?.ToString() ?? "Draft";
-                var badge  = status == "Approved" ? "success" : status == "Pending" ? "warning" : status == "Received" ? "info" : status == "Cancelled" ? "danger" : "secondary";
-                double subTotal = 0, gstAmt = 0, grandTotal = 0;
-                double.TryParse(p.GetValueOrDefault("subTotal")?.ToString(), out subTotal);
-                double.TryParse(p.GetValueOrDefault("gstAmount")?.ToString(), out gstAmt);
-                double.TryParse(p.GetValueOrDefault("grandTotal")?.ToString(), out grandTotal);
+                var priority = p.GetValueOrDefault("priority")?.ToString() ?? "";
+                var badge = status=="Approved"?"success":status=="Pending"?"warning":status=="Received"?"info":status=="Cancelled"?"danger":"secondary";
+                var pBadge = priority=="Urgent"?"danger":priority=="High"?"warning":"secondary";
                 var itemsRaw = p.GetValueOrDefault("items");
                 int itemCount = itemsRaw is Newtonsoft.Json.Linq.JArray ja ? ja.Count : 0;
+                double grand = 0;
+                double.TryParse(p.GetValueOrDefault("grandTotal")?.ToString(), out grand);
+                var poNo = p.GetValueOrDefault("poNumber")?.ToString() ?? "";
                 <tr>
-                    <td class="ps-3 font-monospace fw-bold text-primary small">@p.GetValueOrDefault("poNumber")</td>
-                    <td class="small text-muted">@p.GetValueOrDefault("date")</td>
+                    <td class="ps-3 font-monospace fw-bold text-primary small">@poNo</td>
+                    <td class="small text-muted">@(p.GetValueOrDefault("poDate") ?? p.GetValueOrDefault("date"))</td>
                     <td><strong class="small">@p.GetValueOrDefault("vendorName")</strong></td>
+                    <td class="small text-muted text-truncate" style="max-width:150px">@p.GetValueOrDefault("purpose")</td>
                     <td class="text-center"><span class="badge bg-secondary">@itemCount</span></td>
-                    <td class="text-end small">&#8377;@subTotal.ToString("N0")</td>
-                    <td class="text-end small text-muted">&#8377;@gstAmt.ToString("N0")</td>
-                    <td class="text-end fw-bold">&#8377;@grandTotal.ToString("N0")</td>
+                    <td class="text-end fw-bold">&#8377;@grand.ToString("N0")</td>
+                    <td>@if(!string.IsNullOrEmpty(priority)){<span class="badge bg-@pBadge">@priority</span>}</td>
                     <td><span class="badge bg-@badge">@status</span></td>
-                    <td><a href="/PurchaseOrders/Details/@p.GetValueOrDefault("poNumber")" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i></a></td>
+                    <td>
+                        <a href="/PurchaseOrders/Details/@poNo" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i></a>
+                    </td>
                 </tr>
             }
             </tbody>
@@ -71,5 +72,8 @@
         double total = Model.Where(p => p.GetValueOrDefault("status")?.ToString() != "Cancelled")
             .Sum(p => { double.TryParse(p.GetValueOrDefault("grandTotal")?.ToString(), out var g); return g; });
     }
-    <div class="card-footer bg-light text-end fw-bold">Total: &#8377;@total.ToString("N0")</div>
+    <div class="card-footer bg-light d-flex justify-content-between fw-bold">
+        <span>Total POs: @Model.Count</span>
+        <span>Total Value: &#8377;@total.ToString("N0")</span>
+    </div>
 </div>
