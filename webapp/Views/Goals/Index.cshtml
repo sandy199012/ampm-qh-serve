@@ -11,6 +11,7 @@
     int pct = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
     string wkStart = ViewBag.WeekStart ?? "";
     string wkEnd   = ViewBag.WeekEnd ?? "";
+    bool canApprove = ((AMPMWeb.Services.UserSession?)ViewBag.User)?.CanApprove("Goals") == true;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -113,7 +114,7 @@
                     <td class="small font-monospace text-muted">@g.GetValueOrDefault("ticketRef")</td>
                     <td>
                         <div class="d-flex gap-1">
-                            @if(st != "Completed"){
+                            @if(st != "Completed" && canApprove){
                                 <button class="btn btn-success btn-sm" onclick="completeGoal('@gid')" title="Mark Complete"><i class="bi bi-check-lg"></i></button>
                             }
                             <a href="/Goals/Edit/@gid" class="btn btn-outline-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
@@ -134,7 +135,7 @@
 function completeGoal(id) {
     if (!confirm('Mark as Completed?')) return;
     fetch('/Goals/Complete/' + id, {method:'POST'})
-        .then(r => r.json()).then(d => { if(d.ok) location.reload(); });
+        .then(r => r.json()).then(d => { if(d.ok) location.reload(); else alert(d.error || 'Goal complete karne mein fail ho gaya.'); });
 }
 function carryForward(week) {
     if (!confirm('Move all incomplete goals from Week ' + week + ' to next week?')) return;

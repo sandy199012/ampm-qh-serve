@@ -37,6 +37,9 @@ public class GoalsController : Controller
     [HttpPost]
     public IActionResult Complete(string id)
     {
+        if (_auth.GetCurrentUser(HttpContext)?.CanApprove("Goals") != true)
+            return Json(new { ok = false, error = "Aapke paas goals approve/complete karne ki permission nahi hai." });
+
         var raw = _db.QueryFirst<string>("SELECT data FROM goals WHERE id=@id", new { id });
         if (raw == null) return NotFound();
         var g = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();

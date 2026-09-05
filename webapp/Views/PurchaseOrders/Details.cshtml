@@ -155,7 +155,10 @@
             <div class="card-body">
                 <div class="d-grid gap-2">
                     <button class="btn btn-warning btn-sm" onclick="updatePOStatus('@poNo','Pending')"><i class="bi bi-clock"></i> Pending Approval</button>
-                    <button class="btn btn-success btn-sm" onclick="updatePOStatus('@poNo','Approved')"><i class="bi bi-check-circle"></i> Approve</button>
+                    @if (((AMPMWeb.Services.UserSession?)ViewBag.User)?.CanApprove("PurchaseOrders") == true)
+                    {
+                        <button class="btn btn-success btn-sm" onclick="updatePOStatus('@poNo','Approved')"><i class="bi bi-check-circle"></i> Approve</button>
+                    }
                     <button class="btn btn-info btn-sm text-white" onclick="updatePOStatus('@poNo','Received')"><i class="bi bi-box-seam"></i> Mark Received</button>
                     <button class="btn btn-danger btn-sm" onclick="updatePOStatus('@poNo','Cancelled')"><i class="bi bi-x-circle"></i> Cancel</button>
                 </div>
@@ -192,7 +195,7 @@ function updatePOStatus(id, status) {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: 'status=' + encodeURIComponent(status)
-    }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
+    }).then(r => r.json()).then(d => { if(d.ok) location.reload(); else alert(d.error || 'Status update fail ho gaya.'); });
 }
 function uploadPoScan() {
     const file = document.getElementById('poScanFile').files[0];

@@ -3,6 +3,7 @@
     ViewData["Title"] = "Bills & Utilities";
     int total = ViewBag.Total ?? 0;
     double totalAmount = ViewBag.TotalAmount ?? 0;
+    bool canApprove = ((AMPMWeb.Services.UserSession?)ViewBag.User)?.CanApprove("Bills") == true;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -60,7 +61,7 @@
                 <button class="btn btn-outline-info btn-sm" style="font-size:11px" type="submit" title="Mark Submitted"><i class="bi bi-send"></i></button>
             </form>
             }
-            @if (st!="Paid")
+            @if (st!="Paid" && canApprove)
             {
             <button class="btn btn-outline-success btn-sm" style="font-size:11px" type="button" data-bs-toggle="modal" data-bs-target="#payModal@(bid)" title="Mark Paid"><i class="bi bi-check-circle"></i></button>
             }

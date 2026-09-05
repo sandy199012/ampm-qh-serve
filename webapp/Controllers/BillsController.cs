@@ -140,6 +140,12 @@ public class BillsController : Controller
     [HttpPost]
     public IActionResult MarkPaid(string id, IFormCollection form)
     {
+        if (_auth.GetCurrentUser(HttpContext)?.CanApprove("Bills") != true)
+        {
+            TempData["Error"] = "Aapke paas bills approve/pay karne ki permission nahi hai.";
+            return RedirectToAction("Index");
+        }
+
         var bills = _db.GetBills();
         var bill = bills.FirstOrDefault(b => b.GetValueOrDefault("id")?.ToString() == id);
         if (bill == null) return NotFound();
