@@ -35,8 +35,9 @@
                 <div class="mb-3">
                     <label class="form-label small fw-bold">Gender</label>
                     <select name="gender" class="form-select">
-                        <option @(Model.GetValueOrDefault("gender")?.ToString()=="male"?"selected":"")>male</option>
-                        <option @(Model.GetValueOrDefault("gender")?.ToString()=="female"?"selected":"")>female</option>
+                        @{ var gen = Model.GetValueOrDefault("gender")?.ToString() ?? ""; }
+                        @if(gen=="male"){<option selected>male</option><option>female</option>}
+                        else{<option>male</option><option selected>female</option>}
                     </select>
                 </div>
                 <div class="mb-3">
@@ -76,11 +77,9 @@
                 <div class="mb-3">
                     <label class="form-label small fw-bold">Category</label>
                     <select name="category" class="form-select">
+                        @{ var cat = Model.GetValueOrDefault("category")?.ToString() ?? ""; }
                         @foreach(var c in new[]{"Staff","Worker","Contractual","Probation","Intern"})
-                        {
-                            if(Model.GetValueOrDefault("category")?.ToString()==c){<option selected>@c</option>}
-                            else{<option>@c</option>}
-                        }
+                        { if(cat==c){<option selected>@c</option>}else{<option>@c</option>} }
                     </select>
                 </div>
                 <div class="mb-3">
