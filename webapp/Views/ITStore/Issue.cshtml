@@ -14,25 +14,43 @@
 <div class="row justify-content-center"><div class="col-lg-6">
 <div class="card border-0 shadow-sm"><div class="card-body p-4">
 <form method="post" action="/ITStore/Issue/@sid">
-    <div class="mb-3">
-        <label class="form-label fw-bold">Department *</label>
-        <select name="dept" class="form-select" required>
-            @foreach(var d in depts){<option>@d</option>}
-        </select>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Employee Name *</label>
+            <input type="text" name="empName" class="form-control" required placeholder="Employee name"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Employee ID</label>
+            <input type="text" name="empId" class="form-control" placeholder="e.g. 00405"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Department *</label>
+            <select name="dept" class="form-select" required>
+                @foreach(var d in depts){<option>@d</option>}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Designation</label>
+            <input type="text" name="empDesig" class="form-control" placeholder="e.g. Assistant Accountant"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold">HOD / Manager</label>
+            <input type="text" name="empHod" class="form-control" placeholder="Reporting manager"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Qty to Issue *</label>
+            <input type="number" name="qty" class="form-control" required min="1" max="@bal" value="1"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Purpose</label>
+            <input type="text" name="purpose" class="form-control" placeholder="Replacement/New/Repair"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Remarks</label>
+            <input type="text" name="remarks" class="form-control" placeholder="Optional remarks"/>
+        </div>
     </div>
-    <div class="mb-3">
-        <label class="form-label fw-bold">Employee Name</label>
-        <input type="text" name="empName" class="form-control" placeholder="Employee name"/>
-    </div>
-    <div class="mb-3">
-        <label class="form-label fw-bold">Qty to Issue *</label>
-        <input type="number" name="qty" class="form-control" required min="1" max="@bal" value="1"/>
-    </div>
-    <div class="mb-3">
-        <label class="form-label fw-bold">Purpose</label>
-        <input type="text" name="purpose" class="form-control" placeholder="Replacement/New/Repair"/>
-    </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 mt-3">
         <button type="submit" class="btn btn-primary px-4"><i class="bi bi-arrow-up-right"></i> Issue</button>
         <a href="/ITStore/Index" class="btn btn-outline-secondary px-4">Cancel</a>
     </div>
