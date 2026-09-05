@@ -3,29 +3,31 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><i class="bi bi-people text-primary"></i> Employees &mdash; @Model.Count records</h5>
+    <a href="/Employees/Create" class="btn btn-primary btn-sm px-3"><i class="bi bi-plus-circle"></i> Add Employee</a>
 </div>
 
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
         <form method="get" class="row g-2 align-items-center">
-            <div class="col-md-5">
-                <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Search name, emp code..."/>
-            </div>
             <div class="col-md-4">
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Search name, emp code, mobile..."/>
+            </div>
+            <div class="col-md-3">
                 <select name="dept" class="form-select form-select-sm">
                     <option value="">All Departments</option>
                     @foreach (var d in (List<string>)ViewBag.Departments)
                     {
-                        if (ViewBag.Dept == d)
-                        { <option value="@d" selected>@d</option> }
-                        else
-                        { <option value="@d">@d</option> }
+                        if (ViewBag.Dept == d){ <option value="@d" selected>@d</option> }
+                        else { <option value="@d">@d</option> }
                     }
                 </select>
             </div>
             <div class="col-auto">
                 <button class="btn btn-primary btn-sm px-3">Filter</button>
-                <a href="/Employees" class="btn btn-outline-secondary btn-sm">Clear</a>
+                <a href="/Employees/Index" class="btn btn-outline-secondary btn-sm">Clear</a>
+            </div>
+            <div class="col-auto ms-auto">
+                <span class="badge bg-primary fs-6">@Model.Count</span> employees
             </div>
         </form>
     </div>
@@ -42,47 +44,53 @@
                     <th>Designation</th>
                     <th>Manager</th>
                     <th>Mobile</th>
+                    <th>DOJ</th>
                     <th>PC/Hostname</th>
-                    <th></th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
             @if (!Model.Any())
-            {
-                <tr><td colspan="8" class="text-center text-muted py-5">No employees found</td></tr>
-            }
+            {<tr><td colspan="9" class="text-center text-muted py-5">No employees found</td></tr>}
             @foreach (var e in Model)
             {
-                string emp  = e.GetValueOrDefault("emp")?.ToString() ?? "";
-                string name = e.GetValueOrDefault("name")?.ToString() ?? "";
-                string dept = e.GetValueOrDefault("dept")?.ToString() ?? "";
-                string desig= e.GetValueOrDefault("designation")?.ToString() ?? "";
-                string mgr  = e.GetValueOrDefault("manager")?.ToString() ?? "";
-                string mob  = e.GetValueOrDefault("mobile")?.ToString() ?? "";
-                string host = e.GetValueOrDefault("hostname")?.ToString() ?? "";
-                <tr>
-                    <td class="ps-3 font-monospace fw-bold small">@emp</td>
-                    <td><strong>@name</strong></td>
-                    <td><span class="badge bg-light text-dark border">@dept</span></td>
+                string emp   = e.GetValueOrDefault("emp")?.ToString() ?? "";
+                string name  = e.GetValueOrDefault("name")?.ToString() ?? "";
+                string dept  = e.GetValueOrDefault("dept")?.ToString() ?? "";
+                string desig = e.GetValueOrDefault("designation")?.ToString() ?? "";
+                string mgr   = e.GetValueOrDefault("manager")?.ToString() ?? "";
+                string mob   = e.GetValueOrDefault("mobile")?.ToString() ?? "";
+                string doj   = e.GetValueOrDefault("doj")?.ToString() ?? "";
+                string host  = e.GetValueOrDefault("hostname")?.ToString() ?? "";
+                string exit  = e.GetValueOrDefault("exitDate")?.ToString() ?? "";
+                bool isExited = !string.IsNullOrEmpty(exit);
+                <tr class="@(isExited?"table-secondary opacity-75":"")">
+                    <td class="ps-3 font-monospace fw-bold small text-primary">@emp</td>
+                    <td>
+                        <strong>@name</strong>
+                        @if(isExited){<br/><span class="badge bg-danger small">Exited @exit</span>}
+                    </td>
+                    <td><span class="badge bg-light text-dark border small">@dept</span></td>
                     <td class="small text-muted">@desig</td>
                     <td class="small">@mgr</td>
                     <td class="small">@mob</td>
-                    <td>
-                        @if (!string.IsNullOrEmpty(host))
-                        {
-                            <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                <i class="bi bi-pc-display"></i> @host
-                            </span>
-                        }
+                    <td class="small text-muted">@doj</td>
+                    <td class="small">
+                        @if(!string.IsNullOrEmpty(host))
+                        {<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-pc-display"></i> @host</span>}
                     </td>
                     <td>
-                        <a href="/Employees/Details/@emp" class="btn btn-outline-primary btn-sm">
-                            <i class="bi bi-eye"></i>
-                        </a>
+                        <div class="d-flex gap-1">
+                            <a href="/Employees/Details/@emp" class="btn btn-outline-primary btn-sm" title="View"><i class="bi bi-eye"></i></a>
+                            <a href="/Employees/Edit/@emp" class="btn btn-outline-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                        </div>
                     </td>
                 </tr>
             }
             </tbody>
         </table>
+    </div>
+    <div class="card-footer bg-light small text-muted">
+        Total: @Model.Count | Active: @Model.Count(e => string.IsNullOrEmpty(e.GetValueOrDefault("exitDate")?.ToString()))
     </div>
 </div>

@@ -1,0 +1,144 @@
+@model Dictionary<string,object?>
+@{
+    ViewData["Title"] = "Edit Employee";
+    string emp = Model.GetValueOrDefault("emp")?.ToString() ?? "";
+    string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","DESIGN - ACCESSORIES","PRODUCTION - APPAREL","PRODUCTION - LEATHER","PRODUCTION - MTO","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING","SAMPLING - APPAREL","FABRIC STORE","RESEARCH & DEVELOPMENT","TRUNK SHOW","ACCESSORIES STORE"};
+}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/Employees/Details/@emp" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0">Edit — @Model.GetValueOrDefault("name")</h5>
+</div>
+
+<form method="post" action="/Employees/Edit/@emp">
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#0A192F;color:white">Personal Information</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Employee Code</label>
+                    <input type="text" name="emp" value="@emp" class="form-control" readonly/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Full Name *</label>
+                    <input type="text" name="name" value="@Model.GetValueOrDefault("name")" class="form-control" required/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Mobile</label>
+                    <input type="text" name="mobile" value="@Model.GetValueOrDefault("mobile")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Email</label>
+                    <input type="email" name="email" value="@Model.GetValueOrDefault("email")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Gender</label>
+                    <select name="gender" class="form-select">
+                        <option @(Model.GetValueOrDefault("gender")?.ToString()=="male"?"selected":"")>male</option>
+                        <option @(Model.GetValueOrDefault("gender")?.ToString()=="female"?"selected":"")>female</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Date of Birth</label>
+                    <input type="date" name="dob" value="@Model.GetValueOrDefault("dob")" class="form-control"/>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Job Information</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Department</label>
+                    <select name="dept" class="form-select">
+                        @foreach(var d in depts)
+                        {
+                            if(Model.GetValueOrDefault("dept")?.ToString()==d)
+                            {<option selected>@d</option>}
+                            else{<option>@d</option>}
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Designation</label>
+                    <input type="text" name="designation" value="@Model.GetValueOrDefault("designation")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Manager</label>
+                    <input type="text" name="manager" value="@Model.GetValueOrDefault("manager")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Date of Joining</label>
+                    <input type="date" name="doj" value="@Model.GetValueOrDefault("doj")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Category</label>
+                    <select name="category" class="form-select">
+                        @foreach(var c in new[]{"Staff","Worker","Contractual","Probation","Intern"})
+                        {
+                            if(Model.GetValueOrDefault("category")?.ToString()==c){<option selected>@c</option>}
+                            else{<option>@c</option>}
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Exit Date</label>
+                    <input type="date" name="exitDate" value="@Model.GetValueOrDefault("exitDate")" class="form-control"/>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#059669;color:white">IT Assets</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Hostname</label>
+                    <input type="text" name="hostname" value="@Model.GetValueOrDefault("hostname")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">IP Address</label>
+                    <input type="text" name="ip" value="@Model.GetValueOrDefault("ip")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">OS</label>
+                    <input type="text" name="os" value="@Model.GetValueOrDefault("os")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Model</label>
+                    <input type="text" name="model" value="@Model.GetValueOrDefault("model")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Serial No.</label>
+                    <input type="text" name="serial" value="@Model.GetValueOrDefault("serial")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">RAM</label>
+                    <input type="text" name="ram" value="@Model.GetValueOrDefault("ram")" class="form-control"/>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#7C3AED;color:white">Bank Details</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Account No.</label>
+                    <input type="text" name="accountNo" value="@Model.GetValueOrDefault("accountNo")" class="form-control"/>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">IFSC Code</label>
+                    <input type="text" name="ifsc" value="@Model.GetValueOrDefault("ifsc")" class="form-control"/>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="mt-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save"></i> Save Changes</button>
+    <a href="/Employees/Details/@emp" class="btn btn-outline-secondary px-4">Cancel</a>
+</div>
+</form>

@@ -1,0 +1,85 @@
+@model Dictionary<string,object?>
+@{
+    ViewData["Title"] = "Employee Details";
+    string emp  = Model.GetValueOrDefault("emp")?.ToString() ?? "";
+    string name = Model.GetValueOrDefault("name")?.ToString() ?? "";
+}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/Employees/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0"><i class="bi bi-person-circle text-primary"></i> @name</h5>
+    <span class="badge bg-primary">@emp</span>
+    <div class="ms-auto d-flex gap-2">
+        <a href="/Employees/Edit/@emp" class="btn btn-warning btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header fw-bold" style="background:#0A192F;color:white">
+                <i class="bi bi-person"></i> Personal Information
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td class="text-muted" style="width:140px">Employee Code</td><td class="fw-bold font-monospace">@emp</td></tr>
+                    <tr><td class="text-muted">Full Name</td><td class="fw-bold">@Model.GetValueOrDefault("name")</td></tr>
+                    <tr><td class="text-muted">Gender</td><td>@Model.GetValueOrDefault("gender")</td></tr>
+                    <tr><td class="text-muted">Date of Birth</td><td>@Model.GetValueOrDefault("dob")</td></tr>
+                    <tr><td class="text-muted">Mobile</td><td>@Model.GetValueOrDefault("mobile")</td></tr>
+                    <tr><td class="text-muted">Email</td><td>@Model.GetValueOrDefault("email")</td></tr>
+                    <tr><td class="text-muted">Category</td><td>@Model.GetValueOrDefault("category")</td></tr>
+                    <tr><td class="text-muted">Grade</td><td>@Model.GetValueOrDefault("grade")</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header fw-bold" style="background:#1e3a5f;color:white">
+                <i class="bi bi-building"></i> Job Information
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td class="text-muted" style="width:140px">Department</td><td><span class="badge bg-primary">@Model.GetValueOrDefault("dept")</span></td></tr>
+                    <tr><td class="text-muted">Designation</td><td class="fw-bold">@Model.GetValueOrDefault("designation")</td></tr>
+                    <tr><td class="text-muted">Manager</td><td>@Model.GetValueOrDefault("manager")</td></tr>
+                    <tr><td class="text-muted">Date of Joining</td><td>@Model.GetValueOrDefault("doj")</td></tr>
+                    <tr><td class="text-muted">Shift</td><td>@Model.GetValueOrDefault("shift")</td></tr>
+                    <tr><td class="text-muted">Exit Date</td><td class="text-danger">@Model.GetValueOrDefault("exitDate")</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header fw-bold" style="background:#059669;color:white">
+                <i class="bi bi-pc-display"></i> IT Assets
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td class="text-muted" style="width:140px">Hostname</td><td class="font-monospace">@Model.GetValueOrDefault("hostname")</td></tr>
+                    <tr><td class="text-muted">IP Address</td><td class="font-monospace">@Model.GetValueOrDefault("ip")</td></tr>
+                    <tr><td class="text-muted">OS</td><td>@Model.GetValueOrDefault("os")</td></tr>
+                    <tr><td class="text-muted">Model</td><td>@Model.GetValueOrDefault("model")</td></tr>
+                    <tr><td class="text-muted">Serial No.</td><td class="font-monospace">@Model.GetValueOrDefault("serial")</td></tr>
+                    <tr><td class="text-muted">RAM</td><td>@Model.GetValueOrDefault("ram")</td></tr>
+                    <tr><td class="text-muted">Manufacturer</td><td>@Model.GetValueOrDefault("manufacturer")</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header fw-bold" style="background:#7C3AED;color:white">
+                <i class="bi bi-bank"></i> Bank Details
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td class="text-muted" style="width:140px">Account No.</td><td class="font-monospace">@Model.GetValueOrDefault("accountNo")</td></tr>
+                    <tr><td class="text-muted">IFSC Code</td><td class="font-monospace">@Model.GetValueOrDefault("ifsc")</td></tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
