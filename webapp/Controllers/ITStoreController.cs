@@ -17,11 +17,13 @@ public class ITStoreController : Controller
         var items = new List<Dictionary<string,object?>>();
         var issues = new List<Dictionary<string,object?>>();
         try {
-            var sql = string.IsNullOrEmpty(type) ? "SELECT data FROM it_stock_items ORDER BY item_type, name" : "SELECT data FROM it_stock_items WHERE item_type=@t ORDER BY name";
+            var sql = string.IsNullOrEmpty(type)
+                ? "SELECT data FROM it_stock_items ORDER BY item_type, ts"
+                : "SELECT data FROM it_stock_items WHERE item_type=@t ORDER BY ts";
             items = _db.Query<string>(sql, new { t=type }).Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList();
         } catch {}
         try {
-            issues = _db.Query<string>("SELECT data FROM it_stock_issues ORDER BY rowid DESC LIMIT 50")
+            issues = _db.Query<string>("SELECT data FROM it_stock_issues ORDER BY ts DESC LIMIT 100")
                 .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList();
         } catch {}
         if (!string.IsNullOrEmpty(type))
@@ -32,29 +34,24 @@ public class ITStoreController : Controller
         return View(items);
     }
 
-    [HttpGet]
-    public IActionResult AddItem()
-    {
-        ViewBag.User = _auth.GetCurrentUser(HttpContext);
-        return View();
-    }
+    [HttpGet] public IActionResult AddItem() { ViewBag.User = _auth.GetCurrentUser(HttpContext); return View(); }
 
     [HttpPost]
     public IActionResult AddItem(IFormCollection form)
     {
         var item = new Dictionary<string,object?>
         {
-            ["id"]           = Guid.NewGuid().ToString("N")[..8],
-            ["itemType"]     = form["itemType"].ToString(),
-            ["name"]         = form["name"].ToString(),
-            ["brand"]        = form["brand"].ToString(),
-            ["model"]        = form["model"].ToString(),
-            ["specs"]        = form["specs"].ToString(),
-            ["totalQty"]     = int.TryParse(form["totalQty"].ToString(), out var q) ? q : 0,
-            ["issuedQty"]    = 0,
-            ["vendor"]       = form["vendor"].ToString(),
-            ["unitCost"]     = double.TryParse(form["unitCost"].ToString(), out var c) ? c : 0,
-            ["location"]     = "IT Store",
+            ["id"]       = Guid.NewGuid().ToString("N")[..8],
+            ["itemType"] = form["itemType"].ToString(),
+            ["name"]     = form["name"].ToString(),
+            ["brand"]    = form["brand"].ToString(),
+            ["model"]    = form["model"].ToString(),
+            ["specs"]    = form["specs"].ToString(),
+            ["totalQty"] = int.TryParse(form["totalQty"].ToString(), out var q) ? q : 0,
+            ["issuedQty"]= 0,
+            ["vendor"]   = form["vendor"].ToString(),
+            ["unitCost"] = double.TryParse(form["unitCost"].ToString(), out var c) ? c : 0,
+            ["location"] = "IT Store",
         };
         _db.Execute("INSERT INTO it_stock_items (id,item_type,data,ts) VALUES (@id,@type,@data,@ts)",
             new { id=item["id"], type=item["itemType"], data=JsonConvert.SerializeObject(item), ts=DateTime.Now.ToString("o") });
@@ -84,7 +81,7 @@ public class ITStoreController : Controller
         item["totalQty"] = cur + add;
         if (!string.IsNullOrEmpty(form["vendor"].ToString())) item["vendor"] = form["vendor"].ToString();
         _db.Execute("UPDATE it_stock_items SET data=@d WHERE id=@id", new { d=JsonConvert.SerializeObject(item), id });
-        TempData["Success"] = $"Stock added! New balance: {(cur+add) - (int.TryParse(item.GetValueOrDefault("issuedQty")?.ToString(), out var iq) ? iq : 0)}";
+        TempData["Success"] = $"Stock added! New total: {cur+add}";
         return RedirectToAction("Index");
     }
 
@@ -110,7 +107,6 @@ public class ITStoreController : Controller
         item["issuedQty"] = cur + qty;
         _db.Execute("UPDATE it_stock_items SET data=@d WHERE id=@id", new { d=JsonConvert.SerializeObject(item), id });
 
-        // Save issue record
         var issueNo = $"ISS-{DateTime.Now:yyyyMMddHHmmss}";
         var issue = new Dictionary<string,object?>
         {
@@ -130,73 +126,62 @@ public class ITStoreController : Controller
         TempData["Success"] = $"Issued {qty} items! Issue No: {issueNo}";
         return RedirectToAction("Index");
     }
-}
 
-// ── Excel Export ─────────────────────────────────────────────
-[HttpGet("/ITStore/Export")]
-public IActionResult Export()
-{
-    var items = new List<Dictionary<string,object?>>();
-    var issues = new List<Dictionary<string,object?>>();
-    try { items = _db.Query<string>("SELECT data FROM it_stock_items ORDER BY item_type").Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList(); } catch {}
-    try { issues = _db.Query<string>("SELECT data FROM it_stock_issues ORDER BY ts DESC").Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList(); } catch {}
+    [HttpGet("/ITStore/Export")]
+    public IActionResult Export()
+    {
+        var items = new List<Dictionary<string,object?>>();
+        var issues = new List<Dictionary<string,object?>>();
+        try { items = _db.Query<string>("SELECT data FROM it_stock_items ORDER BY item_type").Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList(); } catch {}
+        try { issues = _db.Query<string>("SELECT data FROM it_stock_issues ORDER BY ts DESC").Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList(); } catch {}
 
-    var sb = new System.Text.StringBuilder();
-    sb.Append(@"<html><head><meta charset='UTF-8'><style>
-body{font-family:Arial,sans-serif;font-size:11px}
-table{border-collapse:collapse;width:100%}
-th{background:#0A192F;color:white;padding:6px;text-align:center;font-size:10px;border:1px solid #1e3a5f}
-td{padding:5px;border:1px solid #CBD5E1;font-size:10px}
-.hdr{background:#0A192F;color:white;font-size:14px;font-weight:bold;padding:10px}
-.h2{background:#1e3a5f;color:#06B6D4;font-size:10px;padding:5px 10px;margin-top:16px}
-.green{color:#059669;font-weight:bold} .red{color:#DC2626;font-weight:bold} .amber{color:#D97706;font-weight:bold}
+        var sb = new System.Text.StringBuilder();
+        sb.Append($@"<html><head><meta charset='UTF-8'><style>
+body{{font-family:Arial;font-size:11px}}table{{border-collapse:collapse;width:100%}}
+th{{background:#0A192F;color:white;padding:6px;text-align:center;font-size:10px;border:1px solid #1e3a5f}}
+td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
+.hdr{{background:#0A192F;color:white;font-size:14px;font-weight:bold;padding:10px}}
+.h2{{background:#1e3a5f;color:#06B6D4;padding:5px 10px;margin-top:16px;font-weight:bold}}
+.green{{color:#059669;font-weight:bold}}.red{{color:#DC2626;font-weight:bold}}.amber{{color:#D97706;font-weight:bold}}
 </style></head><body>
 <table style='margin-bottom:12px'><tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — IT STORE STOCK REPORT</td></tr>
-<tr><td style='padding:5px;font-size:10px;color:#374151'>Generated: ");
-    sb.Append(DateTime.Now.ToString("dd-MMM-yyyy HH:mm"));
-    sb.Append(" | IT System Administrator: Sandeep Kumar Singh Kushwaha</td></tr></table>");
+<tr><td style='padding:5px;font-size:10px'>Generated: {DateTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
+<div class='h2'>STOCK INVENTORY</div>
+<table><thead><tr><th>#</th><th>Type</th><th>Item Name</th><th>Brand</th><th>Model</th><th>Total</th><th>Issued</th><th>Balance</th><th>Vendor</th><th>Cost</th></tr></thead><tbody>");
 
-    // Stock Inventory
-    sb.Append("<div class='h2'>STOCK INVENTORY</div>");
-    sb.Append("<table><thead><tr><th>#</th><th>Type</th><th>Item Name</th><th>Brand</th><th>Model/Specs</th><th>Total Qty</th><th>Issued</th><th>Balance</th><th>Vendor</th><th>Unit Cost</th></tr></thead><tbody>");
-    int sno = 0;
-    foreach (var item in items)
-    {
-        sno++;
-        int.TryParse(item.GetValueOrDefault("totalQty")?.ToString(), out var tq);
-        int.TryParse(item.GetValueOrDefault("issuedQty")?.ToString(), out var iq);
-        int bal = tq - iq;
-        string balStyle = bal <= 0 ? "red" : bal <= 2 ? "amber" : "green";
-        sb.Append($"<tr><td style='text-align:center'>{sno}</td><td>{item.GetValueOrDefault("itemType")}</td><td><b>{item.GetValueOrDefault("name")}</b></td><td>{item.GetValueOrDefault("brand")}</td><td>{item.GetValueOrDefault("model")}{item.GetValueOrDefault("specs")}</td><td style='text-align:center'>{tq}</td><td style='text-align:center'>{iq}</td><td style='text-align:center' class='{balStyle}'>{bal}</td><td>{item.GetValueOrDefault("vendor")}</td><td style='text-align:center'>{(item.GetValueOrDefault("unitCost")?.ToString() != "0" ? "₹" + item.GetValueOrDefault("unitCost") : "")}</td></tr>");
+        int sno = 0;
+        foreach (var item in items)
+        {
+            sno++;
+            int.TryParse(item.GetValueOrDefault("totalQty")?.ToString(), out var tq);
+            int.TryParse(item.GetValueOrDefault("issuedQty")?.ToString(), out var iq);
+            int bal = tq - iq;
+            string bc = bal <= 0 ? "red" : bal <= 2 ? "amber" : "green";
+            sb.Append($"<tr><td style='text-align:center'>{sno}</td><td>{item.GetValueOrDefault("itemType")}</td><td><b>{item.GetValueOrDefault("name")}</b></td><td>{item.GetValueOrDefault("brand")}</td><td>{item.GetValueOrDefault("model")}</td><td style='text-align:center'>{tq}</td><td style='text-align:center'>{iq}</td><td style='text-align:center' class='{bc}'>{bal}</td><td>{item.GetValueOrDefault("vendor")}</td><td>₹{item.GetValueOrDefault("unitCost")}</td></tr>");
+        }
+        sb.Append("</tbody></table><div class='h2' style='margin-top:20px'>ISSUE HISTORY</div><table><thead><tr><th>#</th><th>Issue No.</th><th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>Department</th><th>Issued To</th><th>Purpose</th><th>By</th></tr></thead><tbody>");
+        sno = 0;
+        foreach (var iss in issues)
+        {
+            sno++;
+            sb.Append($"<tr><td style='text-align:center'>{sno}</td><td style='font-family:monospace'>{iss.GetValueOrDefault("issueNo")}</td><td>{iss.GetValueOrDefault("issueDate")}</td><td><b>{iss.GetValueOrDefault("itemName")}</b></td><td>{iss.GetValueOrDefault("itemType")}</td><td style='text-align:center;font-weight:bold'>{iss.GetValueOrDefault("qty")}</td><td>{iss.GetValueOrDefault("dept")}</td><td>{iss.GetValueOrDefault("empName")}</td><td>{iss.GetValueOrDefault("purpose")}</td><td>{iss.GetValueOrDefault("issuedBy")}</td></tr>");
+        }
+        sb.Append("</tbody></table></body></html>");
+        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_ITStore_{DateTime.Now:yyyyMMdd}.xls");
     }
-    sb.Append("</tbody></table>");
 
-    // Issue History
-    sb.Append("<div class='h2' style='margin-top:20px'>ISSUE HISTORY</div>");
-    sb.Append("<table><thead><tr><th>#</th><th>Issue No.</th><th>Date</th><th>Item</th><th>Type</th><th>Qty</th><th>Department</th><th>Issued To</th><th>Purpose</th><th>Issued By</th></tr></thead><tbody>");
-    sno = 0;
-    foreach (var iss in issues)
+    [HttpPost]
+    public async Task<IActionResult> UploadScan(string id, IFormFile scan)
     {
-        sno++;
-        sb.Append($"<tr><td style='text-align:center'>{sno}</td><td style='font-family:monospace'>{iss.GetValueOrDefault("issueNo")}</td><td>{iss.GetValueOrDefault("issueDate")}</td><td><b>{iss.GetValueOrDefault("itemName")}</b></td><td>{iss.GetValueOrDefault("itemType")}</td><td style='text-align:center;font-weight:bold'>{iss.GetValueOrDefault("qty")}</td><td>{iss.GetValueOrDefault("dept")}</td><td>{iss.GetValueOrDefault("empName")}</td><td>{iss.GetValueOrDefault("purpose")}</td><td>{iss.GetValueOrDefault("issuedBy")}</td></tr>");
+        if (scan == null || scan.Length == 0) return Json(new { ok=false, msg="No file" });
+        using var ms = new MemoryStream();
+        await scan.CopyToAsync(ms);
+        string base64 = Convert.ToBase64String(ms.ToArray());
+        string scanId = Guid.NewGuid().ToString("N")[..8];
+        try {
+            _db.Execute("INSERT INTO it_issue_scans (id,issue_id,file_name,file_data,uploaded_at,uploaded_by) VALUES (@id,@iid,@fn,@fd,@at,@by)",
+                new { id=scanId, iid=id, fn=scan.FileName, fd=base64, at=DateTime.Now.ToString("o"), by=HttpContext.Request.Cookies["ampm_name"] ?? "Sandy" });
+        } catch { }
+        return Json(new { ok=true, scanId, fileName=scan.FileName });
     }
-    sb.Append("</tbody></table></body></html>");
-
-    var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
-    return File(bytes, "application/vnd.ms-excel", $"AMPM_ITStore_Report_{DateTime.Now:yyyyMMdd}.xls");
-}
-
-// ── Upload Scan for issue ─────────────────────────────────────
-[HttpPost]
-public async Task<IActionResult> UploadScan(string id, IFormFile scan)
-{
-    if (scan == null || scan.Length == 0) return Json(new { ok=false, msg="No file" });
-    using var ms = new MemoryStream();
-    await scan.CopyToAsync(ms);
-    string base64 = Convert.ToBase64String(ms.ToArray());
-    string scanId = Guid.NewGuid().ToString("N")[..8];
-    _db.Execute(@"INSERT INTO it_issue_scans (id,issue_id,file_name,file_data,uploaded_at,uploaded_by) VALUES (@id,@iid,@fn,@fd,@at,@by)
-        ON CONFLICT (id) DO NOTHING",
-        new { id=scanId, iid=id, fn=scan.FileName, fd=base64, at=DateTime.Now.ToString("o"), by=HttpContext.Request.Cookies["ampm_name"] ?? "Sandy" });
-    return Json(new { ok=true, scanId, fileName=scan.FileName });
 }

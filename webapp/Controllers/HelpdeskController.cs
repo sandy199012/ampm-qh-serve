@@ -22,12 +22,7 @@ public class HelpdeskController : Controller
         return View(tickets);
     }
 
-    [HttpGet]
-    public IActionResult Create()
-    {
-        ViewBag.User = _auth.GetCurrentUser(HttpContext);
-        return View();
-    }
+    [HttpGet] public IActionResult Create() { ViewBag.User = _auth.GetCurrentUser(HttpContext); return View(); }
 
     [HttpPost]
     public IActionResult Create(IFormCollection form)
@@ -48,7 +43,7 @@ public class HelpdeskController : Controller
             ["assignedTo"]  = form["assignedTo"].ToString(),
             ["status"]      = "Open",
             ["dateRaised"]  = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
-            ["raisedBy"]    = HttpContext.Request.Cookies["ampm_name"] ?? "IT Admin"
+            ["raisedBy"]    = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy"
         };
         _db.SaveTicket(ticket);
         TempData["Success"] = "Ticket created: " + ticket["ticketId"];
@@ -81,36 +76,32 @@ public class HelpdeskController : Controller
         return Json(new { ok = true });
     }
 
+    [HttpGet("/Helpdesk/Export")]
+    public IActionResult Export()
+    {
+        var tickets = _db.GetTickets();
+        var csv = new System.Text.StringBuilder();
+        csv.AppendLine("Ticket ID,Date Raised,Employee,Department,Mobile,Title,Issue Type,Priority,Assigned To,Status,Date Resolved,Resolution Hours");
+        foreach (var t in tickets)
+            csv.AppendLine(string.Join(",",
+                CsvE(t.GetValueOrDefault("ticketId")?.ToString()),
+                CsvE(t.GetValueOrDefault("dateRaised")?.ToString()),
+                CsvE(t.GetValueOrDefault("empName")?.ToString()),
+                CsvE(t.GetValueOrDefault("empDept")?.ToString()),
+                CsvE(t.GetValueOrDefault("empMobile")?.ToString()),
+                CsvE(t.GetValueOrDefault("title")?.ToString()),
+                CsvE(t.GetValueOrDefault("issueType")?.ToString()),
+                CsvE(t.GetValueOrDefault("priority")?.ToString()),
+                CsvE(t.GetValueOrDefault("assignedTo")?.ToString()),
+                CsvE(t.GetValueOrDefault("status")?.ToString()),
+                CsvE(t.GetValueOrDefault("dateResolved")?.ToString()),
+                CsvE(t.GetValueOrDefault("resolutionHrs")?.ToString())
+            ));
+        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"Helpdesk_{DateTime.Now:yyyyMMdd}.csv");
+    }
+
+    static string CsvE(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";
+
     [HttpGet("/api/tickets")]
     public IActionResult ApiList() => Json(_db.GetTickets());
 }
-
-// ── Export / Report ──────────────────────────────────────────
-[HttpGet("/Helpdesk/Export")]
-public IActionResult Export()
-{
-    var tickets = _db.GetTickets();
-    var csv = new System.Text.StringBuilder();
-    csv.AppendLine("Ticket ID,Date Raised,Employee,Department,Mobile,Title,Issue Type,Priority,Assigned To,Status,Date Resolved,Resolution Hours");
-    foreach (var t in tickets)
-    {
-        csv.AppendLine(string.Join(",",
-            CsvEsc(t.GetValueOrDefault("ticketId")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("dateRaised")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("empName")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("empDept")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("empMobile")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("title")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("issueType")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("priority")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("assignedTo")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("status")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("dateResolved")?.ToString()),
-            CsvEsc(t.GetValueOrDefault("resolutionHrs")?.ToString())
-        ));
-    }
-    var bytes = System.Text.Encoding.UTF8.GetBytes(csv.ToString());
-    return File(bytes, "text/csv", $"Helpdesk_Report_{DateTime.Now:yyyyMMdd}.csv");
-}
-
-static string CsvEsc(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";
