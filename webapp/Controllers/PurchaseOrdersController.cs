@@ -37,4 +37,16 @@ public class PurchaseOrdersController : Controller
         if (po == null) return NotFound();
         return View(JsonConvert.DeserializeObject<Dictionary<string,object?>>(po) ?? new());
     }
+
+    [HttpPost]
+    public IActionResult UpdateStatus(string id, string status)
+    {
+        var raw = _db.QueryFirst<string>("SELECT data FROM po_list WHERE po_number=@id", new { id });
+        if (raw == null) return NotFound();
+        var po = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
+        po["status"] = status;
+        _db.Execute("UPDATE po_list SET data=@d, status=@s WHERE po_number=@id",
+            new { d=JsonConvert.SerializeObject(po), s=status, id });
+        return Json(new { ok=true });
+    }
 }

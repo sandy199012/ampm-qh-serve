@@ -2,57 +2,40 @@
 @{ViewData["Title"] = "Asset Stock";}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold mb-0"><i class="bi bi-pc-display text-purple" style="color:#7C3AED"></i> Asset Stock &mdash; @Model.Count assets</h5>
+    <h5 class="fw-bold mb-0"><i class="bi bi-pc-display" style="color:#7C3AED"></i> Asset Stock &mdash; @Model.Count assets</h5>
+    <a href="/Assets/Create" class="btn btn-sm px-3 text-white" style="background:#7C3AED"><i class="bi bi-plus-circle"></i> Add Asset</a>
 </div>
 
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
         <form method="get" class="row g-2 align-items-center">
-            <div class="col-md-5">
-                <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Search asset tag, brand, model, employee..."/>
+            <div class="col-md-4">
+                <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" placeholder="Search tag, brand, model, employee..."/>
             </div>
             <div class="col-md-3">
                 <select name="type" class="form-select form-select-sm">
                     <option value="">All Types</option>
+                    @{var tf = ViewBag.TypeFilter?.ToString() ?? "";}
                     @foreach(var t in (List<string>)ViewBag.Types)
-                    {
-                        if(ViewBag.TypeFilter==t){<option selected>@t</option>}
-                        else{<option>@t</option>}
-                    }
+                    {if(tf==t){<option selected>@t</option>}else{<option>@t</option>}}
                 </select>
             </div>
             <div class="col-auto">
                 <button class="btn btn-primary btn-sm">Filter</button>
-                <a href="/Assets" class="btn btn-outline-secondary btn-sm">Clear</a>
+                <a href="/Assets/Index" class="btn btn-outline-secondary btn-sm">Clear</a>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Summary Cards -->
 @{
-    var assigned = Model.Count(a => !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToEmp")?.ToString()));
+    var assigned   = Model.Count(a => !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToEmp")?.ToString()) || !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToName")?.ToString()));
     var unassigned = Model.Count - assigned;
 }
 <div class="row g-2 mb-3">
-    <div class="col-6 col-md-3">
-        <div class="card border-0 bg-primary-subtle text-center py-2">
-            <div class="fw-bold fs-4 text-primary">@Model.Count</div>
-            <div class="small text-muted">Total Assets</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 bg-success-subtle text-center py-2">
-            <div class="fw-bold fs-4 text-success">@assigned</div>
-            <div class="small text-muted">Assigned</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 bg-warning-subtle text-center py-2">
-            <div class="fw-bold fs-4 text-warning">@unassigned</div>
-            <div class="small text-muted">Unassigned</div>
-        </div>
-    </div>
+    <div class="col-4"><div class="card border-0 bg-primary-subtle text-center py-2"><div class="fw-bold fs-4 text-primary">@Model.Count</div><div class="small text-muted">Total</div></div></div>
+    <div class="col-4"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success">@assigned</div><div class="small text-muted">Assigned</div></div></div>
+    <div class="col-4"><div class="card border-0 bg-warning-subtle text-center py-2"><div class="fw-bold fs-4 text-warning">@unassigned</div><div class="small text-muted">Unassigned</div></div></div>
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -60,50 +43,43 @@
         <table class="table table-hover mb-0">
             <thead style="background:#0A192F;color:white">
                 <tr>
-                    <th class="ps-3">Asset Tag</th>
-                    <th>Type</th>
-                    <th>Brand / Model</th>
-                    <th>Processor</th>
-                    <th>RAM</th>
-                    <th>Storage</th>
-                    <th>OS</th>
-                    <th>Serial No.</th>
-                    <th>Assigned To</th>
-                    <th>Department</th>
-                    <th>Condition</th>
-                    <th>Location</th>
+                    <th class="ps-3">Asset Tag</th><th>Type</th><th>Brand / Model</th>
+                    <th>Processor</th><th>RAM</th><th>Storage</th><th>OS</th>
+                    <th>Assigned To</th><th>Dept</th><th>Condition</th><th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-            @if (!Model.Any())
-            {<tr><td colspan="12" class="text-center text-muted py-5">No assets found</td></tr>}
+            @if (!Model.Any()){<tr><td colspan="11" class="text-center text-muted py-5">No assets found</td></tr>}
             @foreach (var a in Model)
             {
-                var assigned2 = !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToEmp")?.ToString()) ||
-                               !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToName")?.ToString());
+                var aid  = a.GetValueOrDefault("id")?.ToString() ?? "";
+                var tag  = a.GetValueOrDefault("assetTag")?.ToString() ?? "";
                 var cond = a.GetValueOrDefault("condition")?.ToString() ?? "";
-                var condBadge = cond == "Good" ? "success" : cond == "Fair" ? "warning" : cond == "Poor" ? "danger" : "secondary";
+                var condBadge = cond=="Good"?"success":cond=="Fair"?"warning":cond=="Poor"?"danger":"secondary";
+                var isAssigned = !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToName")?.ToString()) || !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToEmp")?.ToString());
                 <tr>
-                    <td class="ps-3 font-monospace fw-bold text-primary small">@a.GetValueOrDefault("assetTag")</td>
+                    <td class="ps-3 font-monospace fw-bold text-primary small">@tag</td>
                     <td><span class="badge bg-light text-dark border">@a.GetValueOrDefault("assetType")</span></td>
                     <td class="small"><strong>@a.GetValueOrDefault("brand")</strong> @a.GetValueOrDefault("model")</td>
-                    <td class="small text-muted" style="max-width:140px">@a.GetValueOrDefault("processor")</td>
+                    <td class="small text-muted" style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@a.GetValueOrDefault("processor")</td>
                     <td class="small text-center">@a.GetValueOrDefault("ram") GB</td>
                     <td class="small text-center">@a.GetValueOrDefault("storage") GB</td>
                     <td class="small text-muted">@a.GetValueOrDefault("os")</td>
-                    <td class="small font-monospace">@a.GetValueOrDefault("serial")</td>
                     <td class="small">
-                        @if (assigned2)
-                        {
+                        @if(isAssigned){
                             <span class="text-success fw-semibold">@a.GetValueOrDefault("assignedToName")</span>
-                            <br/><span class="text-muted" style="font-size:10px">@a.GetValueOrDefault("assignedToEmp")</span>
+                            <br/><small class="text-muted">@a.GetValueOrDefault("assignedToEmp")</small>
+                        } else {
+                            <span class="badge bg-warning text-dark">Unassigned</span>
                         }
-                        else
-                        {<span class="badge bg-warning text-dark">Unassigned</span>}
                     </td>
                     <td class="small">@a.GetValueOrDefault("assignedToDept")</td>
                     <td><span class="badge bg-@condBadge">@cond</span></td>
-                    <td class="small text-muted">@a.GetValueOrDefault("location")</td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="/Assets/Edit/@aid" class="btn btn-outline-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                        </div>
+                    </td>
                 </tr>
             }
             </tbody>

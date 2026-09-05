@@ -1,0 +1,70 @@
+@model Dictionary<string,object?>
+@{ViewData["Title"] = "Edit Asset";
+  var aid = Model.GetValueOrDefault("id")?.ToString() ?? "";
+  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING","TRUNK SHOW"};}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/Assets/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0">Edit — @Model.GetValueOrDefault("assetTag")</h5>
+</div>
+<form method="post" action="/Assets/Edit/@aid">
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#0A192F;color:white">Asset Details</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Asset Tag</label><input type="text" name="assetTag" value="@Model.GetValueOrDefault("assetTag")" class="form-control" readonly/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Asset Type</label>
+                    <select name="assetType" class="form-select">
+                        @{var curType = Model.GetValueOrDefault("assetType")?.ToString() ?? "";}
+                        @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","Server","UPS","Other"})
+                        {if(curType==t){<option selected>@t</option>}else{<option>@t</option>}}
+                    </select>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Brand</label><input type="text" name="brand" value="@Model.GetValueOrDefault("brand")" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Model</label><input type="text" name="model" value="@Model.GetValueOrDefault("model")" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Serial No.</label><input type="text" name="serial" value="@Model.GetValueOrDefault("serial")" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Condition</label>
+                    <select name="condition" class="form-select">
+                        @{var curCond = Model.GetValueOrDefault("condition")?.ToString() ?? "Good";}
+                        @foreach(var c in new[]{"Good","Fair","Poor"})
+                        {if(curCond==c){<option selected>@c</option>}else{<option>@c</option>}}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Specifications</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Processor</label><input type="text" name="processor" value="@Model.GetValueOrDefault("processor")" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">RAM (GB)</label><input type="text" name="ram" value="@Model.GetValueOrDefault("ram")" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Storage (GB)</label><input type="text" name="storage" value="@Model.GetValueOrDefault("storage")" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">OS</label><input type="text" name="os" value="@Model.GetValueOrDefault("os")" class="form-control"/></div>
+            </div>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#059669;color:white">Assignment</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Assigned To (Name)</label><input type="text" name="assignedToName" value="@Model.GetValueOrDefault("assignedToName")" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Emp Code</label><input type="text" name="assignedToEmp" value="@Model.GetValueOrDefault("assignedToEmp")" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Department</label>
+                    <select name="assignedToDept" class="form-select">
+                        @{var curDept = Model.GetValueOrDefault("assignedToDept")?.ToString() ?? "";}
+                        <option value="">Select...</option>
+                        @foreach(var d in depts)
+                        {if(curDept==d){<option selected>@d</option>}else{<option>@d</option>}}
+                    </select>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Assigned Date</label><input type="date" name="assignedDate" value="@Model.GetValueOrDefault("assignedDate")" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Location</label><input type="text" name="location" value="@Model.GetValueOrDefault("location")" class="form-control"/></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="mt-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save"></i> Save</button>
+    <a href="/Assets/Index" class="btn btn-outline-secondary px-4">Cancel</a>
+</div>
+</form>

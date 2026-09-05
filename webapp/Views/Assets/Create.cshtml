@@ -1,0 +1,62 @@
+@{ViewData["Title"] = "Add Asset";
+  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING","TRUNK SHOW"};}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/Assets/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0"><i class="bi bi-plus-circle" style="color:#7C3AED"></i> Add Asset</h5>
+</div>
+<form method="post" action="/Assets/Create">
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#0A192F;color:white">Asset Details</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Asset Tag *</label><input type="text" name="assetTag" class="form-control" required placeholder="AMPM-0003"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Asset Type *</label>
+                    <select name="assetType" class="form-select" required>
+                        @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","Server","UPS","Other"})
+                        {<option>@t</option>}
+                    </select>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Brand</label><input type="text" name="brand" class="form-control" placeholder="Dell, HP, Lenovo..."/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Model</label><input type="text" name="model" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Serial No.</label><input type="text" name="serial" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Condition</label>
+                    <select name="condition" class="form-select">
+                        <option>Good</option><option>Fair</option><option>Poor</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Specifications</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Processor</label><input type="text" name="processor" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">RAM (GB)</label><input type="text" name="ram" class="form-control" placeholder="8"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Storage (GB)</label><input type="text" name="storage" class="form-control" placeholder="512"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Operating System</label><input type="text" name="os" class="form-control" placeholder="Windows 11 Pro"/></div>
+            </div>
+        </div>
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#059669;color:white">Assignment</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Assigned To (Name)</label><input type="text" name="assignedToName" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Emp Code</label><input type="text" name="assignedToEmp" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Department</label>
+                    <select name="assignedToDept" class="form-select">
+                        <option value="">Select...</option>
+                        @foreach(var d in depts){<option>@d</option>}
+                    </select>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Location</label><input type="text" name="location" class="form-control" placeholder="Office/Floor/Room"/></div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="mt-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-plus-circle"></i> Add Asset</button>
+    <a href="/Assets/Index" class="btn btn-outline-secondary px-4">Cancel</a>
+</div>
+</form>

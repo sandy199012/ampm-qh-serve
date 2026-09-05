@@ -1,0 +1,125 @@
+@model Dictionary<string,object?>
+@{
+    ViewData["Title"] = "PO Details";
+    var poNo = Model.GetValueOrDefault("poNumber")?.ToString() ?? "";
+    var status = Model.GetValueOrDefault("status")?.ToString() ?? "Draft";
+    var sBadge = status=="Approved"?"success":status=="Received"?"info":status=="Cancelled"?"danger":status=="Pending"?"warning":"secondary";
+}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/PurchaseOrders/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0 font-monospace">@poNo</h5>
+    <span class="badge bg-@sBadge fs-6">@status</span>
+</div>
+
+<div class="row g-3">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold" style="background:#0A192F;color:white">PO Information</div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-md-6"><small class="text-muted d-block">PO Number</small><strong class="font-monospace">@poNo</strong></div>
+                    <div class="col-md-6"><small class="text-muted d-block">Date</small><strong>@Model.GetValueOrDefault("date")</strong></div>
+                    <div class="col-md-6"><small class="text-muted d-block">Vendor</small><strong>@Model.GetValueOrDefault("vendorName")</strong></div>
+                    <div class="col-md-6"><small class="text-muted d-block">GST No.</small><strong>@Model.GetValueOrDefault("vendorGst")</strong></div>
+                    <div class="col-md-6"><small class="text-muted d-block">Payment Terms</small><strong>@Model.GetValueOrDefault("paymentTerms")</strong></div>
+                    <div class="col-md-6"><small class="text-muted d-block">Delivery Date</small><strong>@Model.GetValueOrDefault("deliveryDate")</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Items Table -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Items</div>
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th><th>Description</th><th>HSN</th>
+                            <th class="text-center">Qty</th><th class="text-end">Rate</th>
+                            <th class="text-end">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @{
+                        var itemsRaw = Model.GetValueOrDefault("items");
+                        var items = new List<Newtonsoft.Json.Linq.JObject>();
+                        if (itemsRaw is Newtonsoft.Json.Linq.JArray ja)
+                            items = ja.Cast<Newtonsoft.Json.Linq.JObject>().ToList();
+                        int sno = 0;
+                    }
+                    @foreach (var item in items)
+                    {
+                        sno++;
+                        double rate = 0, qty = 0;
+                        double.TryParse(item["rate"]?.ToString(), out rate);
+                        double.TryParse(item["qty"]?.ToString(), out qty);
+                        <tr>
+                            <td>@sno</td>
+                            <td><strong>@item["description"]</strong><br/><small class="text-muted">@item["unit"]</small></td>
+                            <td class="small text-muted">@item["hsn"]</td>
+                            <td class="text-center">@qty</td>
+                            <td class="text-end">&#8377;@rate.ToString("N2")</td>
+                            <td class="text-end fw-bold">&#8377;@((qty*rate).ToString("N2"))</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold" style="background:#059669;color:white">Amount Summary</div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr><td class="text-muted">Sub Total</td><td class="text-end fw-bold">&#8377;@(double.TryParse(Model.GetValueOrDefault("subTotal")?.ToString(), out var st) ? st.ToString("N2") : "0.00")</td></tr>
+                    @{
+                        var gstType = Model.GetValueOrDefault("gstType")?.ToString() ?? "";
+                        var gstPct  = Model.GetValueOrDefault("gstPercent")?.ToString() ?? "18";
+                        var gstAmt  = Model.GetValueOrDefault("gstAmount")?.ToString() ?? "0";
+                    }
+                    @if (gstType == "IGST"){
+                        <tr><td class="text-muted">IGST (@gstPct%)</td><td class="text-end">&#8377;@gstAmt</td></tr>
+                    } else {
+                        <tr><td class="text-muted">CGST</td><td class="text-end">&#8377;@(double.TryParse(gstAmt, out var ga) ? (ga/2).ToString("N2") : "0")</td></tr>
+                        <tr><td class="text-muted">SGST</td><td class="text-end">&#8377;@(double.TryParse(gstAmt, out var ga2) ? (ga2/2).ToString("N2") : "0")</td></tr>
+                    }
+                    <tr class="table-dark"><td class="fw-bold">Grand Total</td><td class="text-end fw-bold fs-5">&#8377;@(double.TryParse(Model.GetValueOrDefault("grandTotal")?.ToString(), out var gt) ? gt.ToString("N2") : "0.00")</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#7C3AED;color:white">Update Status</div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-warning btn-sm" onclick="updatePOStatus('@poNo','Pending')"><i class="bi bi-clock"></i> Pending Approval</button>
+                    <button class="btn btn-success btn-sm" onclick="updatePOStatus('@poNo','Approved')"><i class="bi bi-check-circle"></i> Approve</button>
+                    <button class="btn btn-info btn-sm text-white" onclick="updatePOStatus('@poNo','Received')"><i class="bi bi-box-seam"></i> Mark Received</button>
+                    <button class="btn btn-danger btn-sm" onclick="updatePOStatus('@poNo','Cancelled')"><i class="bi bi-x-circle"></i> Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if(!string.IsNullOrEmpty(Model.GetValueOrDefault("notes")?.ToString())){
+<div class="card border-0 shadow-sm mt-3">
+    <div class="card-header fw-bold">Notes</div>
+    <div class="card-body">@Model.GetValueOrDefault("notes")</div>
+</div>}
+
+@section Scripts {
+<script>
+function updatePOStatus(id, status) {
+    if(!confirm('Change status to: ' + status + '?')) return;
+    fetch('/PurchaseOrders/UpdateStatus/' + id, {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: 'status=' + encodeURIComponent(status)
+    }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
+}
+</script>
+}
