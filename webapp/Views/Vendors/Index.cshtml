@@ -3,44 +3,49 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><i class="bi bi-shop text-dark"></i> Vendors &mdash; @Model.Count</h5>
+    <a href="/Vendors/Create" class="btn btn-dark btn-sm px-3"><i class="bi bi-plus-circle"></i> Add Vendor</a>
 </div>
 
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
         <form method="get" class="d-flex gap-2">
-            <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" style="max-width:280px" placeholder="Search vendor name, city..."/>
+            <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" style="max-width:280px" placeholder="Search vendor name, category..."/>
             <button class="btn btn-primary btn-sm">Search</button>
-            <a href="/Vendors" class="btn btn-outline-secondary btn-sm">Clear</a>
+            <a href="/Vendors/Index" class="btn btn-outline-secondary btn-sm">Clear</a>
         </form>
     </div>
 </div>
 
 <div class="row g-3">
+@if(!Model.Any()){<div class="col-12 text-center text-muted py-5">No vendors found</div>}
 @foreach (var v in Model)
 {
+    var vid = v.GetValueOrDefault("vendorId")?.ToString() ?? "";
     <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body">
-                <h6 class="fw-bold mb-1">@v.GetValueOrDefault("name")</h6>
-                <p class="small text-muted mb-2">@v.GetValueOrDefault("category")</p>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="fw-bold mb-0">@v.GetValueOrDefault("name")</h6>
+                    <a href="/Vendors/Edit/@vid" class="btn btn-outline-secondary btn-sm" style="font-size:11px"><i class="bi bi-pencil"></i></a>
+                </div>
+                @if(!string.IsNullOrEmpty(v.GetValueOrDefault("category")?.ToString()))
+                {<span class="badge bg-secondary mb-2">@v.GetValueOrDefault("category")</span>}
                 <ul class="list-unstyled small mb-0">
-                    @if(!string.IsNullOrEmpty(v.GetValueOrDefault("contact")?.ToString()))
-                    {<li><i class="bi bi-person text-muted"></i> @v.GetValueOrDefault("contact")</li>}
+                    @if(!string.IsNullOrEmpty(v.GetValueOrDefault("contactPerson")?.ToString()))
+                    {<li><i class="bi bi-person text-muted"></i> @v.GetValueOrDefault("contactPerson")</li>}
                     @if(!string.IsNullOrEmpty(v.GetValueOrDefault("phone")?.ToString()))
                     {<li><i class="bi bi-telephone text-muted"></i> @v.GetValueOrDefault("phone")</li>}
                     @if(!string.IsNullOrEmpty(v.GetValueOrDefault("email")?.ToString()))
                     {<li><i class="bi bi-envelope text-muted"></i> @v.GetValueOrDefault("email")</li>}
                     @if(!string.IsNullOrEmpty(v.GetValueOrDefault("gst")?.ToString()))
                     {<li><i class="bi bi-card-text text-muted"></i> GST: @v.GetValueOrDefault("gst")</li>}
-                    @if(!string.IsNullOrEmpty(v.GetValueOrDefault("city")?.ToString()))
-                    {<li><i class="bi bi-geo-alt text-muted"></i> @v.GetValueOrDefault("city")</li>}
+                    @if(!string.IsNullOrEmpty(v.GetValueOrDefault("address")?.ToString()))
+                    {<li><i class="bi bi-geo-alt text-muted"></i> @v.GetValueOrDefault("address")</li>}
+                    @if(!string.IsNullOrEmpty(v.GetValueOrDefault("paymentTerms")?.ToString()))
+                    {<li class="mt-1"><span class="badge bg-light text-dark border">@v.GetValueOrDefault("paymentTerms")</span></li>}
                 </ul>
             </div>
         </div>
     </div>
-}
-@if (!Model.Any())
-{
-    <div class="col-12 text-center text-muted py-5">No vendors found</div>
 }
 </div>

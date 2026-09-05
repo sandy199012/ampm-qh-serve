@@ -1,0 +1,35 @@
+@{ViewData["Title"] = "Add Vendor";}
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/Vendors/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0">Add Vendor</h5>
+</div>
+<div class="row justify-content-center"><div class="col-lg-7">
+<div class="card border-0 shadow-sm"><div class="card-body p-4">
+<form method="post" action="/Vendors/Create">
+    <div class="row g-3">
+        <div class="col-12"><label class="form-label small fw-bold">Vendor Name *</label><input type="text" name="name" class="form-control" required/></div>
+        <div class="col-md-6"><label class="form-label small fw-bold">Category</label>
+            <select name="category" class="form-select">
+                @foreach(var c in new[]{"Hardware","Software","Networking","Printer","Cartridge","AMC/Service","Cloud/Hosting","Telecom","Furniture","Stationery","Mac","Other"})
+                {<option>@c</option>}
+            </select>
+        </div>
+        <div class="col-md-6"><label class="form-label small fw-bold">GST Number</label><input type="text" name="gst" class="form-control"/></div>
+        <div class="col-md-6"><label class="form-label small fw-bold">Contact Person</label><input type="text" name="contactPerson" class="form-control"/></div>
+        <div class="col-md-6"><label class="form-label small fw-bold">Phone</label><input type="text" name="phone" class="form-control"/></div>
+        <div class="col-md-6"><label class="form-label small fw-bold">Email</label><input type="email" name="email" class="form-control"/></div>
+        <div class="col-md-6"><label class="form-label small fw-bold">Payment Terms</label>
+            <select name="paymentTerms" class="form-select">
+                <option>Advance</option><option>Credit 30 Days</option><option>Credit 45 Days</option><option>On Delivery</option>
+            </select>
+        </div>
+        <div class="col-12"><label class="form-label small fw-bold">Address</label><textarea name="address" class="form-control" rows="2"></textarea></div>
+        <div class="col-12"><label class="form-label small fw-bold">Notes</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+    </div>
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-dark px-4"><i class="bi bi-plus-circle"></i> Add Vendor</button>
+        <a href="/Vendors/Index" class="btn btn-outline-secondary px-4">Cancel</a>
+    </div>
+</form>
+</div></div>
+</div></div>

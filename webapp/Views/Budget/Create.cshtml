@@ -1,0 +1,47 @@
+@{ViewData["Title"] = "Add Budget Item";
+  var months = new[]{"Apr26","May26","Jun26","Jul26","Aug26","Sep26","Oct26","Nov26","Dec26","Jan27","Feb27","Mar27"};}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/Budget/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0">Add Budget Item</h5>
+</div>
+<form method="post" action="/Budget/Create">
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header fw-bold" style="background:#0A192F;color:white">Item Details</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6"><label class="form-label small fw-bold">Description *</label><input type="text" name="description" class="form-control" required/></div>
+            <div class="col-md-3"><label class="form-label small fw-bold">Section</label>
+                <select name="section" class="form-select">
+                    @foreach(var s in new[]{"HARDWARE / CONSUMABLE","SOFTWARE / LICENSES","NETWORKING","SERVICES / AMC","MANPOWER","OTHER"})
+                    {<option>@s</option>}
+                </select>
+            </div>
+            <div class="col-md-3"><label class="form-label small fw-bold">Type</label>
+                <select name="type" class="form-select">
+                    @foreach(var t in new[]{"Hardware/Consumable","Software","Networking","Service/AMC","Manpower","Other"})
+                    {<option>@t</option>}
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Monthly Budget (Rs.)</div>
+    <div class="table-responsive"><table class="table table-sm mb-0">
+        <thead class="table-light"><tr><th style="width:120px">Month</th><th>Projected</th><th>Actual</th></tr></thead>
+        <tbody>
+        @foreach(var m in months)
+        {<tr>
+            <td class="fw-bold">@m</td>
+            <td><input type="number" name="proj_@m" class="form-control form-control-sm" value="0" step="0.01"/></td>
+            <td><input type="number" name="act_@m" class="form-control form-control-sm" value="0" step="0.01"/></td>
+        </tr>}
+        </tbody>
+    </table></div>
+</div>
+<div class="d-flex gap-2">
+    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-plus-circle"></i> Add</button>
+    <a href="/Budget/Index" class="btn btn-outline-secondary px-4">Cancel</a>
+</div>
+</form>

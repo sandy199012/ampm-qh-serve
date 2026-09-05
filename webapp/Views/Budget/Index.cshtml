@@ -1,138 +1,105 @@
 @model List<Dictionary<string,object?>>
 @{
     ViewData["Title"] = "IT Budget";
-    double totalBudget = ViewBag.TotalBudget ?? 0;
-    double totalSpent  = ViewBag.TotalSpent ?? 0;
-    double remaining   = ViewBag.Remaining ?? 0;
-    int usedPct = totalBudget > 0 ? (int)Math.Round(totalSpent / totalBudget * 100) : 0;
-    var bills  = (List<Dictionary<string,object?>>)(ViewBag.Bills ?? new List<Dictionary<string,object?>>());
+    var months = new[]{"Apr26","May26","Jun26","Jul26","Aug26","Sep26","Oct26","Nov26","Dec26","Jan27","Feb27","Mar27"};
+    var curMonth = DateTime.Now.ToString("MMMy").Replace("20","");
+    string[] sections = Model.Select(b => b.GetValueOrDefault("section")?.ToString() ?? "Other")
+        .Distinct().OrderBy(s=>s).ToArray();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold mb-0"><i class="bi bi-wallet2 text-secondary"></i> IT Budget</h5>
+    <h5 class="fw-bold mb-0"><i class="bi bi-wallet2 text-secondary"></i> IT Budget 2026-27</h5>
+    <a href="/Budget/Create" class="btn btn-secondary btn-sm px-3"><i class="bi bi-plus-circle"></i> Add Item</a>
 </div>
 
-<!-- Budget Summary -->
+<!-- Summary Cards -->
+@{
+    double totalProj = 0, totalAct = 0;
+    foreach(var b in Model){
+        double.TryParse(b.GetValueOrDefault("TotalProjected")?.ToString(), out var p);
+        double.TryParse(b.GetValueOrDefault("TotalActual")?.ToString(), out var a);
+        totalProj += p; totalAct += a;
+    }
+    double remaining = totalProj - totalAct;
+    int usedPct = totalProj > 0 ? (int)Math.Round(totalAct/totalProj*100) : 0;
+}
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm text-center py-3" style="border-top:4px solid #2563EB!important">
-            <div class="small text-muted">Total Allocated</div>
-            <div class="fw-bold fs-3 text-primary">&#8377;@totalBudget.ToString("N0")</div>
+    <div class="col-md-3"><div class="card border-0 shadow-sm text-center py-3" style="border-top:4px solid #2563EB!important">
+        <div class="small text-muted">Total Projected</div>
+        <div class="fw-bold fs-4 text-primary">&#8377;@totalProj.ToString("N0")</div>
+    </div></div>
+    <div class="col-md-3"><div class="card border-0 shadow-sm text-center py-3" style="border-top:4px solid #DC2626!important">
+        <div class="small text-muted">Total Actual</div>
+        <div class="fw-bold fs-4 text-danger">&#8377;@totalAct.ToString("N0")</div>
+        <div class="small text-muted">@usedPct% used</div>
+    </div></div>
+    <div class="col-md-3"><div class="card border-0 shadow-sm text-center py-3" style="border-top:4px solid #059669!important">
+        <div class="small text-muted">Remaining</div>
+        <div class="fw-bold fs-4 @(remaining>=0?"text-success":"text-danger")">&#8377;@remaining.ToString("N0")</div>
+    </div></div>
+    <div class="col-md-3"><div class="card border-0 shadow-sm text-center py-3">
+        <div class="small text-muted">Progress</div>
+        <div class="fw-bold fs-4">@usedPct%</div>
+        <div class="progress mx-3" style="height:6px">
+            <div class="progress-bar @(usedPct>90?"bg-danger":usedPct>70?"bg-warning":"bg-success")" style="width:@Math.Min(usedPct,100)%"></div>
         </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm text-center py-3" style="border-top:4px solid #DC2626!important">
-            <div class="small text-muted">Total Spent</div>
-            <div class="fw-bold fs-3 text-danger">&#8377;@totalSpent.ToString("N0")</div>
-            <div class="small text-muted">@usedPct% used</div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm text-center py-3" style="border-top:4px solid #059669!important">
-            <div class="small text-muted">Remaining</div>
-            <div class="fw-bold fs-3 @(remaining >= 0 ? "text-success" : "text-danger")">&#8377;@remaining.ToString("N0")</div>
-        </div>
-    </div>
+    </div></div>
 </div>
 
-<!-- Progress Bar -->
-<div class="card border-0 shadow-sm mb-4 p-3">
-    <div class="d-flex justify-content-between mb-1">
-        <small class="fw-semibold">Budget Utilization</small>
-        <small class="fw-bold @(usedPct>90?"text-danger":usedPct>70?"text-warning":"text-success")">@usedPct%</small>
-    </div>
-    <div class="progress" style="height:12px">
-        <div class="progress-bar @(usedPct>90?"bg-danger":usedPct>70?"bg-warning":"bg-success")" style="width:@Math.Min(usedPct,100)%"></div>
-    </div>
-</div>
-
-<!-- Budget Items -->
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white fw-bold border-0">
-        <i class="bi bi-list-check text-primary"></i> Budget Line Items
-    </div>
-    <div class="table-responsive">
-        <table class="table table-hover mb-0">
-            <thead style="background:#0A192F;color:white">
-                <tr>
-                    <th class="ps-3">#</th>
-                    <th>Item / Description</th>
-                    <th>Category</th>
-                    <th class="text-end">Allocated (&#8377;)</th>
-                    <th class="text-end">Spent (&#8377;)</th>
-                    <th class="text-end">Balance (&#8377;)</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-            @if (!Model.Any())
-            {<tr><td colspan="7" class="text-center text-muted py-4">No budget items</td></tr>}
-            @{ int sno = 0; }
-            @foreach (var b in Model)
-            {
-                sno++;
-                double alloc = 0, spent = 0;
-                double.TryParse(b.GetValueOrDefault("allocated")?.ToString(), out alloc);
-                double.TryParse(b.GetValueOrDefault("spent")?.ToString(), out spent);
-                double bal = alloc - spent;
-                var status = b.GetValueOrDefault("status")?.ToString() ?? "";
-                var rowClass = bal < 0 ? "table-danger" : spent > 0 && bal == 0 ? "table-warning" : "";
-                <tr class="@rowClass">
-                    <td class="ps-3 text-muted">@sno</td>
-                    <td><strong class="small">@b.GetValueOrDefault("item")</strong>
-                        @if(!string.IsNullOrEmpty(b.GetValueOrDefault("notes")?.ToString()))
-                        {<br/><small class="text-muted">@b.GetValueOrDefault("notes")</small>}
-                    </td>
-                    <td><span class="badge bg-light text-dark border small">@b.GetValueOrDefault("category")</span></td>
-                    <td class="text-end fw-semibold">&#8377;@alloc.ToString("N0")</td>
-                    <td class="text-end text-danger">&#8377;@spent.ToString("N0")</td>
-                    <td class="text-end fw-bold @(bal<0?"text-danger":"text-success")">&#8377;@bal.ToString("N0")</td>
-                    <td><span class="badge @(status=="Approved"?"bg-success":status=="Pending"?"bg-warning text-dark":"bg-secondary")">@status</span></td>
-                </tr>
-            }
-            </tbody>
-            <tfoot class="table-dark fw-bold">
-                <tr>
-                    <td colspan="3" class="ps-3">TOTAL</td>
-                    <td class="text-end">&#8377;@totalBudget.ToString("N0")</td>
-                    <td class="text-end">&#8377;@totalSpent.ToString("N0")</td>
-                    <td class="text-end @(remaining<0?"text-danger":"text-success")">&#8377;@remaining.ToString("N0")</td>
-                    <td></td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-</div>
-
-<!-- Bills & Utilities -->
-@if (bills.Any())
+<!-- Budget Table -->
+@foreach(var section in sections)
 {
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white fw-bold border-0">
-            <i class="bi bi-receipt text-warning"></i> Bills & Utilities
+    var sItems = Model.Where(b => b.GetValueOrDefault("section")?.ToString() == section).ToList();
+    double sProj = sItems.Sum(b => { double.TryParse(b.GetValueOrDefault("TotalProjected")?.ToString(), out var v); return v; });
+    double sAct  = sItems.Sum(b => { double.TryParse(b.GetValueOrDefault("TotalActual")?.ToString(), out var v); return v; });
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center" style="background:#0A192F;color:white">
+            <span class="fw-bold">@section</span>
+            <span class="small">Projected: &#8377;@sProj.ToString("N0") | Actual: &#8377;@sAct.ToString("N0")</span>
         </div>
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead style="background:#1e3a5f;color:white">
+            <table class="table table-hover table-sm mb-0">
+                <thead class="table-light" style="font-size:11px">
                     <tr>
-                        <th class="ps-3">Description</th>
-                        <th>Vendor</th>
-                        <th>Due Date</th>
-                        <th class="text-end">Amount (&#8377;)</th>
-                        <th>Status</th>
+                        <th class="ps-3" style="min-width:200px">Description</th>
+                        @foreach(var m in months){<th class="text-center" style="min-width:90px">@m</th>}
+                        <th class="text-end">Total Proj.</th>
+                        <th class="text-end">Total Act.</th>
+                        <th class="text-end">Variance</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                @foreach (var b in bills)
+                @foreach(var b in sItems)
                 {
-                    var bs = b.GetValueOrDefault("status")?.ToString() ?? "";
-                    double amt = 0; double.TryParse(b.GetValueOrDefault("amount")?.ToString(), out amt);
+                    var bid = b.GetValueOrDefault("id")?.ToString() ?? "";
+                    var monthly = b.GetValueOrDefault("monthly") as Newtonsoft.Json.Linq.JObject;
+                    double bProj = 0, bAct = 0;
+                    double.TryParse(b.GetValueOrDefault("TotalProjected")?.ToString(), out bProj);
+                    double.TryParse(b.GetValueOrDefault("TotalActual")?.ToString(), out bAct);
+                    double variance = bProj - bAct;
                     <tr>
                         <td class="ps-3 small"><strong>@b.GetValueOrDefault("description")</strong></td>
-                        <td class="small">@b.GetValueOrDefault("vendor")</td>
-                        <td class="small text-muted">@b.GetValueOrDefault("dueDate")</td>
-                        <td class="text-end fw-semibold">&#8377;@amt.ToString("N0")</td>
-                        <td><span class="badge @(bs=="Paid"?"bg-success":bs=="Overdue"?"bg-danger":"bg-warning text-dark")">@bs</span></td>
+                        @foreach(var m in months)
+                        {
+                            double proj = 0, act = 0;
+                            if(monthly != null && monthly[m] != null){
+                                double.TryParse(monthly[m]?["projected"]?.ToString(), out proj);
+                                double.TryParse(monthly[m]?["actual"]?.ToString(), out act);
+                            }
+                            <td class="text-center small" style="font-size:11px">
+                                @if(proj > 0 || act > 0){
+                                    <div class="text-muted">@proj.ToString("N0")</div>
+                                    <div class="@(act>proj?"text-danger":"text-success") fw-bold">@act.ToString("N0")</div>
+                                } else {
+                                    <span class="text-muted">-</span>
+                                }
+                            </td>
+                        }
+                        <td class="text-end small fw-bold">&#8377;@bProj.ToString("N0")</td>
+                        <td class="text-end small text-danger">&#8377;@bAct.ToString("N0")</td>
+                        <td class="text-end small @(variance>=0?"text-success":"text-danger")">&#8377;@variance.ToString("N0")</td>
+                        <td><a href="/Budget/Edit/@bid" class="btn btn-outline-secondary btn-sm" style="font-size:10px"><i class="bi bi-pencil"></i></a></td>
                     </tr>
                 }
                 </tbody>
