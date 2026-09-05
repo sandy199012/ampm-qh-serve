@@ -1,56 +1,157 @@
 @model List<Dictionary<string,object?>>
-@{ViewData["Title"] = "Endpoint Monitor";}
+@{
+    ViewData["Title"] = "Endpoint Monitor";
+    var pcInv = (List<Dictionary<string,object?>>)ViewBag.PcInventory;
+    var licenses = (List<Dictionary<string,object?>>)ViewBag.Licenses;
+}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold mb-0"><i class="bi bi-activity text-danger"></i> Endpoint Monitor</h5>
-    <div class="d-flex gap-2">
+    <h5 class="fw-bold mb-0"><i class="bi bi-hdd-network text-danger"></i> Endpoint &amp; Antivirus Management</h5>
+</div>
+
+<ul class="nav nav-tabs mb-3" id="epTabs">
+    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-uptime" type="button">🌐 Uptime Monitor</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pc" type="button">💻 PC Inventory &amp; Antivirus</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-lic" type="button">🔑 License Manager</button></li>
+</ul>
+
+<div class="tab-content">
+
+<!-- ══════════════ TAB 1: UPTIME MONITOR (existing feature, unchanged) ══════════════ -->
+<div class="tab-pane fade show active" id="tab-uptime">
+
+    <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
         <button class="btn btn-success btn-sm px-3" onclick="checkAll()"><i class="bi bi-play-circle"></i> Check All</button>
         <button class="btn btn-primary btn-sm px-3" onclick="addEndpoint()"><i class="bi bi-plus-circle"></i> Add</button>
     </div>
-</div>
 
-<!-- Status Summary -->
-<div class="row g-2 mb-3" id="summary">
-    <div class="col-4"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4" id="totalCount">@Model.Count</div><div class="small text-muted">Total</div></div></div>
-    <div class="col-4"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success" id="upCount">-</div><div class="small text-muted">Online</div></div></div>
-    <div class="col-4"><div class="card border-0 bg-danger-subtle text-center py-2"><div class="fw-bold fs-4 text-danger" id="downCount">-</div><div class="small text-muted">Offline</div></div></div>
-</div>
+    <div class="row g-2 mb-3" id="summary">
+        <div class="col-4"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4" id="totalCount">@Model.Count</div><div class="small text-muted">Total</div></div></div>
+        <div class="col-4"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success" id="upCount">-</div><div class="small text-muted">Online</div></div></div>
+        <div class="col-4"><div class="card border-0 bg-danger-subtle text-center py-2"><div class="fw-bold fs-4 text-danger" id="downCount">-</div><div class="small text-muted">Offline</div></div></div>
+    </div>
 
-<!-- Last Check Time -->
-<div class="text-muted small mb-3" id="lastCheck">Not checked yet. Click "Check All" to start.</div>
+    <div class="text-muted small mb-3" id="lastCheck">Not checked yet. Click "Check All" to start.</div>
 
-<!-- Endpoints Grid -->
-<div class="row g-3" id="endpointsGrid">
-@{int idx = 0;}
-@foreach(var ep in Model)
-{
-    var name = ep.GetValueOrDefault("name")?.ToString() ?? "";
-    var url  = ep.GetValueOrDefault("url")?.ToString() ?? "";
-    var cat  = ep.GetValueOrDefault("category")?.ToString() ?? "General";
-    var enabled = ep.GetValueOrDefault("enabled")?.ToString()?.ToLower() != "false";
-    <div class="col-md-4" id="ep_@idx">
-        <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #CBD5E1!important">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                        <h6 class="fw-bold mb-0">@name</h6>
-                        <span class="badge bg-secondary small">@cat</span>
+    <div class="row g-3" id="endpointsGrid">
+    @{int idx = 0;}
+    @foreach(var ep in Model)
+    {
+        var name = ep.GetValueOrDefault("name")?.ToString() ?? "";
+        var url  = ep.GetValueOrDefault("url")?.ToString() ?? "";
+        var cat  = ep.GetValueOrDefault("category")?.ToString() ?? "General";
+        <div class="col-md-4" id="ep_@idx">
+            <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #CBD5E1!important">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="fw-bold mb-0">@name</h6>
+                            <span class="badge bg-secondary small">@cat</span>
+                        </div>
+                        <span class="badge bg-secondary" id="status_@idx">⏳ Pending</span>
                     </div>
-                    <span class="badge bg-secondary" id="status_@idx">⏳ Pending</span>
-                </div>
-                <div class="small text-muted text-truncate mb-2"><a href="@url" target="_blank" class="text-muted">@url</a></div>
-                <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted" id="ms_@idx"></small>
-                    <button class="btn btn-outline-primary btn-sm" onclick="checkOne(@idx, '@url')"><i class="bi bi-arrow-repeat"></i></button>
+                    <div class="small text-muted text-truncate mb-2"><a href="@url" target="_blank" class="text-muted">@url</a></div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted" id="ms_@idx"></small>
+                        <button class="btn btn-outline-primary btn-sm" onclick="checkOne(@idx, '@url')"><i class="bi bi-arrow-repeat"></i></button>
+                    </div>
                 </div>
             </div>
         </div>
+        idx++;
+    }
     </div>
-    idx++;
-}
 </div>
 
-<!-- Add Endpoint Modal -->
+<!-- ══════════════ TAB 2: PC INVENTORY & ANTIVIRUS ══════════════ -->
+<div class="tab-pane fade" id="tab-pc">
+
+    <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
+        <a href="/Endpoints/ExportPcInventory" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Export CSV</a>
+        <button class="btn btn-primary btn-sm px-3" onclick="openPcModal(-1)"><i class="bi bi-plus-circle"></i> Add PC</button>
+    </div>
+
+    <div class="row g-2 mb-3" id="pcSummary">
+        <div class="col-3"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4" id="pcTotal">0</div><div class="small text-muted">Total PCs</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success" id="pcQhOk">0</div><div class="small text-muted">QH Installed</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-danger-subtle text-center py-2"><div class="fw-bold fs-4 text-danger" id="pcQhMissing">0</div><div class="small text-muted">QH Missing</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-warning-subtle text-center py-2"><div class="fw-bold fs-4 text-warning" id="pcQhStopped">0</div><div class="small text-muted">QH Stopped</div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-2">
+            <input type="text" id="pcSearch" class="form-control form-control-sm" placeholder="Search hostname, IP, user..." onkeyup="renderPc()"/>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead style="background:#0A192F;color:white">
+                    <tr>
+                        <th class="ps-3">Hostname</th>
+                        <th>IP Address</th>
+                        <th>OS</th>
+                        <th>CPU</th>
+                        <th>RAM (GB)</th>
+                        <th>Disk Free</th>
+                        <th>User</th>
+                        <th>QH Version</th>
+                        <th>QH Service</th>
+                        <th>License Key</th>
+                        <th>Last Seen</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="pcTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ TAB 3: LICENSE MANAGER ══════════════ -->
+<div class="tab-pane fade" id="tab-lic">
+
+    <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
+        <a href="/Endpoints/ExportLicenses" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Export CSV</a>
+        <button class="btn btn-outline-dark btn-sm px-3" onclick="autoMap()"><i class="bi bi-magic"></i> Auto-Map</button>
+        <button class="btn btn-primary btn-sm px-3" onclick="openLicModal(-1)"><i class="bi bi-plus-circle"></i> Add License</button>
+    </div>
+
+    <div class="row g-2 mb-3" id="licSummary">
+        <div class="col-3"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4" id="licTotal">0</div><div class="small text-muted">Total Licenses</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success" id="licUsed">0</div><div class="small text-muted">Used</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-info-subtle text-center py-2"><div class="fw-bold fs-4 text-info" id="licFree">0</div><div class="small text-muted">Free</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-warning-subtle text-center py-2"><div class="fw-bold fs-4 text-warning" id="licExpiring">0</div><div class="small text-muted">Expiring Soon</div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead style="background:#1e3a5f;color:white">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Status</th>
+                        <th>License Key</th>
+                        <th>Product</th>
+                        <th>Assigned To</th>
+                        <th>IP Address</th>
+                        <th>Logged User</th>
+                        <th>Assigned On</th>
+                        <th>Purchase</th>
+                        <th>Expiry</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="licTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<!-- ═══ Add/Edit Endpoint Modal (existing) ═══ -->
 <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -76,10 +177,86 @@
     </div>
 </div>
 
+<!-- ═══ Add/Edit PC Modal ═══ -->
+<div class="modal fade" id="pcModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0A192F;color:white">
+                <h5 class="modal-title" id="pcModalTitle">Add PC</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="pcIdx" value="-1"/>
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label fw-bold small">Hostname</label><input type="text" id="pcHostname" class="form-control"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">IP Address</label><input type="text" id="pcIp" class="form-control"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">OS</label><input type="text" id="pcOs" class="form-control" placeholder="Windows 11 Pro"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">CPU</label><input type="text" id="pcCpu" class="form-control"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">RAM (GB)</label><input type="text" id="pcRam" class="form-control"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Disk Free</label><input type="text" id="pcDisk" class="form-control" placeholder="120 GB"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Logged-in User</label><input type="text" id="pcUser" class="form-control"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Last Seen</label><input type="text" id="pcLastSeen" class="form-control" placeholder="2026-09-05"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Quick Heal Version</label><input type="text" id="pcQhVersion" class="form-control" placeholder="e.g. 24.00"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Quick Heal Service</label>
+                        <select id="pcQhService" class="form-select">
+                            <option>Running</option>
+                            <option>Stopped</option>
+                            <option>Not Installed</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">License Key</label><input type="text" id="pcLicenseKey" class="form-control" readonly placeholder="Assign from License Manager tab"/></div>
+                    <div class="col-12"><label class="form-label fw-bold small">Notes</label><textarea id="pcNotes" class="form-control" rows="2"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="savePc()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Add/Edit License Modal ═══ -->
+<div class="modal fade" id="licModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#1e3a5f;color:white">
+                <h5 class="modal-title" id="licModalTitle">Add License</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="licIdx" value="-1"/>
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label fw-bold small">License Key</label><input type="text" id="licKey" class="form-control"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Product</label><input type="text" id="licProduct" class="form-control" value="Quick Heal Total Security"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Assign To (PC)</label>
+                        <select id="licAssignTo" class="form-select" onchange="onLicAssignChange()">
+                            <option value="">-- Unassigned --</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3"><label class="form-label fw-bold small">IP Address</label><input type="text" id="licIp" class="form-control" readonly/></div>
+                    <div class="col-md-3"><label class="form-label fw-bold small">Logged User</label><input type="text" id="licLoggedUser" class="form-control" readonly/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Assigned On</label><input type="date" id="licAssignedOn" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Purchase Date</label><input type="date" id="licPurchaseDate" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Expiry Date</label><input type="date" id="licExpiryDate" class="form-control"/></div>
+                    <div class="col-12"><label class="form-label fw-bold small">Notes</label><textarea id="licNotes" class="form-control" rows="2"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="saveLic()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
 const endpoints = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
+let pcs = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(pcInv));
+let licenses = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(licenses));
 
+// ───────────── Uptime Monitor (existing) ─────────────
 async function checkOne(idx, url) {
     const card = document.getElementById('ep_' + idx);
     const badge = document.getElementById('status_' + idx);
@@ -143,7 +320,259 @@ function saveEndpoint() {
     }).then(() => location.reload());
 }
 
-// Auto check on page load
-window.addEventListener('DOMContentLoaded', () => setTimeout(checkAll, 500));
+window.addEventListener('DOMContentLoaded', () => { setTimeout(checkAll, 500); renderPc(); renderLic(); });
+
+// ───────────── PC Inventory & Antivirus ─────────────
+function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderPc() {
+    const q = (document.getElementById('pcSearch')?.value || '').toLowerCase();
+    const body = document.getElementById('pcTableBody');
+    let rows = '';
+    let total = 0, qhOk = 0, qhMissing = 0, qhStopped = 0;
+    pcs.forEach((p, i) => {
+        total++;
+        const svc = (p.qhService || '').toString();
+        if (svc === 'Running') qhOk++;
+        else if (svc === 'Stopped') qhStopped++;
+        else qhMissing++;
+        const hay = [p.hostname, p.ip, p.user, p.notes].join(' ').toLowerCase();
+        if (q && !hay.includes(q)) return;
+        let svcBadge = svc === 'Running' ? '<span class="badge bg-success">Running</span>'
+                     : svc === 'Stopped' ? '<span class="badge bg-warning">Stopped</span>'
+                     : '<span class="badge bg-danger">Not Installed</span>';
+        rows += `<tr>
+            <td class="ps-3 fw-bold font-monospace">${esc(p.hostname)}</td>
+            <td class="font-monospace small">${esc(p.ip)}</td>
+            <td class="small">${esc(p.os)}</td>
+            <td class="small">${esc(p.cpu)}</td>
+            <td class="small">${esc(p.ramGb)}</td>
+            <td class="small">${esc(p.diskFree)}</td>
+            <td class="small">${esc(p.user)}</td>
+            <td class="small">${esc(p.qhVersion)}</td>
+            <td>${svcBadge}</td>
+            <td class="small font-monospace">${esc(p.licenseKey)}</td>
+            <td class="small text-muted">${esc(p.lastSeen)}</td>
+            <td>
+                <button class="btn btn-outline-warning btn-sm" onclick="openPcModal(${i})" title="Edit"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-outline-danger btn-sm" onclick="deletePc(${i})" title="Delete"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    body.innerHTML = rows || '<tr><td colspan="12" class="text-center text-muted py-4">No PCs added yet</td></tr>';
+    document.getElementById('pcTotal').textContent = total;
+    document.getElementById('pcQhOk').textContent = qhOk;
+    document.getElementById('pcQhMissing').textContent = qhMissing;
+    document.getElementById('pcQhStopped').textContent = qhStopped;
+}
+
+function openPcModal(i) {
+    document.getElementById('pcIdx').value = i;
+    const p = i >= 0 ? pcs[i] : {};
+    document.getElementById('pcModalTitle').textContent = i >= 0 ? 'Edit PC' : 'Add PC';
+    document.getElementById('pcHostname').value = p.hostname || '';
+    document.getElementById('pcIp').value = p.ip || '';
+    document.getElementById('pcOs').value = p.os || '';
+    document.getElementById('pcCpu').value = p.cpu || '';
+    document.getElementById('pcRam').value = p.ramGb || '';
+    document.getElementById('pcDisk').value = p.diskFree || '';
+    document.getElementById('pcUser').value = p.user || '';
+    document.getElementById('pcLastSeen').value = p.lastSeen || '';
+    document.getElementById('pcQhVersion').value = p.qhVersion || '';
+    document.getElementById('pcQhService').value = p.qhService || 'Not Installed';
+    document.getElementById('pcLicenseKey').value = p.licenseKey || '';
+    document.getElementById('pcNotes').value = p.notes || '';
+    new bootstrap.Modal(document.getElementById('pcModal')).show();
+}
+
+function savePc() {
+    const i = parseInt(document.getElementById('pcIdx').value);
+    const hostname = document.getElementById('pcHostname').value.trim();
+    if (!hostname) return alert('Hostname is required!');
+    const rec = {
+        hostname,
+        ip: document.getElementById('pcIp').value.trim(),
+        os: document.getElementById('pcOs').value.trim(),
+        cpu: document.getElementById('pcCpu').value.trim(),
+        ramGb: document.getElementById('pcRam').value.trim(),
+        diskFree: document.getElementById('pcDisk').value.trim(),
+        user: document.getElementById('pcUser').value.trim(),
+        lastSeen: document.getElementById('pcLastSeen').value.trim(),
+        qhVersion: document.getElementById('pcQhVersion').value.trim(),
+        qhService: document.getElementById('pcQhService').value,
+        licenseKey: document.getElementById('pcLicenseKey').value.trim(),
+        notes: document.getElementById('pcNotes').value.trim()
+    };
+    if (i >= 0) pcs[i] = rec; else pcs.push(rec);
+    persistPc(() => { renderPc(); bootstrap.Modal.getInstance(document.getElementById('pcModal')).hide(); });
+}
+
+function deletePc(i) {
+    if (!confirm('Delete this PC record?')) return;
+    const key = pcs[i].licenseKey;
+    pcs.splice(i, 1);
+    if (key) {
+        const lic = licenses.find(l => l.licenseKey === key);
+        if (lic) { lic.hostname = ''; lic.ip = ''; lic.loggedUser = ''; lic.assignedOn = ''; }
+        persistLic(() => {});
+    }
+    persistPc(renderPc);
+}
+
+function persistPc(cb) {
+    fetch('/Endpoints/SavePcInventory', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(pcs)
+    }).then(() => cb && cb());
+}
+
+// ───────────── License Manager ─────────────
+function computeLicStatus(l) {
+    if (l.expiryDate) {
+        const exp = new Date(l.expiryDate);
+        const today = new Date(); today.setHours(0,0,0,0);
+        if (!isNaN(exp) && exp < today) return 'Expired';
+    }
+    return l.hostname ? 'Assigned' : 'Unassigned';
+}
+
+function renderLic() {
+    const body = document.getElementById('licTableBody');
+    let rows = '';
+    let total = 0, used = 0, free = 0, expiring = 0;
+    const soon = new Date(); soon.setDate(soon.getDate() + 30);
+    licenses.forEach((l, i) => {
+        total++;
+        const status = computeLicStatus(l);
+        if (status === 'Assigned') used++;
+        else if (status === 'Unassigned') free++;
+        if (l.expiryDate) {
+            const exp = new Date(l.expiryDate);
+            if (!isNaN(exp) && exp <= soon && exp >= new Date()) expiring++;
+        }
+        let badge = status === 'Assigned' ? '<span class="badge bg-success">Assigned</span>'
+                  : status === 'Expired' ? '<span class="badge bg-danger">Expired</span>'
+                  : '<span class="badge bg-secondary">Unassigned</span>';
+        rows += `<tr>
+            <td class="ps-3">${i+1}</td>
+            <td>${badge}</td>
+            <td class="font-monospace small fw-bold">${esc(l.licenseKey)}</td>
+            <td class="small">${esc(l.product)}</td>
+            <td class="small">${esc(l.hostname)}</td>
+            <td class="font-monospace small">${esc(l.ip)}</td>
+            <td class="small">${esc(l.loggedUser)}</td>
+            <td class="small text-muted">${esc(l.assignedOn)}</td>
+            <td class="small text-muted">${esc(l.purchaseDate)}</td>
+            <td class="small text-muted">${esc(l.expiryDate)}</td>
+            <td>
+                <button class="btn btn-outline-warning btn-sm" onclick="openLicModal(${i})" title="Edit"><i class="bi bi-pencil"></i></button>
+                ${l.hostname ? `<button class="btn btn-outline-secondary btn-sm" onclick="unassignLic(${i})" title="Unassign"><i class="bi bi-x-circle"></i></button>` : ''}
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteLic(${i})" title="Delete"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    body.innerHTML = rows || '<tr><td colspan="11" class="text-center text-muted py-4">No licenses added yet</td></tr>';
+    document.getElementById('licTotal').textContent = total;
+    document.getElementById('licUsed').textContent = used;
+    document.getElementById('licFree').textContent = free;
+    document.getElementById('licExpiring').textContent = expiring;
+}
+
+function openLicModal(i) {
+    document.getElementById('licIdx').value = i;
+    const l = i >= 0 ? licenses[i] : {};
+    document.getElementById('licModalTitle').textContent = i >= 0 ? 'Edit License' : 'Add License';
+    document.getElementById('licKey').value = l.licenseKey || '';
+    document.getElementById('licProduct').value = l.product || 'Quick Heal Total Security';
+    const sel = document.getElementById('licAssignTo');
+    sel.innerHTML = '<option value="">-- Unassigned --</option>' + pcs.map(p => `<option value="${esc(p.hostname)}">${esc(p.hostname)}</option>`).join('');
+    sel.value = l.hostname || '';
+    document.getElementById('licIp').value = l.ip || '';
+    document.getElementById('licLoggedUser').value = l.loggedUser || '';
+    document.getElementById('licAssignedOn').value = l.assignedOn || '';
+    document.getElementById('licPurchaseDate').value = l.purchaseDate || '';
+    document.getElementById('licExpiryDate').value = l.expiryDate || '';
+    document.getElementById('licNotes').value = l.notes || '';
+    new bootstrap.Modal(document.getElementById('licModal')).show();
+}
+
+function onLicAssignChange() {
+    const hostname = document.getElementById('licAssignTo').value;
+    const pc = pcs.find(p => p.hostname === hostname);
+    document.getElementById('licIp').value = pc ? (pc.ip || '') : '';
+    document.getElementById('licLoggedUser').value = pc ? (pc.user || '') : '';
+    if (hostname && !document.getElementById('licAssignedOn').value) {
+        document.getElementById('licAssignedOn').value = new Date().toISOString().slice(0,10);
+    }
+}
+
+function saveLic() {
+    const i = parseInt(document.getElementById('licIdx').value);
+    const key = document.getElementById('licKey').value.trim();
+    if (!key) return alert('License Key is required!');
+    const hostname = document.getElementById('licAssignTo').value;
+    const rec = {
+        licenseKey: key,
+        product: document.getElementById('licProduct').value.trim(),
+        hostname,
+        ip: document.getElementById('licIp').value.trim(),
+        loggedUser: document.getElementById('licLoggedUser').value.trim(),
+        assignedOn: document.getElementById('licAssignedOn').value,
+        purchaseDate: document.getElementById('licPurchaseDate').value,
+        expiryDate: document.getElementById('licExpiryDate').value,
+        notes: document.getElementById('licNotes').value.trim()
+    };
+    if (i >= 0) licenses[i] = rec; else licenses.push(rec);
+    // reflect the license key onto the assigned PC record
+    pcs.forEach(p => { if (p.licenseKey === key && p.hostname !== hostname) p.licenseKey = ''; });
+    if (hostname) {
+        const pc = pcs.find(p => p.hostname === hostname);
+        if (pc) pc.licenseKey = key;
+    }
+    persistLic(() => persistPc(() => {
+        renderLic(); renderPc();
+        bootstrap.Modal.getInstance(document.getElementById('licModal')).hide();
+    }));
+}
+
+function unassignLic(i) {
+    if (!confirm('Unassign this license?')) return;
+    const key = licenses[i].licenseKey;
+    licenses[i].hostname = ''; licenses[i].ip = ''; licenses[i].loggedUser = ''; licenses[i].assignedOn = '';
+    const pc = pcs.find(p => p.licenseKey === key);
+    if (pc) pc.licenseKey = '';
+    persistLic(() => persistPc(() => { renderLic(); renderPc(); }));
+}
+
+function deleteLic(i) {
+    if (!confirm('Delete this license?')) return;
+    const key = licenses[i].licenseKey;
+    licenses.splice(i, 1);
+    const pc = pcs.find(p => p.licenseKey === key);
+    if (pc) pc.licenseKey = '';
+    persistLic(() => persistPc(() => { renderLic(); renderPc(); }));
+}
+
+function persistLic(cb) {
+    fetch('/Endpoints/SaveLicenses', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(licenses)
+    }).then(() => cb && cb());
+}
+
+function autoMap() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const assignedHostnames = new Set(licenses.filter(l => l.hostname).map(l => l.hostname));
+    const freeLicenses = licenses.filter(l => !l.hostname && !(l.expiryDate && new Date(l.expiryDate) < today));
+    const needyPcs = pcs.filter(p => !p.licenseKey && p.qhService !== 'Running' && !assignedHostnames.has(p.hostname));
+    let mapped = 0;
+    for (let k = 0; k < Math.min(freeLicenses.length, needyPcs.length); k++) {
+        const lic = freeLicenses[k], pc = needyPcs[k];
+        lic.hostname = pc.hostname; lic.ip = pc.ip; lic.loggedUser = pc.user;
+        lic.assignedOn = new Date().toISOString().slice(0,10);
+        pc.licenseKey = lic.licenseKey;
+        mapped++;
+    }
+    if (mapped === 0) { alert('No free licenses / needy PCs to auto-map.'); return; }
+    persistLic(() => persistPc(() => { renderLic(); renderPc(); alert(mapped + ' license(s) auto-mapped.'); }));
+}
 </script>
 }
