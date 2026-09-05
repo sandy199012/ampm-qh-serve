@@ -1,0 +1,73 @@
+@{ViewData["Title"] = "Add Goal";
+  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING"};}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/Goals/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0"><i class="bi bi-plus-circle text-info"></i> Add New Goal</h5>
+</div>
+
+<div class="row justify-content-center">
+<div class="col-lg-8">
+<div class="card border-0 shadow-sm">
+<div class="card-body p-4">
+<form method="post" action="/Goals/Create">
+    <div class="row g-3">
+        <div class="col-12">
+            <label class="form-label fw-bold small">Goal / Task Description *</label>
+            <input type="text" name="title" class="form-control" required placeholder="Describe the goal..."/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Category</label>
+            <select name="category" class="form-select">
+                @foreach(var c in new[]{"Hardware","Software","Network","Email / M365","Server","Security","Training","Process Improvement","Procurement","Other"})
+                {<option>@c</option>}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Priority</label>
+            <select name="priority" class="form-select">
+                <option>Medium</option><option>High</option><option>Low</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Department</label>
+            <select name="department" class="form-select">
+                @foreach(var d in depts){<option>@d</option>}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Requested By</label>
+            <input type="text" name="requestedBy" class="form-control" placeholder="HOD/Manager name"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Start Date</label>
+            <input type="date" name="startDate" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Target Date</label>
+            <input type="date" name="targetDate" class="form-control"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Status</label>
+            <select name="status" class="form-select">
+                <option>Not Started</option><option>In Progress</option><option>On Hold</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">% Progress</label>
+            <input type="number" name="progress" class="form-control" value="0" min="0" max="100"/>
+        </div>
+        <div class="col-12">
+            <label class="form-label fw-bold small">Remarks</label>
+            <textarea name="remarks" class="form-control" rows="2"></textarea>
+        </div>
+    </div>
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-info text-white px-4"><i class="bi bi-plus-circle"></i> Add Goal</button>
+        <a href="/Goals/Index" class="btn btn-outline-secondary px-4">Cancel</a>
+    </div>
+</form>
+</div>
+</div>
+</div>
+</div>

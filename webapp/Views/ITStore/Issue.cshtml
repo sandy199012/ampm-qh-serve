@@ -1,0 +1,41 @@
+@model Dictionary<string,object?>
+@{ViewData["Title"] = "Issue Item";
+  var sid = Model.GetValueOrDefault("id")?.ToString() ?? "";
+  int.TryParse(Model.GetValueOrDefault("totalQty")?.ToString(), out var t);
+  int.TryParse(Model.GetValueOrDefault("issuedQty")?.ToString(), out var iss);
+  int bal = t - iss;
+  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING"};}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/ITStore/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0">Issue — @Model.GetValueOrDefault("name")</h5>
+    <span class="badge bg-@(bal>2?"success":bal>0?"warning":"danger")">Balance: @bal</span>
+</div>
+<div class="row justify-content-center"><div class="col-lg-6">
+<div class="card border-0 shadow-sm"><div class="card-body p-4">
+<form method="post" action="/ITStore/Issue/@sid">
+    <div class="mb-3">
+        <label class="form-label fw-bold">Department *</label>
+        <select name="dept" class="form-select" required>
+            @foreach(var d in depts){<option>@d</option>}
+        </select>
+    </div>
+    <div class="mb-3">
+        <label class="form-label fw-bold">Employee Name</label>
+        <input type="text" name="empName" class="form-control" placeholder="Employee name"/>
+    </div>
+    <div class="mb-3">
+        <label class="form-label fw-bold">Qty to Issue *</label>
+        <input type="number" name="qty" class="form-control" required min="1" max="@bal" value="1"/>
+    </div>
+    <div class="mb-3">
+        <label class="form-label fw-bold">Purpose</label>
+        <input type="text" name="purpose" class="form-control" placeholder="Replacement/New/Repair"/>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-arrow-up-right"></i> Issue</button>
+        <a href="/ITStore/Index" class="btn btn-outline-secondary px-4">Cancel</a>
+    </div>
+</form>
+</div></div>
+</div></div>

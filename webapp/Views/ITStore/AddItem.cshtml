@@ -1,0 +1,52 @@
+@{ViewData["Title"] = "Add Stock Item";}
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/ITStore/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0"><i class="bi bi-plus-circle text-warning"></i> Add Stock Item</h5>
+</div>
+<div class="row justify-content-center"><div class="col-lg-7">
+<div class="card border-0 shadow-sm"><div class="card-body p-4">
+<form method="post" action="/ITStore/AddItem">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Item Type *</label>
+            <select name="itemType" class="form-select" required>
+                @foreach(var t in new[]{"Cartridge","Keyboard","Mouse","Cable","Headphone","Pendrive","Adapter","Other"})
+                {<option>@t</option>}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Item Name *</label>
+            <input type="text" name="name" class="form-control" required placeholder="e.g. HP 88A Cartridge"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Brand</label>
+            <input type="text" name="brand" class="form-control" placeholder="HP, Dell, etc."/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Model / Part No.</label>
+            <input type="text" name="model" class="form-control"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Specs / Details</label>
+            <input type="text" name="specs" class="form-control" placeholder="e.g. Black, USB, Wireless"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Opening Qty</label>
+            <input type="number" name="totalQty" class="form-control" value="0" min="0"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Vendor</label>
+            <input type="text" name="vendor" class="form-control"/>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold small">Unit Cost (Rs.)</label>
+            <input type="number" name="unitCost" class="form-control" value="0" step="0.01"/>
+        </div>
+    </div>
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-warning px-4"><i class="bi bi-plus-circle"></i> Add Item</button>
+        <a href="/ITStore/Index" class="btn btn-outline-secondary px-4">Cancel</a>
+    </div>
+</form>
+</div></div>
+</div></div>

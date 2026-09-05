@@ -4,55 +4,59 @@
     int curWeek = ViewBag.CurrentWeek;
     int maxWeek = ViewBag.MaxWeek;
     int completed = ViewBag.Completed;
-    int inprog    = ViewBag.InProg;
-    int total     = ViewBag.Total;
-    int pct       = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
+    int inprog = ViewBag.InProg;
+    int notStarted = ViewBag.NotStarted;
+    int onHold = ViewBag.OnHold;
+    int total = ViewBag.Total;
+    int pct = total > 0 ? (int)Math.Round((double)completed / total * 100) : 0;
+    string wkStart = ViewBag.WeekStart ?? "";
+    string wkEnd = ViewBag.WeekEnd ?? "";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="fw-bold mb-0"><i class="bi bi-bullseye text-info"></i> IT Goals &mdash; Week @curWeek</h5>
+    <div>
+        <h5 class="fw-bold mb-0"><i class="bi bi-bullseye text-info"></i> IT Goals &mdash; Week @curWeek</h5>
+        @if(!string.IsNullOrEmpty(wkStart)){<small class="text-muted">@wkStart to @wkEnd</small>}
+    </div>
     <div class="d-flex gap-2 align-items-center">
-        @if (curWeek > 1) { <a href="?week=@(curWeek-1)" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chevron-left"></i></a> }
+        @if(curWeek > 1){<a href="?week=@(curWeek-1)" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chevron-left"></i></a>}
         <span class="badge bg-primary px-3 py-2">Week @curWeek / @maxWeek</span>
-        @if (curWeek < maxWeek) { <a href="?week=@(curWeek+1)" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chevron-right"></i></a> }
+        @if(curWeek < maxWeek){<a href="?week=@(curWeek+1)" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chevron-right"></i></a>}
+        <a href="/Goals/Create" class="btn btn-info btn-sm text-white px-3"><i class="bi bi-plus-circle"></i> Add Goal</a>
     </div>
 </div>
 
+<!-- Summary -->
 <div class="row g-2 mb-3">
-    <div class="col-6 col-md-3">
-        <div class="card border-0 bg-light text-center py-2">
-            <div class="fw-bold fs-4">@total</div><div class="small text-muted">Total</div>
-        </div>
+    <div class="col-6 col-md"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4">@total</div><div class="small text-muted">Total</div></div></div>
+    <div class="col-6 col-md"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success">@completed</div><div class="small text-muted">Completed</div></div></div>
+    <div class="col-6 col-md"><div class="card border-0 bg-primary-subtle text-center py-2"><div class="fw-bold fs-4 text-primary">@inprog</div><div class="small text-muted">In Progress</div></div></div>
+    <div class="col-6 col-md"><div class="card border-0 bg-danger-subtle text-center py-2"><div class="fw-bold fs-4 text-danger">@notStarted</div><div class="small text-muted">Not Started</div></div></div>
+    <div class="col-6 col-md"><div class="card border-0 bg-warning-subtle text-center py-2"><div class="fw-bold fs-4 text-warning">@onHold</div><div class="small text-muted">On Hold</div></div></div>
+    <div class="col-6 col-md"><div class="card border-0 bg-info-subtle text-center py-2"><div class="fw-bold fs-4 text-info">@pct%</div><div class="small text-muted">Complete</div></div></div>
+</div>
+
+<!-- Progress bar -->
+<div class="card border-0 shadow-sm mb-3 p-3">
+    <div class="d-flex justify-content-between mb-1">
+        <small class="fw-semibold">Overall Progress</small>
+        <small class="fw-bold @(pct>=80?"text-success":pct>=50?"text-warning":"text-danger")">@pct%</small>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 bg-success-subtle text-center py-2">
-            <div class="fw-bold fs-4 text-success">@completed</div><div class="small text-muted">Completed</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 bg-primary-subtle text-center py-2">
-            <div class="fw-bold fs-4 text-primary">@inprog</div><div class="small text-muted">In Progress</div>
-        </div>
-    </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 bg-warning-subtle text-center py-2">
-            <div class="fw-bold fs-4 text-warning">@pct%</div><div class="small text-muted">Complete</div>
-        </div>
+    <div class="progress" style="height:10px">
+        <div class="progress-bar @(pct>=80?"bg-success":pct>=50?"bg-warning":"bg-danger")" style="width:@Math.Min(pct,100)%"></div>
     </div>
 </div>
 
+<!-- Filter -->
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
-        <form method="get" class="d-flex gap-2">
+        <form method="get" class="d-flex gap-2 flex-wrap">
             <input type="hidden" name="week" value="@curWeek"/>
             <select name="status" class="form-select form-select-sm" style="width:160px">
                 <option value="">All Status</option>
-                @{ var curSF = ViewBag.StatusFilter?.ToString() ?? ""; }
+                @{var curSF = ViewBag.StatusFilter?.ToString() ?? "";}
                 @foreach(var s in new[]{"Not Started","In Progress","On Hold","Completed","Cancelled"})
-                {
-                    if(curSF == s){ <option selected>@s</option> }
-                    else { <option>@s</option> }
-                }
+                {if(curSF==s){<option selected>@s</option>}else{<option>@s</option>}}
             </select>
             <button class="btn btn-primary btn-sm">Filter</button>
             <a href="?week=@curWeek" class="btn btn-outline-secondary btn-sm">Clear</a>
@@ -65,38 +69,42 @@
         <table class="table table-hover mb-0">
             <thead style="background:#0A192F;color:white">
                 <tr>
-                    <th class="ps-3">#</th><th>Goal / Task</th><th>Category</th>
-                    <th>Priority</th><th>Department</th><th>Target</th>
-                    <th>Progress</th><th>Status</th><th></th>
+                    <th class="ps-3">#</th>
+                    <th>Goal / Task</th>
+                    <th>Category</th>
+                    <th>Priority</th>
+                    <th>Department</th>
+                    <th>Target</th>
+                    <th style="min-width:120px">Progress</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-            @if (!Model.Any())
-            {<tr><td colspan="9" class="text-center text-muted py-5">No goals for week @curWeek</td></tr>}
-            @{ int sno = 0; }
+            @if (!Model.Any()){<tr><td colspan="9" class="text-center text-muted py-5">No goals for week @curWeek</td></tr>}
+            @{int sno = 0;}
             @foreach (var g in Model)
             {
                 sno++;
-                var status   = g.GetValueOrDefault("status")?.ToString() ?? "Not Started";
+                var status = g.GetValueOrDefault("status")?.ToString() ?? "Not Started";
                 var priority = g.GetValueOrDefault("priority")?.ToString() ?? "Medium";
-                var sBadge   = status == "Completed" ? "success" : status == "In Progress" ? "primary" : status == "On Hold" ? "warning" : status == "Cancelled" ? "secondary" : "danger";
-                var pBadge   = priority == "High" ? "danger" : priority == "Medium" ? "warning" : "secondary";
+                var sBadge = status=="Completed"?"success":status=="In Progress"?"primary":status=="On Hold"?"warning":status=="Cancelled"?"secondary":"danger";
+                var pBadge = priority=="High"?"danger":priority=="Medium"?"warning":"secondary";
                 int prog = 0; int.TryParse(g.GetValueOrDefault("progress")?.ToString(), out prog);
                 bool pending = g.GetValueOrDefault("isPending")?.ToString()?.ToLower() == "true";
+                var gid = g.GetValueOrDefault("id")?.ToString() ?? "";
                 <tr class="@(status=="Completed"?"table-success opacity-75":"")">
                     <td class="ps-3 text-muted">@sno</td>
                     <td>
                         <strong>@g.GetValueOrDefault("title")</strong>
-                        @if (pending)
-                        {
-                            <br/><span class="badge small" style="background:#EDE9FE;color:#5B21B6">Pending from Wk @g.GetValueOrDefault("pendingFromWeek")</span>
-                        }
+                        @if(pending){<br/><span class="badge small" style="background:#EDE9FE;color:#5B21B6">Pending from Wk @g.GetValueOrDefault("pendingFromWeek")</span>}
+                        @if(!string.IsNullOrEmpty(g.GetValueOrDefault("remarks")?.ToString())){<br/><small class="text-muted">@g.GetValueOrDefault("remarks")</small>}
                     </td>
                     <td class="small text-muted">@g.GetValueOrDefault("category")</td>
                     <td><span class="badge bg-@pBadge">@priority</span></td>
                     <td class="small">@g.GetValueOrDefault("department")</td>
                     <td class="small text-muted">@g.GetValueOrDefault("targetDate")</td>
-                    <td style="min-width:100px">
+                    <td>
                         <div class="progress" style="height:6px">
                             <div class="progress-bar bg-@sBadge" style="width:@prog%"></div>
                         </div>
@@ -104,12 +112,12 @@
                     </td>
                     <td><span class="badge bg-@sBadge">@status</span></td>
                     <td>
-                        @if (status != "Completed")
-                        {
-                            <button class="btn btn-success btn-sm" onclick="completeGoal('@g.GetValueOrDefault("id")')">
-                                <i class="bi bi-check-lg"></i>
-                            </button>
-                        }
+                        <div class="d-flex gap-1">
+                            @if(status != "Completed"){
+                                <button class="btn btn-success btn-sm" onclick="completeGoal('@gid')" title="Mark Complete"><i class="bi bi-check-lg"></i></button>
+                            }
+                            <a href="/Goals/Edit/@gid" class="btn btn-outline-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                        </div>
                     </td>
                 </tr>
             }

@@ -1,0 +1,38 @@
+@model Dictionary<string,object?>
+@{ViewData["Title"] = "Stock In";
+  var sid = Model.GetValueOrDefault("id")?.ToString() ?? "";
+  int.TryParse(Model.GetValueOrDefault("totalQty")?.ToString(), out var t);
+  int.TryParse(Model.GetValueOrDefault("issuedQty")?.ToString(), out var iss);
+  int bal = t - iss;}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/ITStore/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0">Stock In — @Model.GetValueOrDefault("name")</h5>
+    <span class="badge bg-success">Balance: @bal</span>
+</div>
+<div class="row justify-content-center"><div class="col-lg-6">
+<div class="card border-0 shadow-sm"><div class="card-body p-4">
+<form method="post" action="/ITStore/StockIn/@sid">
+    <div class="mb-3">
+        <label class="form-label fw-bold">Qty to Add *</label>
+        <input type="number" name="qty" class="form-control form-control-lg" required min="1" placeholder="Enter quantity"/>
+    </div>
+    <div class="mb-3">
+        <label class="form-label fw-bold">Vendor</label>
+        <input type="text" name="vendor" class="form-control" value="@Model.GetValueOrDefault("vendor")"/>
+    </div>
+    <div class="mb-3">
+        <label class="form-label fw-bold">Invoice No.</label>
+        <input type="text" name="invoiceNo" class="form-control"/>
+    </div>
+    <div class="mb-3">
+        <label class="form-label fw-bold">Unit Cost (Rs.)</label>
+        <input type="number" name="unitCost" class="form-control" value="@Model.GetValueOrDefault("unitCost")" step="0.01"/>
+    </div>
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success px-4"><i class="bi bi-plus-circle"></i> Add Stock</button>
+        <a href="/ITStore/Index" class="btn btn-outline-secondary px-4">Cancel</a>
+    </div>
+</form>
+</div></div>
+</div></div>
