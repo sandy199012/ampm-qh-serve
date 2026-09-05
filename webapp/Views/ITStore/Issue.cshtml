@@ -39,3 +39,42 @@
 </form>
 </div></div>
 </div></div>
+
+<div class="row justify-content-center mt-3"><div class="col-lg-6">
+<div class="card border-0 shadow-sm">
+    <div class="card-header fw-bold" style="background:#059669;color:white">
+        <i class="bi bi-file-earmark-arrow-up"></i> Upload Signed Form (Optional)
+    </div>
+    <div class="card-body">
+        <div id="scanUpload" class="d-none">
+            <input type="file" id="scanFile" accept=".pdf,.jpg,.jpeg,.png" class="form-control form-control-sm mb-2"/>
+            <button type="button" class="btn btn-success btn-sm" onclick="uploadScan()"><i class="bi bi-upload"></i> Upload Scan</button>
+            <div id="scanStatus" class="mt-2 small text-muted"></div>
+        </div>
+        <p class="small text-muted mb-2">Issue karne ke baad signed form scan karke upload karo.</p>
+        <small class="text-muted">PDF, JPG, PNG accepted (max 5MB)</small>
+    </div>
+</div>
+</div></div>
+
+@section Scripts {
+<script>
+let lastIssueId = '';
+document.querySelector('form').addEventListener('submit', function() {
+    document.getElementById('scanUpload').classList.remove('d-none');
+});
+function uploadScan() {
+    const file = document.getElementById('scanFile').files[0];
+    if (!file) { alert('File select karo!'); return; }
+    const issueId = '@(ViewBag.LastIssueId ?? "")' || prompt('Issue No. enter karo:');
+    if (!issueId) return;
+    const fd = new FormData();
+    fd.append('scan', file);
+    fetch('/ITStore/UploadScan/' + issueId, { method:'POST', body:fd })
+        .then(r => r.json()).then(d => {
+            if(d.ok) document.getElementById('scanStatus').innerHTML = '✅ Uploaded: ' + d.fileName;
+            else document.getElementById('scanStatus').innerHTML = '❌ Error: ' + d.msg;
+        });
+}
+</script>
+}
