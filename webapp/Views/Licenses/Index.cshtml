@@ -1,0 +1,81 @@
+@model List<Dictionary<string,object?>>
+@{
+    ViewData["Title"] = "Software Licenses";
+    int total = ViewBag.Total ?? 0;
+    int expiringSoon = ViewBag.ExpiringSoon ?? 0;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0"><i class="bi bi-key text-dark"></i> Software Licenses &mdash; @total</h5>
+    <div class="d-flex gap-2">
+        <a href="/Licenses/Export" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Export</a>
+        <a href="/Licenses/Create" class="btn btn-dark btn-sm px-3"><i class="bi bi-plus-circle"></i> Add License</a>
+    </div>
+</div>
+
+@if (expiringSoon > 0)
+{
+    <div class="alert alert-warning d-flex align-items-center gap-2 py-2"><i class="bi bi-exclamation-triangle"></i> @expiringSoon license(s) expiring soon or already expired.</div>
+}
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 flex-wrap">
+            <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" style="max-width:240px" placeholder="Search name, vendor, category..."/>
+            <select name="status" class="form-select form-select-sm" style="max-width:180px" onchange="this.form.submit()">
+                <option value="">All Status</option>
+                @foreach (var s in new[]{"Active","Pending Renewal","Expired","Cancelled"})
+                {
+                    if (ViewBag.StatusFilter == s) { <option selected value="@s">@s</option> } else { <option value="@s">@s</option> }
+                }
+            </select>
+            <button class="btn btn-primary btn-sm">Search</button>
+            <a href="/Licenses/Index" class="btn btn-outline-secondary btn-sm">Clear</a>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+<div class="table-responsive">
+<table class="table table-hover mb-0">
+<thead class="table-light" style="font-size:11px">
+<tr><th class="ps-3">Name</th><th>Vendor</th><th>Category</th><th>Seats</th><th>Renewal Date</th><th>Cost</th><th>Status</th><th></th></tr>
+</thead>
+<tbody>
+@if (!Model.Any()) { <tr><td colspan="8" class="text-center text-muted py-4">No licenses found</td></tr> }
+@foreach (var l in Model)
+{
+    var lid = l.GetValueOrDefault("id")?.ToString() ?? "";
+    DateTime.TryParse(l.GetValueOrDefault("renewalDate")?.ToString(), out var rd);
+    int.TryParse(l.GetValueOrDefault("alertDays")?.ToString(), out var ad);
+    int window = ad > 0 ? ad : 30;
+    bool expired = rd < DateTime.Today;
+    bool soon = !expired && (rd - DateTime.Today).TotalDays <= window;
+    string rowCls = expired ? "table-danger" : soon ? "table-warning" : "";
+    <tr class="@rowCls">
+        <td class="ps-3 fw-bold small">@l.GetValueOrDefault("name")</td>
+        <td class="small">@l.GetValueOrDefault("vendor")</td>
+        <td class="small">@l.GetValueOrDefault("category")</td>
+        <td class="small text-center">@l.GetValueOrDefault("seats")</td>
+        <td class="small">
+            @l.GetValueOrDefault("renewalDate")
+            @if (expired) { <span class="badge bg-danger ms-1">Expired</span> }
+            else if (soon) { <span class="badge bg-warning text-dark ms-1">Soon</span> }
+        </td>
+        <td class="small">₹@l.GetValueOrDefault("cost")</td>
+        <td><span class="badge bg-secondary">@l.GetValueOrDefault("status")</span></td>
+        <td class="text-nowrap">
+            <a href="/Licenses/Edit/@lid" class="btn btn-outline-secondary btn-sm" style="font-size:11px"><i class="bi bi-pencil"></i></a>
+            <form method="post" action="/Licenses/MarkRenewed/@lid" class="d-inline" onsubmit="return confirm('Mark this license as renewed for 1 more year?')">
+                <button class="btn btn-outline-success btn-sm" style="font-size:11px" type="submit" title="Mark Renewed"><i class="bi bi-arrow-repeat"></i></button>
+            </form>
+            <form method="post" action="/Licenses/Delete/@lid" class="d-inline" onsubmit="return confirm('Delete this license?')">
+                <button class="btn btn-outline-danger btn-sm" style="font-size:11px" type="submit"><i class="bi bi-trash"></i></button>
+            </form>
+        </td>
+    </tr>
+}
+</tbody>
+</table>
+</div>
+</div>

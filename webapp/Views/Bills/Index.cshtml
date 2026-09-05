@@ -1,0 +1,95 @@
+@model List<Dictionary<string,object?>>
+@{
+    ViewData["Title"] = "Bills & Utilities";
+    int total = ViewBag.Total ?? 0;
+    double totalAmount = ViewBag.TotalAmount ?? 0;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0"><i class="bi bi-lightning-charge text-dark"></i> Bills &amp; Utilities &mdash; @total <span class="text-muted small">(₹@totalAmount.ToString("N0"))</span></h5>
+    <div class="d-flex gap-2">
+        <a href="/Bills/Export" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Export</a>
+        <a href="/Bills/Create" class="btn btn-dark btn-sm px-3"><i class="bi bi-plus-circle"></i> Add Bill</a>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="d-flex gap-2 flex-wrap">
+            <input type="text" name="search" value="@ViewBag.Search" class="form-control form-control-sm" style="max-width:240px" placeholder="Search name, category, vendor..."/>
+            <select name="status" class="form-select form-select-sm" style="max-width:180px" onchange="this.form.submit()">
+                <option value="">All Status</option>
+                @foreach (var s in new[]{"Pending","Submitted","Paid","Overdue","On Hold"})
+                {
+                    if (ViewBag.StatusFilter == s) { <option selected value="@s">@s</option> } else { <option value="@s">@s</option> }
+                }
+            </select>
+            <button class="btn btn-primary btn-sm">Search</button>
+            <a href="/Bills/Index" class="btn btn-outline-secondary btn-sm">Clear</a>
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+<div class="table-responsive">
+<table class="table table-hover mb-0">
+<thead class="table-light" style="font-size:11px">
+<tr><th class="ps-3">Name</th><th>Category</th><th>Vendor/Place</th><th>Due Date</th><th>Amount</th><th>Period</th><th>Status</th><th></th></tr>
+</thead>
+<tbody>
+@if (!Model.Any()) { <tr><td colspan="8" class="text-center text-muted py-4">No bills found</td></tr> }
+@foreach (var b in Model)
+{
+    var bid = b.GetValueOrDefault("id")?.ToString() ?? "";
+    var st = b.GetValueOrDefault("status")?.ToString() ?? "";
+    string rowCls = st=="Overdue" ? "table-danger" : st=="Paid" ? "table-success" : st=="Submitted" ? "table-info" : "";
+    string badgeCls = st=="Overdue" ? "bg-danger" : st=="Paid" ? "bg-success" : st=="Submitted" ? "bg-info text-dark" : "bg-warning text-dark";
+    <tr class="@rowCls">
+        <td class="ps-3 fw-bold small">@b.GetValueOrDefault("name")</td>
+        <td class="small">@b.GetValueOrDefault("category")</td>
+        <td class="small">@b.GetValueOrDefault("vendor")</td>
+        <td class="small">@b.GetValueOrDefault("dueDate")</td>
+        <td class="small">₹@b.GetValueOrDefault("amount")</td>
+        <td class="small">@b.GetValueOrDefault("period")</td>
+        <td><span class="badge @badgeCls">@st</span></td>
+        <td class="text-nowrap">
+            <a href="/Bills/Edit/@bid" class="btn btn-outline-secondary btn-sm" style="font-size:11px"><i class="bi bi-pencil"></i></a>
+            @if (st=="Pending" || st=="Overdue")
+            {
+            <form method="post" action="/Bills/MarkSubmitted/@bid" class="d-inline">
+                <button class="btn btn-outline-info btn-sm" style="font-size:11px" type="submit" title="Mark Submitted"><i class="bi bi-send"></i></button>
+            </form>
+            }
+            @if (st!="Paid")
+            {
+            <button class="btn btn-outline-success btn-sm" style="font-size:11px" type="button" data-bs-toggle="modal" data-bs-target="#payModal@(bid)" title="Mark Paid"><i class="bi bi-check-circle"></i></button>
+            }
+            <form method="post" action="/Bills/Delete/@bid" class="d-inline" onsubmit="return confirm('Delete this bill?')">
+                <button class="btn btn-outline-danger btn-sm" style="font-size:11px" type="submit"><i class="bi bi-trash"></i></button>
+            </form>
+        </td>
+    </tr>
+}
+</tbody>
+</table>
+</div>
+</div>
+
+@foreach (var b in Model)
+{
+    var bid = b.GetValueOrDefault("id")?.ToString() ?? "";
+    var st = b.GetValueOrDefault("status")?.ToString() ?? "";
+    if (st=="Paid") { continue; }
+    <div class="modal fade" id="payModal@(bid)" tabindex="-1">
+      <div class="modal-dialog"><div class="modal-content">
+        <form method="post" action="/Bills/MarkPaid/@bid">
+          <div class="modal-header"><h6 class="modal-title">Mark Paid — @b.GetValueOrDefault("name")</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body">
+            <div class="mb-2"><label class="form-label small fw-bold">Payment Ref / UTR#</label><input type="text" name="paymentRef" class="form-control form-control-sm"/></div>
+            <div class="mb-2"><label class="form-label small fw-bold">Invoice No.</label><input type="text" name="invoiceNo" class="form-control form-control-sm"/></div>
+          </div>
+          <div class="modal-footer"><button type="submit" class="btn btn-success btn-sm">Confirm Paid</button></div>
+        </form>
+      </div></div>
+    </div>
+}

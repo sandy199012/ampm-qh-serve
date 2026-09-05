@@ -160,6 +160,10 @@ public class DbService
         return v == null ? default : JsonConvert.DeserializeObject<T>(v);
     }
 
+    public void KSet(string key, object value)
+        => Execute("INSERT INTO kv (k,v) VALUES (@k,@v) ON CONFLICT (k) DO UPDATE SET v=@v",
+            new { k = key, v = JsonConvert.SerializeObject(value) });
+
     // ── Assets ────────────────────────────────────────────────
     public List<Dictionary<string,object?>> GetAssets()
         => KGetObj<List<Dictionary<string,object?>>>("asset_stock") ?? new();
@@ -170,6 +174,16 @@ public class DbService
 
     public List<Dictionary<string,object?>> GetBills()
         => KGetObj<List<Dictionary<string,object?>>>("bills") ?? new();
+
+    public void SaveBills(List<Dictionary<string,object?>> bills)
+        => KSet("bills", bills);
+
+    // ── Software Licenses ────────────────────────────────────
+    public List<Dictionary<string,object?>> GetLicenses()
+        => KGetObj<List<Dictionary<string,object?>>>("licenses") ?? new();
+
+    public void SaveLicenses(List<Dictionary<string,object?>> licenses)
+        => KSet("licenses", licenses);
 
     // ── Vendors ───────────────────────────────────────────────
     public List<Dictionary<string,object?>> GetVendors()
@@ -184,15 +198,37 @@ public class DbService
         var assets = GetAssets();
         int stockCount = 0;
         try { stockCount = QueryFirst<int>("SELECT COUNT(*) FROM it_stock_items"); } catch {}
+
+        var today = DateTime.Today;
+        int expiringLicenses = 0;
+        try {
+            expiringLicenses = GetLicenses().Count(l => {
+                if (!DateTime.TryParse(l.GetValueOrDefault("renewalDate")?.ToString(), out var rd)) return false;
+                int.TryParse(l.GetValueOrDefault("alertDays")?.ToString(), out var ad);
+                int window = ad > 0 ? ad : 30;
+                return (rd.Date - today).TotalDays <= window;
+            });
+        } catch {}
+
+        int billsDue = 0;
+        try {
+            billsDue = GetBills().Count(b => {
+                var st = b.GetValueOrDefault("status")?.ToString();
+                return st == "Pending" || st == "Submitted" || st == "Overdue";
+            });
+        } catch {}
+
         return new DashboardStats
         {
-            TotalEmployees  = QueryFirst<int>("SELECT COUNT(*) FROM employees"),
-            TotalPOs        = QueryFirst<int>("SELECT COUNT(*) FROM po_list"),
-            OpenTickets     = QueryFirst<int>("SELECT COUNT(*) FROM tickets WHERE status='Open'"),
-            TotalVendors    = QueryFirst<int>("SELECT COUNT(*) FROM vendors"),
-            TotalGoals      = QueryFirst<int>("SELECT COUNT(*) FROM goals"),
-            TotalAssets     = assets.Count,
-            TotalStockItems = stockCount,
+            TotalEmployees   = QueryFirst<int>("SELECT COUNT(*) FROM employees"),
+            TotalPOs         = QueryFirst<int>("SELECT COUNT(*) FROM po_list"),
+            OpenTickets      = QueryFirst<int>("SELECT COUNT(*) FROM tickets WHERE status='Open'"),
+            TotalVendors     = QueryFirst<int>("SELECT COUNT(*) FROM vendors"),
+            TotalGoals       = QueryFirst<int>("SELECT COUNT(*) FROM goals"),
+            TotalAssets      = assets.Count,
+            TotalStockItems  = stockCount,
+            ExpiringLicenses = expiringLicenses,
+            BillsDue         = billsDue,
         };
     }
 
@@ -228,4 +264,6 @@ public class DashboardStats
     public int TotalGoals { get; set; }
     public int TotalAssets { get; set; }
     public int TotalStockItems { get; set; }
+    public int ExpiringLicenses { get; set; }
+    public int BillsDue { get; set; }
 }
