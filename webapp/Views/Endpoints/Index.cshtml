@@ -66,7 +66,17 @@
 <!-- ══════════════ TAB 2: PC INVENTORY & ANTIVIRUS ══════════════ -->
 <div class="tab-pane fade" id="tab-pc">
 
+    @if (!pcInv.Any())
+    {
+        <div class="alert alert-info d-flex justify-content-between align-items-center">
+            <div><i class="bi bi-info-circle"></i> PC Inventory is empty — this is a fresh, manually-maintained list (the old desktop tool needed a live agent on every PC; the web version doesn't). Get a head start below.</div>
+            <form method="post" action="/Endpoints/ImportPcFromEmployees" class="ms-2">
+                <button class="btn btn-dark btn-sm px-3" type="submit"><i class="bi bi-people"></i> Quick-Import Hostnames from Employees</button>
+            </form>
+        </div>
+    }
     <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
+        <button class="btn btn-outline-dark btn-sm px-3" onclick="new bootstrap.Modal(document.getElementById('pcImportModal')).show()"><i class="bi bi-upload"></i> Import CSV</button>
         <a href="/Endpoints/ExportPcInventory" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Export CSV</a>
         <button class="btn btn-primary btn-sm px-3" onclick="openPcModal(-1)"><i class="bi bi-plus-circle"></i> Add PC</button>
     </div>
@@ -112,7 +122,14 @@
 <!-- ══════════════ TAB 3: LICENSE MANAGER ══════════════ -->
 <div class="tab-pane fade" id="tab-lic">
 
+    @if (!licenses.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No Quick Heal licenses on file yet — add them one by one, or import your existing license list as a CSV (columns: License Key, Product, Assigned To, IP Address, Logged User, Assigned On, Purchase Date, Expiry Date, Notes).
+        </div>
+    }
     <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
+        <button class="btn btn-outline-dark btn-sm px-3" onclick="new bootstrap.Modal(document.getElementById('licImportModal')).show()"><i class="bi bi-upload"></i> Import CSV</button>
         <a href="/Endpoints/ExportLicenses" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Export CSV</a>
         <button class="btn btn-outline-dark btn-sm px-3" onclick="autoMap()"><i class="bi bi-magic"></i> Auto-Map</button>
         <button class="btn btn-primary btn-sm px-3" onclick="openLicModal(-1)"><i class="bi bi-plus-circle"></i> Add License</button>
@@ -173,6 +190,50 @@
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button class="btn btn-primary" onclick="saveEndpoint()">Add</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Import PC CSV Modal ═══ -->
+<div class="modal fade" id="pcImportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="/Endpoints/ImportPcCsv" enctype="multipart/form-data">
+                <div class="modal-header" style="background:#0A192F;color:white">
+                    <h5 class="modal-title">Import PC Inventory (CSV)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Columns: Hostname, IP Address, OS, CPU, RAM GB, Disk Free, User, QH Version, QH Service, License Key, Last Seen, Notes. Matches existing rows by Hostname (updates them); new hostnames are added. Use <a href="/Endpoints/ExportPcInventory">Export CSV</a> to see the exact format.</p>
+                    <input type="file" name="csvFile" accept=".csv" class="form-control" required/>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Import Licenses CSV Modal ═══ -->
+<div class="modal fade" id="licImportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="/Endpoints/ImportLicensesCsv" enctype="multipart/form-data">
+                <div class="modal-header" style="background:#1e3a5f;color:white">
+                    <h5 class="modal-title">Import Licenses (CSV)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Columns: License Key, Product, Assigned To (hostname), IP Address, Logged User, Assigned On, Purchase Date, Expiry Date, Notes. Matches existing rows by License Key (updates them); new keys are added. Use <a href="/Endpoints/ExportLicenses">Export CSV</a> to see the exact format.</p>
+                    <input type="file" name="csvFile" accept=".csv" class="form-control" required/>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Import</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

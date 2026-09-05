@@ -43,6 +43,148 @@ public class EndpointsController : Controller
         return Json(new { ok = true });
     }
 
+    // Quick-start: pull hostname/IP/OS already on file in Employees into PC Inventory
+    [HttpPost("/Endpoints/ImportPcFromEmployees")]
+    public IActionResult ImportPcFromEmployees()
+    {
+        var pcs = _db.KGetObj<List<Dictionary<string,object?>>>("pc_inventory") ?? new();
+        var known = new HashSet<string>(pcs.Select(p => p.GetValueOrDefault("hostname")?.ToString()?.Trim().ToLower() ?? ""));
+        int added = 0;
+        foreach (var e in _db.GetEmployees())
+        {
+            var hostname = e.GetValueOrDefault("hostname")?.ToString()?.Trim() ?? "";
+            if (string.IsNullOrEmpty(hostname) || known.Contains(hostname.ToLower())) continue;
+            pcs.Add(new Dictionary<string,object?> {
+                ["hostname"] = hostname,
+                ["ip"] = e.GetValueOrDefault("ip")?.ToString() ?? "",
+                ["os"] = e.GetValueOrDefault("os")?.ToString() ?? "",
+                ["cpu"] = "",
+                ["ramGb"] = e.GetValueOrDefault("ram")?.ToString() ?? "",
+                ["diskFree"] = "",
+                ["user"] = e.GetValueOrDefault("name")?.ToString() ?? "",
+                ["qhVersion"] = "",
+                ["qhService"] = "Not Installed",
+                ["licenseKey"] = "",
+                ["lastSeen"] = "",
+                ["notes"] = $"Imported from Employee {e.GetValueOrDefault("emp")}"
+            });
+            known.Add(hostname.ToLower());
+            added++;
+        }
+        _db.KSet("pc_inventory", pcs);
+        TempData["Success"] = added > 0 ? $"{added} PC(s) imported from Employees." : "No new hostnames found in Employees to import.";
+        return RedirectToAction("Index");
+    }
+
+    // Bulk CSV import — same column headers as ExportPcInventory. Matches by Hostname (updates if exists, adds if new).
+    [HttpPost("/Endpoints/ImportPcCsv")]
+    public async Task<IActionResult> ImportPcCsv(IFormFile csvFile)
+    {
+        if (csvFile == null || csvFile.Length == 0) { TempData["Error"] = "Choose a CSV file first."; return RedirectToAction("Index"); }
+        var pcs = _db.KGetObj<List<Dictionary<string,object?>>>("pc_inventory") ?? new();
+        int added = 0, updated = 0, skipped = 0;
+        using var reader = new StreamReader(csvFile.OpenReadStream());
+        string? headerLine = await reader.ReadLineAsync();
+        if (headerLine == null) { TempData["Error"] = "CSV file is empty."; return RedirectToAction("Index"); }
+        var headers = ParseCsvLine(headerLine).Select(h => h.Trim().ToLower()).ToList();
+        string? line;
+        while ((line = await reader.ReadLineAsync()) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var cols = ParseCsvLine(line);
+            var row = new Dictionary<string,string>();
+            for (int i = 0; i < headers.Count && i < cols.Count; i++) row[headers[i]] = cols[i];
+            string hostname = row.GetValueOrDefault("hostname") ?? "";
+            if (string.IsNullOrWhiteSpace(hostname)) { skipped++; continue; }
+            var existing = pcs.FirstOrDefault(p => string.Equals(p.GetValueOrDefault("hostname")?.ToString(), hostname, StringComparison.OrdinalIgnoreCase));
+            var rec = existing ?? new Dictionary<string,object?>();
+            void SetIf(string csvKey, string dataKey) { if (row.TryGetValue(csvKey, out var v) && !string.IsNullOrWhiteSpace(v)) rec[dataKey] = v; }
+            rec["hostname"] = hostname;
+            SetIf("ip address", "ip");
+            SetIf("os", "os");
+            SetIf("cpu", "cpu");
+            SetIf("ram gb", "ramGb");
+            SetIf("disk free", "diskFree");
+            SetIf("user", "user");
+            SetIf("qh version", "qhVersion");
+            SetIf("qh service", "qhService");
+            SetIf("license key", "licenseKey");
+            SetIf("last seen", "lastSeen");
+            SetIf("notes", "notes");
+            if (existing == null) { pcs.Add(rec); added++; } else updated++;
+        }
+        _db.KSet("pc_inventory", pcs);
+        TempData["Success"] = $"PC Inventory import complete: {added} added, {updated} updated, {skipped} skipped.";
+        return RedirectToAction("Index");
+    }
+
+    // Bulk CSV import — same column headers as ExportLicenses (Status column is ignored, it's auto-computed). Matches by License Key.
+    [HttpPost("/Endpoints/ImportLicensesCsv")]
+    public async Task<IActionResult> ImportLicensesCsv(IFormFile csvFile)
+    {
+        if (csvFile == null || csvFile.Length == 0) { TempData["Error"] = "Choose a CSV file first."; return RedirectToAction("Index"); }
+        var lics = _db.KGetObj<List<Dictionary<string,object?>>>("qh_licenses") ?? new();
+        int added = 0, updated = 0, skipped = 0;
+        using var reader = new StreamReader(csvFile.OpenReadStream());
+        string? headerLine = await reader.ReadLineAsync();
+        if (headerLine == null) { TempData["Error"] = "CSV file is empty."; return RedirectToAction("Index"); }
+        var headers = ParseCsvLine(headerLine).Select(h => h.Trim().ToLower()).ToList();
+        string? line;
+        while ((line = await reader.ReadLineAsync()) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var cols = ParseCsvLine(line);
+            var row = new Dictionary<string,string>();
+            for (int i = 0; i < headers.Count && i < cols.Count; i++) row[headers[i]] = cols[i];
+            string key = row.GetValueOrDefault("license key") ?? "";
+            if (string.IsNullOrWhiteSpace(key)) { skipped++; continue; }
+            var existing = lics.FirstOrDefault(l => string.Equals(l.GetValueOrDefault("licenseKey")?.ToString(), key, StringComparison.OrdinalIgnoreCase));
+            var rec = existing ?? new Dictionary<string,object?>();
+            void SetIf(string csvKey, string dataKey) { if (row.TryGetValue(csvKey, out var v) && !string.IsNullOrWhiteSpace(v)) rec[dataKey] = v; }
+            rec["licenseKey"] = key;
+            SetIf("product", "product");
+            SetIf("assigned to", "hostname");
+            SetIf("ip address", "ip");
+            SetIf("logged user", "loggedUser");
+            SetIf("assigned on", "assignedOn");
+            SetIf("purchase date", "purchaseDate");
+            SetIf("expiry date", "expiryDate");
+            SetIf("notes", "notes");
+            if (existing == null) { lics.Add(rec); added++; } else updated++;
+        }
+        _db.KSet("qh_licenses", lics);
+        TempData["Success"] = $"License import complete: {added} added, {updated} updated, {skipped} skipped.";
+        return RedirectToAction("Index");
+    }
+
+    static List<string> ParseCsvLine(string line)
+    {
+        var result = new List<string>();
+        var cur = new System.Text.StringBuilder();
+        bool inQuotes = false;
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+            if (inQuotes)
+            {
+                if (c == '"')
+                {
+                    if (i + 1 < line.Length && line[i+1] == '"') { cur.Append('"'); i++; }
+                    else inQuotes = false;
+                }
+                else cur.Append(c);
+            }
+            else
+            {
+                if (c == '"') inQuotes = true;
+                else if (c == ',') { result.Add(cur.ToString()); cur.Clear(); }
+                else cur.Append(c);
+            }
+        }
+        result.Add(cur.ToString());
+        return result;
+    }
+
     [HttpGet("/Endpoints/ExportPcInventory")]
     public IActionResult ExportPcInventory()
     {
