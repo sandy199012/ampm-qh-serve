@@ -84,3 +84,33 @@ public class HelpdeskController : Controller
     [HttpGet("/api/tickets")]
     public IActionResult ApiList() => Json(_db.GetTickets());
 }
+
+// ── Export / Report ──────────────────────────────────────────
+[HttpGet("/Helpdesk/Export")]
+public IActionResult Export()
+{
+    var tickets = _db.GetTickets();
+    var csv = new System.Text.StringBuilder();
+    csv.AppendLine("Ticket ID,Date Raised,Employee,Department,Mobile,Title,Issue Type,Priority,Assigned To,Status,Date Resolved,Resolution Hours");
+    foreach (var t in tickets)
+    {
+        csv.AppendLine(string.Join(",",
+            CsvEsc(t.GetValueOrDefault("ticketId")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("dateRaised")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("empName")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("empDept")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("empMobile")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("title")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("issueType")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("priority")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("assignedTo")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("status")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("dateResolved")?.ToString()),
+            CsvEsc(t.GetValueOrDefault("resolutionHrs")?.ToString())
+        ));
+    }
+    var bytes = System.Text.Encoding.UTF8.GetBytes(csv.ToString());
+    return File(bytes, "text/csv", $"Helpdesk_Report_{DateTime.Now:yyyyMMdd}.csv");
+}
+
+static string CsvEsc(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";

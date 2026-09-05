@@ -103,3 +103,32 @@ public class EmployeesController : Controller
     [HttpGet("/api/employees")]
     public IActionResult ApiList() => Json(_db.GetEmployees());
 }
+
+[HttpGet("/Employees/Export")]
+public IActionResult Export()
+{
+    var emps = _db.GetEmployees();
+    var csv = new System.Text.StringBuilder();
+    csv.AppendLine("Emp Code,Name,Department,Designation,Manager,Mobile,Email,DOJ,Category,Hostname,IP,OS");
+    foreach (var e in emps)
+    {
+        csv.AppendLine(string.Join(",",
+            CsvEsc(e.GetValueOrDefault("emp")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("name")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("dept")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("designation")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("manager")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("mobile")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("email")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("doj")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("category")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("hostname")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("ip")?.ToString()),
+            CsvEsc(e.GetValueOrDefault("os")?.ToString())
+        ));
+    }
+    var bytes = System.Text.Encoding.UTF8.GetBytes(csv.ToString());
+    return File(bytes, "text/csv", $"Employees_{DateTime.Now:yyyyMMdd}.csv");
+}
+
+static string CsvEsc(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";

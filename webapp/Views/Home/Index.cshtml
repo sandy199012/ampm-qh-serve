@@ -2,12 +2,13 @@
     ViewData["Title"] = "Dashboard";
     var stats = (DashboardStats)ViewBag.Stats;
     var user  = (UserSession)ViewBag.User;
+    var tickets = (List<Dictionary<string,object?>>)(ViewBag.RecentTickets ?? new List<Dictionary<string,object?>>());
     var lowStock = (List<Dictionary<string,object?>>)(ViewBag.LowStock ?? new List<Dictionary<string,object?>>());
     int pendingGoals = ViewBag.PendingGoals ?? 0;
 }
 
-<!-- Header Banner -->
-<div class="row mb-4" style="background:linear-gradient(135deg,#0A192F,#1e3a5f);margin:-16px -24px 0;padding:28px 24px 24px">
+<!-- Header -->
+<div class="row mb-4" style="background:linear-gradient(135deg,#0A192F,#1e3a5f);margin:-16px -24px 0;padding:28px 24px 20px;border-radius:0 0 16px 16px">
     <div class="col">
         <h4 class="text-white fw-bold mb-1">Welcome, @user.Name 👋</h4>
         <p class="mb-0" style="color:#06B6D4;font-size:13px">
@@ -19,13 +20,13 @@
     </div>
 </div>
 
-<!-- Stat Cards -->
+<!-- Stats -->
 <div class="row g-3 mb-4">
     @{
-        void StatCard(string icon, string label, string val, string color, string bg, string url) {
+        void Card(string icon, string label, string val, string color, string bg, string url){
             <div class="col-6 col-md-2">
                 <a href="@url" class="text-decoration-none">
-                    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid @color!important">
+                    <div class="card border-0 shadow-sm h-100" style="border-left:4px solid @color!important;transition:transform .2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
                         <div class="card-body p-3">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <div class="fw-bold" style="font-size:22px;color:@color">@val</div>
@@ -40,12 +41,12 @@
             </div>;
         }
     }
-    @{ StatCard("bi-people-fill", "Employees", stats.TotalEmployees.ToString(), "#2563EB", "#EFF6FF", "/Employees"); }
-    @{ StatCard("bi-headset", "Open Tickets", stats.OpenTickets.ToString(), "#DC2626", "#FEF2F2", "/Helpdesk?status=Open"); }
-    @{ StatCard("bi-file-earmark-text", "Purchase Orders", stats.TotalPOs.ToString(), "#059669", "#F0FDF4", "/PurchaseOrders"); }
-    @{ StatCard("bi-pc-display", "Assets", stats.TotalAssets.ToString(), "#7C3AED", "#F5F3FF", "/Assets"); }
-    @{ StatCard("bi-box-seam", "IT Store Items", stats.TotalStockItems.ToString(), "#D97706", "#FFFBEB", "/ITStore"); }
-    @{ StatCard("bi-bullseye", "Pending Goals", pendingGoals.ToString(), "#0891B2", "#ECFEFF", "/Goals"); }
+    @{ Card("bi-people-fill","Employees",stats.TotalEmployees.ToString(),"#2563EB","#EFF6FF","/Employees/Index"); }
+    @{ Card("bi-headset","Open Tickets",stats.OpenTickets.ToString(),"#DC2626","#FEF2F2","/Helpdesk/Index?status=Open"); }
+    @{ Card("bi-file-earmark-text","Purchase Orders",stats.TotalPOs.ToString(),"#059669","#F0FDF4","/PurchaseOrders/Index"); }
+    @{ Card("bi-pc-display","Assets",stats.TotalAssets.ToString(),"#7C3AED","#F5F3FF","/Assets/Index"); }
+    @{ Card("bi-box-seam","IT Store",stats.TotalStockItems.ToString(),"#D97706","#FFFBEB","/ITStore/Index"); }
+    @{ Card("bi-bullseye","Pending Goals",pendingGoals.ToString(),"#0891B2","#ECFEFF","/Goals/Index"); }
 </div>
 
 <!-- Quick Actions -->
@@ -53,47 +54,44 @@
     <h6 class="fw-bold text-muted mb-2" style="font-size:11px;letter-spacing:1px">QUICK ACTIONS</h6>
     <div class="d-flex flex-wrap gap-2">
         <a href="/Helpdesk/Create" class="btn btn-danger btn-sm px-3"><i class="bi bi-plus-circle"></i> New Ticket</a>
-        <a href="/Employees" class="btn btn-primary btn-sm px-3"><i class="bi bi-people"></i> Employees</a>
-        <a href="/PurchaseOrders" class="btn btn-success btn-sm px-3"><i class="bi bi-file-earmark-plus"></i> Purchase Orders</a>
-        <a href="/Assets" class="btn btn-purple btn-sm px-3" style="background:#7C3AED;color:white;border:none"><i class="bi bi-pc-display"></i> Assets</a>
-        <a href="/ITStore" class="btn btn-warning btn-sm px-3"><i class="bi bi-box-seam"></i> IT Store</a>
-        <a href="/Goals" class="btn btn-info btn-sm px-3 text-white"><i class="bi bi-bullseye"></i> IT Goals</a>
-        <a href="/Budget" class="btn btn-secondary btn-sm px-3"><i class="bi bi-wallet2"></i> Budget</a>
-        <a href="/Vendors" class="btn btn-outline-dark btn-sm px-3"><i class="bi bi-shop"></i> Vendors</a>
+        <a href="/PurchaseOrders/Create" class="btn btn-success btn-sm px-3"><i class="bi bi-file-earmark-plus"></i> New PO</a>
+        <a href="/Employees/Create" class="btn btn-primary btn-sm px-3"><i class="bi bi-person-plus"></i> Add Employee</a>
+        <a href="/Assets/Create" class="btn btn-sm px-3 text-white" style="background:#7C3AED"><i class="bi bi-pc-display"></i> Add Asset</a>
+        <a href="/ITStore/AddItem" class="btn btn-warning btn-sm px-3"><i class="bi bi-box-seam"></i> Add Stock</a>
+        <a href="/Goals/Create" class="btn btn-info btn-sm px-3 text-white"><i class="bi bi-bullseye"></i> Add Goal</a>
+        <a href="/Vendors/Create" class="btn btn-dark btn-sm px-3"><i class="bi bi-shop"></i> Add Vendor</a>
     </div>
 </div>
 
 <div class="row g-3">
     <!-- Recent Tickets -->
-    <div class="col-md-7">
+    <div class="col-md-8">
         <div class="card border-0 shadow-sm">
             <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-2">
                 <h6 class="fw-bold mb-0"><i class="bi bi-ticket-perforated text-danger"></i> Recent Tickets</h6>
-                <a href="/Helpdesk" class="btn btn-sm btn-outline-secondary">View All</a>
+                <a href="/Helpdesk/Index" class="btn btn-sm btn-outline-secondary">View All</a>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead class="table-light" style="font-size:11px">
-                        <tr>
-                            <th class="ps-3">ID</th><th>Employee</th><th>Issue</th><th>Priority</th><th>Status</th>
-                        </tr>
+                        <tr><th class="ps-3">ID</th><th>Employee</th><th>Issue</th><th>Priority</th><th>Status</th><th></th></tr>
                     </thead>
                     <tbody>
-                    @{ var tickets = (List<Dictionary<string,object?>>)(ViewBag.RecentTickets ?? new List<Dictionary<string,object?>>()); }
-                    @if (!tickets.Any())
-                    {<tr><td colspan="5" class="text-center text-muted py-3">No tickets</td></tr>}
+                    @if (!tickets.Any()){<tr><td colspan="6" class="text-center text-muted py-3">No tickets</td></tr>}
                     @foreach (var t in tickets)
                     {
                         var s = t.GetValueOrDefault("status")?.ToString() ?? "Open";
                         var p = t.GetValueOrDefault("priority")?.ToString() ?? "";
                         var sb2 = s=="Open"?"danger":s=="In Progress"?"primary":s=="Resolved"?"success":"secondary";
                         var pb  = p=="Critical"?"danger":p=="High"?"warning":p=="Medium"?"info":"secondary";
+                        var tid = t.GetValueOrDefault("ticketId")?.ToString() ?? "";
                         <tr>
-                            <td class="ps-3 font-monospace small fw-bold text-primary">@t.GetValueOrDefault("ticketId")</td>
+                            <td class="ps-3 font-monospace small fw-bold text-primary">@tid</td>
                             <td class="small">@t.GetValueOrDefault("empName")</td>
                             <td class="small text-truncate" style="max-width:150px">@t.GetValueOrDefault("title")</td>
-                            <td><span class="badge bg-@pb">@p</span></td>
-                            <td><span class="badge bg-@sb2">@s</span></td>
+                            <td><span class="badge bg-@pb" style="font-size:10px">@p</span></td>
+                            <td><span class="badge bg-@sb2" style="font-size:10px">@s</span></td>
+                            <td><a href="/Helpdesk/Details/@tid" class="btn btn-outline-primary btn-sm" style="font-size:10px"><i class="bi bi-eye"></i></a></td>
                         </tr>
                     }
                     </tbody>
@@ -103,28 +101,27 @@
     </div>
 
     <!-- Right Panel -->
-    <div class="col-md-5">
-        <!-- Low Stock Alert -->
+    <div class="col-md-4">
         @if (lowStock.Any())
         {
-            <div class="card border-0 shadow-sm mb-3 border-warning">
-                <div class="card-header py-2" style="background:#FFFBEB;border-bottom:1px solid #FDE68A">
-                    <h6 class="fw-bold mb-0 text-warning"><i class="bi bi-exclamation-triangle"></i> Low Stock Alert</h6>
-                </div>
-                <div class="card-body p-0">
-                    @foreach (var item in lowStock.Take(5))
-                    {
-                        int.TryParse(item.GetValueOrDefault("totalQty")?.ToString(), out var tq);
-                        int.TryParse(item.GetValueOrDefault("issuedQty")?.ToString(), out var iq);
-                        int bal = tq - iq;
-                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-                            <span class="small">@item.GetValueOrDefault("name")</span>
-                            <span class="badge @(bal<=0?"bg-danger":"bg-warning text-dark")">@bal left</span>
-                        </div>
-                    }
-                    <div class="text-center py-2"><a href="/ITStore" class="small text-primary">View all →</a></div>
-                </div>
+        <div class="card border-0 shadow-sm mb-3" style="border-left:4px solid #D97706!important">
+            <div class="card-header py-2" style="background:#FFFBEB">
+                <h6 class="fw-bold mb-0 text-warning"><i class="bi bi-exclamation-triangle"></i> Low Stock Alert</h6>
             </div>
+            <div class="card-body p-0">
+                @foreach (var item in lowStock.Take(5))
+                {
+                    int.TryParse(item.GetValueOrDefault("totalQty")?.ToString(), out var tq);
+                    int.TryParse(item.GetValueOrDefault("issuedQty")?.ToString(), out var iq);
+                    int bal = tq - iq;
+                    <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                        <span class="small">@item.GetValueOrDefault("name")</span>
+                        <span class="badge @(bal<=0?"bg-danger":"bg-warning text-dark")">@bal left</span>
+                    </div>
+                }
+                <div class="text-center py-2"><a href="/ITStore/Index" class="small text-primary">View IT Store →</a></div>
+            </div>
+        </div>
         }
 
         <!-- System Info -->
@@ -132,14 +129,15 @@
             <div class="card-header bg-white border-0 py-2">
                 <h6 class="fw-bold mb-0"><i class="bi bi-info-circle text-primary"></i> System Info</h6>
             </div>
-            <div class="card-body pt-0">
+            <div class="card-body pt-0 pb-2">
                 <ul class="list-unstyled mb-0 small">
-                    <li class="py-2 border-bottom"><span class="text-muted">Company</span><br/><strong>AMPM Fashions Pvt. Ltd.</strong></li>
-                    <li class="py-2 border-bottom"><span class="text-muted">IT Admin</span><br/><strong>Sandeep Kumar Singh Kushwaha</strong></li>
-                    <li class="py-2 border-bottom"><span class="text-muted">Location</span><br/><strong>B-144, Sector 10, Noida - 201301</strong></li>
-                    <li class="py-2 border-bottom"><span class="text-muted">GSTIN</span><br/><strong>09AAFCA4854J1ZE</strong></li>
-                    <li class="py-2"><span class="text-muted">Server</span><br/>
-                        <span class="badge bg-success"><i class="bi bi-circle-fill" style="font-size:8px"></i> Live on Render.com</span>
+                    <li class="py-2 border-bottom"><span class="text-muted d-block">Company</span><strong>AMPM Fashions Pvt. Ltd.</strong></li>
+                    <li class="py-2 border-bottom"><span class="text-muted d-block">IT Admin</span><strong>Sandeep Kumar Singh Kushwaha</strong></li>
+                    <li class="py-2 border-bottom"><span class="text-muted d-block">GSTIN</span><strong>09AAFCA4854J1ZE</strong></li>
+                    <li class="py-2 border-bottom"><span class="text-muted d-block">Location</span><strong>B-144, Sector 10, Noida</strong></li>
+                    <li class="py-2">
+                        <span class="text-muted d-block">Server</span>
+                        <span class="badge bg-success"><i class="bi bi-circle-fill" style="font-size:8px"></i> Live — Supabase + Render</span>
                     </li>
                 </ul>
             </div>
