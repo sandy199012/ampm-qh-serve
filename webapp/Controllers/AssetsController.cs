@@ -124,43 +124,87 @@ public class AssetsController : Controller
     {
         var asset = _db.GetAssets().FirstOrDefault(a => a.GetValueOrDefault("id")?.ToString() == id);
         if (asset == null) return NotFound();
+        string S(string k) => asset.GetValueOrDefault(k)?.ToString() ?? "";
+
         var sb = new System.Text.StringBuilder();
-        sb.Append($@"<html><head><meta charset='UTF-8'><style>
-body{{font-family:Arial;font-size:13px;margin:30px}}
-h2{{text-align:center;margin-bottom:2px}}
-.sub{{text-align:center;color:#555;margin-bottom:20px;font-size:11px}}
-table{{border-collapse:collapse;width:100%;margin-bottom:20px}}
-td,th{{border:1px solid #333;padding:8px;font-size:12px}}
-th{{background:#0A192F;color:white;text-align:left}}
-.sign{{margin-top:60px;display:flex;justify-content:space-between}}
-.sign div{{width:40%;border-top:1px solid #333;padding-top:6px;text-align:center;font-size:11px}}
+        sb.Append(@"<!DOCTYPE html><html><head><meta charset='UTF-8'>
+<title>Asset Handover Form</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,Helvetica,sans-serif;color:#1E293B;margin:0;background:#F1F5F9;font-size:12.5px}
+.wrap{max-width:760px;margin:26px auto;background:#fff;border:1px solid #CBD5E1;border-radius:6px;overflow:hidden}
+.pad{padding:0 22px 20px 22px}
+.header{background:#0A192F;color:#fff;padding:16px 22px;display:flex;justify-content:space-between;align-items:center}
+.header .co{font-size:16px;font-weight:800;letter-spacing:.3px}
+.header .sub{font-size:10.5px;color:#5EEAD4;margin-top:3px}
+.header .meta{font-size:12px;text-align:right;line-height:1.6}
+
+.sec-hdr{background:#1e3a5f;color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.6px;padding:7px 14px;margin-top:16px}
+table.kv{width:100%;border-collapse:collapse;border:1px solid #E2E8F0;border-top:none}
+table.kv td{padding:7px 14px;font-size:12px;border-bottom:1px solid #F1F5F9}
+table.kv tr:last-child td{border-bottom:none}
+table.kv td.k{width:32%;font-weight:700;color:#334155}
+table.kv td.v{color:#0F172A}
+
+.ack{margin-top:16px;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:6px;padding:12px 14px;font-size:11px;color:#78350F;line-height:1.6}
+
+.sig-row{display:flex;gap:12px;margin-top:38px}
+.sig-box{flex:1;border:1px solid #CBD5E1;border-radius:4px;padding:22px 8px 8px 8px;text-align:center}
+.sig-line{border-top:1px solid #94A3B8;margin:0 12px 8px 12px}
+.sig-name{font-size:11px;font-weight:700;color:#0F172A}
+.sig-pre{font-size:9.5px;color:#94A3B8;margin-top:2px}
+
+.footer{margin-top:18px;font-size:9px;color:#94A3B8;text-align:center}
+.no-print{text-align:center;margin:16px 0}
+.no-print button{padding:8px 20px;background:#0A192F;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12.5px}
+@media print{.no-print{display:none}body{background:#fff}.wrap{border:none;margin:0;max-width:100%}}
 </style></head><body>
-<h2>AMPM FASHIONS PVT. LTD.</h2>
-<div class='sub'>B-144, Sector 10, Noida - 201301 | GSTIN: 09AAFCA4854J1ZE</div>
-<h3 style='text-align:center'>IT ASSET HANDOVER FORM</h3>
-<table>
-<tr><th style='width:35%'>Asset Tag</th><td>{asset.GetValueOrDefault("assetTag")}</td></tr>
-<tr><th>Type</th><td>{asset.GetValueOrDefault("assetType")}</td></tr>
-<tr><th>Brand / Model</th><td>{asset.GetValueOrDefault("brand")} {asset.GetValueOrDefault("model")}</td></tr>
-<tr><th>Serial No.</th><td>{asset.GetValueOrDefault("serial")}</td></tr>
-<tr><th>Processor</th><td>{asset.GetValueOrDefault("processor")}</td></tr>
-<tr><th>RAM / Storage</th><td>{asset.GetValueOrDefault("ram")} GB / {asset.GetValueOrDefault("storage")} GB</td></tr>
-<tr><th>OS</th><td>{asset.GetValueOrDefault("os")}</td></tr>
-<tr><th>Condition</th><td>{asset.GetValueOrDefault("condition")}</td></tr>
-</table>
-<table>
-<tr><th colspan='2'>Assigned To</th></tr>
-<tr><th style='width:35%'>Employee Name</th><td>{asset.GetValueOrDefault("assignedToName")}</td></tr>
-<tr><th>Emp Code</th><td>{asset.GetValueOrDefault("assignedToEmp")}</td></tr>
-<tr><th>Department</th><td>{asset.GetValueOrDefault("assignedToDept")}</td></tr>
-<tr><th>Assigned Date</th><td>{asset.GetValueOrDefault("assignedDate")}</td></tr>
-<tr><th>Location</th><td>{asset.GetValueOrDefault("location")}</td></tr>
-</table>
-<p style='font-size:11px'>I acknowledge receipt of the above IT asset in good working condition and agree to return the same upon separation from the company or upon request by the IT Department.</p>
-<div class='sign'>
-<div>Employee Signature &amp; Date</div>
-<div>IT Department Signature &amp; Date</div>
+
+<div class='no-print'><button onclick='window.print()'>Print / Save as PDF</button></div>
+
+<div class='wrap'>
+  <div class='header'>
+    <div>
+      <div class='co'>AMPM FASHIONS PVT. LTD.</div>
+      <div class='sub'>IT Department — Asset Handover Form</div>
+    </div>
+    <div class='meta'>Handover Date: <b>").Append(DateTime.Now.ToString("dd-MMM-yyyy")).Append(@"</b></div>
+  </div>
+  <div class='pad'>
+
+    <div class='sec-hdr'>ASSET DETAILS</div>
+    <table class='kv'>
+      <tr><td class='k'>Asset Tag</td><td class='v'>").Append(S("assetTag")).Append(@"</td></tr>
+      <tr><td class='k'>Type</td><td class='v'>").Append(S("assetType")).Append(@"</td></tr>
+      <tr><td class='k'>Brand / Model</td><td class='v'>").Append(S("brand")).Append(' ').Append(S("model")).Append(@"</td></tr>
+      <tr><td class='k'>Serial No.</td><td class='v'>").Append(S("serial")).Append(@"</td></tr>
+      <tr><td class='k'>Processor</td><td class='v'>").Append(S("processor")).Append(@"</td></tr>
+      <tr><td class='k'>RAM / Storage</td><td class='v'>").Append(S("ram")).Append(@" GB / ").Append(S("storage")).Append(@" GB</td></tr>
+      <tr><td class='k'>OS</td><td class='v'>").Append(S("os")).Append(@"</td></tr>
+      <tr><td class='k'>Condition</td><td class='v'>").Append(S("condition")).Append(@"</td></tr>
+    </table>
+
+    <div class='sec-hdr'>ASSIGNED TO</div>
+    <table class='kv'>
+      <tr><td class='k'>Employee Name</td><td class='v'>").Append(S("assignedToName").ToUpper()).Append(@"</td></tr>
+      <tr><td class='k'>Emp Code</td><td class='v'>").Append(S("assignedToEmp")).Append(@"</td></tr>
+      <tr><td class='k'>Department</td><td class='v'>").Append(S("assignedToDept")).Append(@"</td></tr>
+      <tr><td class='k'>Assigned Date</td><td class='v'>").Append(S("assignedDate")).Append(@"</td></tr>
+      <tr><td class='k'>Location</td><td class='v'>").Append(S("location")).Append(@"</td></tr>
+    </table>
+
+    <div class='ack'><b>Acknowledgement:</b> I acknowledge receipt of the above IT asset in good working condition and agree to return the same upon separation from the company, transfer, or upon request by the IT Department.</div>
+
+    <div class='sig-row'>
+      <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>Employee Signature</div><div class='sig-pre'>").Append(S("assignedToName").ToUpper()).Append(@"</div></div>
+      <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>IT Department</div><div class='sig-pre'>Sandeep Kumar Singh Kushwaha</div></div>
+    </div>
+
+    <div class='footer'>Printed: ").Append(DateTime.Now.ToString("dd MMM yyyy HH:mm")).Append(@" &nbsp;|&nbsp; AMPM Fashions Pvt. Ltd, B-144, Sector 10, Noida - 201301 &nbsp;|&nbsp; IT Department</div>
+
+  </div>
 </div>
+
 </body></html>");
         return Content(sb.ToString(), "text/html");
     }
