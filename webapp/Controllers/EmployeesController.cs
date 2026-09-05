@@ -346,4 +346,140 @@ table.items tr:last-child td{border-bottom:none}
 </body></html>");
         return Content(sb.ToString(), "text/html");
     }
+
+    [HttpGet("/Employees/ExitForm/{id}")]
+    public IActionResult ExitForm(string id)
+    {
+        var raw = _db.QueryFirst<string>("SELECT data FROM employees WHERE emp=@e", new { e = id });
+        if (raw == null) return NotFound();
+        var e = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
+        string S(string k) => e.GetValueOrDefault(k)?.ToString() ?? "";
+        var exitDate = string.IsNullOrEmpty(S("exitDate")) ? DateTime.Today.ToString("yyyy-MM-dd") : S("exitDate");
+
+        var assignedAssets = _db.GetAssets()
+            .Where(a => a.GetValueOrDefault("assignedToEmp")?.ToString() == id)
+            .ToList();
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append(@"<!DOCTYPE html><html><head><meta charset='UTF-8'>
+<title>Employee Exit Form</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,Helvetica,sans-serif;color:#1E293B;margin:0;background:#F1F5F9;font-size:12.5px}
+.wrap{max-width:800px;margin:26px auto;background:#fff;border:1px solid #CBD5E1;border-radius:6px;overflow:hidden}
+.pad{padding:0 22px 20px 22px}
+.header{background:#0A192F;color:#fff;padding:16px 22px;display:flex;justify-content:space-between;align-items:center}
+.header .co{font-size:16px;font-weight:800;letter-spacing:.3px}
+.header .sub{font-size:10.5px;color:#5EEAD4;margin-top:3px}
+.header .meta{font-size:12px;text-align:right;line-height:1.6}
+
+.sec-hdr{background:#1e3a5f;color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.6px;padding:7px 14px;margin-top:16px}
+table.kv{width:100%;border-collapse:collapse;border:1px solid #E2E8F0;border-top:none}
+table.kv td{padding:7px 14px;font-size:12px;border-bottom:1px solid #F1F5F9}
+table.kv tr:last-child td{border-bottom:none}
+table.kv td.k{width:32%;font-weight:700;color:#334155}
+table.kv td.v{color:#0F172A}
+
+table.items{width:100%;border-collapse:collapse;border:1px solid #E2E8F0;border-top:none}
+table.items th{background:#F8FAFC;color:#64748B;font-size:9.5px;letter-spacing:.4px;text-align:left;padding:7px 8px;border-bottom:2px solid #E2E8F0}
+table.items td{padding:7px 8px;font-size:11px;border-bottom:1px solid #F1F5F9}
+table.items tr:last-child td{border-bottom:none}
+.chk{display:inline-block;width:13px;height:13px;border:1.5px solid #94A3B8;border-radius:2px;vertical-align:middle;margin-right:6px}
+.none-row{text-align:center;color:#94A3B8;font-style:italic;padding:14px}
+
+.clearance{width:100%;border-collapse:collapse;border:1px solid #E2E8F0;border-top:none}
+.clearance td{padding:8px 14px;font-size:12px;border-bottom:1px solid #F1F5F9}
+.clearance tr:last-child td{border-bottom:none}
+
+.remarks-box{border:1px solid #E2E8F0;border-top:none;padding:14px;min-height:50px}
+
+.ack{margin-top:16px;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:6px;padding:12px 14px;font-size:11px;color:#78350F;line-height:1.6}
+
+.sig-row{display:flex;gap:12px;margin-top:34px}
+.sig-box{flex:1;border:1px solid #CBD5E1;border-radius:4px;padding:22px 8px 8px 8px;text-align:center}
+.sig-line{border-top:1px solid #94A3B8;margin:0 12px 8px 12px}
+.sig-name{font-size:11px;font-weight:700;color:#0F172A}
+.sig-pre{font-size:9.5px;color:#94A3B8;margin-top:2px}
+
+.footer{margin-top:18px;font-size:9px;color:#94A3B8;text-align:center}
+.no-print{text-align:center;margin:16px 0}
+.no-print button{padding:8px 20px;background:#0A192F;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12.5px}
+@media print{.no-print{display:none}body{background:#fff}.wrap{border:none;margin:0;max-width:100%}}
+</style></head><body>
+
+<div class='no-print'><button onclick='window.print()'>Print / Save as PDF</button></div>
+
+<div class='wrap'>
+  <div class='header'>
+    <div>
+      <div class='co'>AMPM FASHIONS PVT. LTD.</div>
+      <div class='sub'>IT Department — Employee Exit &amp; Asset Clearance Form</div>
+    </div>
+    <div class='meta'>Exit Date: <b>").Append(exitDate).Append(@"</b></div>
+  </div>
+  <div class='pad'>
+
+    <div class='sec-hdr'>EMPLOYEE DETAILS</div>
+    <table class='kv'>
+      <tr><td class='k'>Employee Code</td><td class='v'>").Append(S("emp")).Append(@"</td></tr>
+      <tr><td class='k'>Employee Name</td><td class='v'>").Append(S("name").ToUpper()).Append(@"</td></tr>
+      <tr><td class='k'>Department</td><td class='v'>").Append(S("dept")).Append(@"</td></tr>
+      <tr><td class='k'>Designation</td><td class='v'>").Append(S("designation")).Append(@"</td></tr>
+      <tr><td class='k'>Reporting Manager</td><td class='v'>").Append(S("manager")).Append(@"</td></tr>
+      <tr><td class='k'>Date of Joining</td><td class='v'>").Append(S("doj")).Append(@"</td></tr>
+      <tr><td class='k'>Last Working Day</td><td class='v'>").Append(exitDate).Append(@"</td></tr>
+    </table>
+
+    <div class='sec-hdr'>ASSETS TO BE SUBMITTED (").Append(assignedAssets.Count).Append(@")</div>
+    <table class='items'>
+      <thead><tr><th>Asset Tag</th><th>Type</th><th>Brand / Model</th><th>Serial No.</th><th>Issued Condition</th><th>Returned</th><th>Remarks</th></tr></thead>
+      <tbody>");
+        if (assignedAssets.Any())
+        {
+            foreach (var a in assignedAssets)
+            {
+                sb.Append("<tr><td><b>").Append(a.GetValueOrDefault("assetTag")).Append("</b></td><td>")
+                  .Append(a.GetValueOrDefault("assetType")).Append("</td><td>")
+                  .Append(a.GetValueOrDefault("brand")).Append(' ').Append(a.GetValueOrDefault("model")).Append("</td><td>")
+                  .Append(a.GetValueOrDefault("serial")).Append("</td><td>")
+                  .Append(a.GetValueOrDefault("condition")).Append("</td><td><span class='chk'></span> Yes &nbsp; <span class='chk'></span> No</td><td>&nbsp;</td></tr>");
+            }
+        }
+        else
+        {
+            sb.Append("<tr><td colspan='7' class='none-row'>No assets currently linked to this employee in the system</td></tr>");
+        }
+        sb.Append(@"</tbody>
+    </table>
+
+    <div class='sec-hdr'>IT CLEARANCE CHECKLIST</div>
+    <table class='clearance'>
+      <tr><td><span class='chk'></span> All IT assets listed above returned in working condition</td></tr>
+      <tr><td><span class='chk'></span> Email account disabled / forwarded</td></tr>
+      <tr><td><span class='chk'></span> System login &amp; domain access revoked</td></tr>
+      <tr><td><span class='chk'></span> VPN / remote access revoked</td></tr>
+      <tr><td><span class='chk'></span> Access cards / biometric access deactivated</td></tr>
+      <tr><td><span class='chk'></span> Software licenses reassigned / deactivated</td></tr>
+      <tr><td><span class='chk'></span> No pending dues towards IT Department</td></tr>
+    </table>
+
+    <div class='sec-hdr'>REMARKS</div>
+    <div class='remarks-box'>&nbsp;</div>
+
+    <div class='ack'><b>Acknowledgement:</b> I confirm that I have returned all IT assets issued to me in working condition and that I have no pending dues towards the IT Department. This certifies that IT clearance has been completed for the above employee as on the exit date mentioned.</div>
+
+    <div class='sig-row'>
+      <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>Employee Signature</div><div class='sig-pre'>").Append(S("name").ToUpper()).Append(@"</div></div>
+      <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>IT Department (Clearance)</div><div class='sig-pre'>Sandeep Kumar Singh Kushwaha</div></div>
+      <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>HOD / Manager Approval</div><div class='sig-pre'>").Append(S("manager")).Append(@"</div></div>
+    </div>
+
+    <div class='footer'>Printed: ").Append(DateTime.Now.ToString("dd MMM yyyy HH:mm")).Append(@" &nbsp;|&nbsp; AMPM Fashions Pvt. Ltd, B-144, Sector 10, Noida - 201301 &nbsp;|&nbsp; IT Department</div>
+
+  </div>
+</div>
+
+</body></html>");
+        return Content(sb.ToString(), "text/html");
+    }
 }

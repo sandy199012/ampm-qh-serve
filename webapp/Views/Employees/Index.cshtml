@@ -88,6 +88,7 @@
                             <a href="/Employees/Details/@emp" class="btn btn-outline-primary btn-sm" title="View"><i class="bi bi-eye"></i></a>
                             <a href="/Employees/Edit/@emp" class="btn btn-outline-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
                             <a href="/Employees/Handover/@emp" target="_blank" class="btn btn-outline-dark btn-sm" title="Handover Form"><i class="bi bi-file-earmark-text"></i></a>
+                            <a href="/Employees/ExitForm/@emp" target="_blank" class="btn btn-outline-danger btn-sm" title="Exit Form"><i class="bi bi-file-earmark-x"></i></a>
                             @if (isExited)
                             {
                             <form method="post" action="/Employees/Restore/@emp" class="d-inline" onsubmit="return confirm('Restore this employee to active?')">
