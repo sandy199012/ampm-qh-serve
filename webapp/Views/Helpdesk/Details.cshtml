@@ -115,7 +115,7 @@
                     <div class="small text-muted mt-1">Outlook / Gmail se jo email jaayegi wo plain text hogi (upar wala formatted card sirf preview ke liye hai).</div>
                 </div>
                 <div id="emailStatusMsg"></div>
-                <div class="small text-center mt-2">Outlook nahi khula? <a href="#" onclick="openOutlookWeb();return false;">Outlook Web mein try karo</a></div>
+                <div class="small text-center mt-2">Outlook Web ki jagah desktop Outlook app try karna hai? <a href="#" onclick="sendViaOutlook();return false;">yahan click karo</a></div>
             </div>
             <div class="modal-footer flex-wrap">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -124,7 +124,7 @@
                     <button class="btn btn-outline-success btn-sm" id="sendEmailBtn" onclick="sendEmailNow()"><i class="bi bi-send"></i> Send Automatically (SMTP)</button>
                 }
                 <button class="btn btn-outline-danger" onclick="sendViaGmail()"><i class="bi bi-google"></i> Gmail</button>
-                <button class="btn btn-primary" onclick="sendViaOutlook()"><i class="bi bi-microsoft"></i> Open in Outlook</button>
+                <button class="btn btn-primary" onclick="openOutlookWeb()"><i class="bi bi-microsoft"></i> Open in Outlook</button>
             </div>
         </div>
     </div>
