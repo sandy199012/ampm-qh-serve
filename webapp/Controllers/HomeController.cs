@@ -22,4 +22,10 @@ public class HomeController : Controller
         ViewBag.PendingGoals  = _db.GetPendingGoalsCount();
         return View();
     }
+
+    public IActionResult AccessDenied()
+    {
+        ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        return View();
+    }
 }

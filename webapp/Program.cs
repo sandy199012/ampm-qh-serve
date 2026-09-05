@@ -1,18 +1,21 @@
 using AMPMWeb.Data;
 using AMPMWeb.Services;
+using AMPMWeb.Filters;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllersWithViews(o =>
-    o.Filters.Add(new IgnoreAntiforgeryTokenAttribute()))
-    .AddRazorRuntimeCompilation();
-
 builder.Services.AddDataProtection().UseEphemeralDataProtectionProvider();
 builder.Services.AddSingleton<DbService>();
 builder.Services.AddSingleton<AuthService>();
 builder.Services.AddSingleton<EmailService>();
+builder.Services.AddSingleton<ModulePermissionFilter>();
+
+builder.Services.AddControllersWithViews(o => {
+    o.Filters.Add(new IgnoreAntiforgeryTokenAttribute());
+    o.Filters.AddService<ModulePermissionFilter>();
+}).AddRazorRuntimeCompilation();
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");

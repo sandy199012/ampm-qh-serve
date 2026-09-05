@@ -1,0 +1,50 @@
+@{
+    ViewData["Title"] = "New User";
+}
+<div class="d-flex align-items-center mb-3 gap-3">
+    <a href="/Users/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0"><i class="bi bi-person-plus"></i> New User</h5>
+</div>
+
+<form method="post" action="/Users/Create">
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header fw-bold" style="background:#0A192F;color:white">Account Details</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Username</label>
+                    <input type="text" name="username" class="form-control" required autofocus/>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Password</label>
+                    <input type="password" name="password" class="form-control" required/>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Full Name</label>
+                    <input type="text" name="name" class="form-control"/>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Department</label>
+                    <input type="text" name="department" class="form-control" placeholder="e.g. HR, Production, Design"/>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Role</label>
+                    <select name="role" class="form-select">
+                        <option value="user" selected>User (module permissions apply)</option>
+                        <option value="admin">Admin (full access, can manage users)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Module Permissions</div>
+        <div class="card-body">
+            @await Html.PartialAsync("_PermissionsGrid")
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Create User</button>
+    <a href="/Users/Index" class="btn btn-secondary">Cancel</a>
+</form>

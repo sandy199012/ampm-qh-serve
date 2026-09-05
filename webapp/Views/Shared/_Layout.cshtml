@@ -1,3 +1,4 @@
+@inject AMPMWeb.Services.AuthService Auth
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,12 +12,11 @@
 <body class="bg-light">
 
 @{
-    var loggedIn = !string.IsNullOrEmpty(Context.Request.Cookies["ampm_user"]);
-    var userName = Context.Request.Cookies["ampm_name"] ?? "";
-    var userRole = Context.Request.Cookies["ampm_role"] ?? "";
+    var loggedIn = Auth.IsLoggedIn(Context);
+    var curUser = loggedIn ? Auth.GetCurrentUser(Context) : null;
 }
 
-@if (loggedIn)
+@if (loggedIn && curUser != null)
 {
 <nav class="navbar navbar-expand-lg navbar-dark" style="background:#0A192F">
     <div class="container-fluid">
@@ -27,26 +27,27 @@
         <div class="collapse navbar-collapse" id="nav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link" href="/Employees/Index"><i class="bi bi-people"></i> Employees</a></li>
-                <li class="nav-item"><a class="nav-link" href="/Helpdesk/Index"><i class="bi bi-headset"></i> Helpdesk</a></li>
-                <li class="nav-item"><a class="nav-link" href="/Assets/Index"><i class="bi bi-pc-display"></i> Assets</a></li>
-                <li class="nav-item"><a class="nav-link" href="/PurchaseOrders/Index"><i class="bi bi-file-earmark-text"></i> PO</a></li>
-                <li class="nav-item"><a class="nav-link" href="/PurchaseBills/Index"><i class="bi bi-receipt"></i> Purchase Bills</a></li>
-                <li class="nav-item"><a class="nav-link" href="/ITStore/Index"><i class="bi bi-box-seam"></i> IT Store</a></li>
-                <li class="nav-item"><a class="nav-link" href="/Goals/Index"><i class="bi bi-bullseye"></i> Goals</a></li>
-                <li class="nav-item"><a class="nav-link" href="/Budget/Index"><i class="bi bi-wallet2"></i> Budget</a></li>
-                <li class="nav-item"><a class="nav-link" href="/Licenses/Index"><i class="bi bi-key"></i> Licenses</a></li>
-                <li class="nav-item"><a class="nav-link" href="/Bills/Index"><i class="bi bi-lightning-charge"></i> Bills</a></li>
-                <li class="nav-item"><a class="nav-link" href="/Vendors/Index"><i class="bi bi-shop"></i> Vendors</a></li>
-                <li class="nav-item"><a class="nav-link" href="/Endpoints/Index"><i class="bi bi-activity"></i> Monitor</a></li>
+                @if (curUser.CanView("Employees")) { <li class="nav-item"><a class="nav-link" href="/Employees/Index"><i class="bi bi-people"></i> Employees</a></li> }
+                @if (curUser.CanView("Helpdesk")) { <li class="nav-item"><a class="nav-link" href="/Helpdesk/Index"><i class="bi bi-headset"></i> Helpdesk</a></li> }
+                @if (curUser.CanView("Assets")) { <li class="nav-item"><a class="nav-link" href="/Assets/Index"><i class="bi bi-pc-display"></i> Assets</a></li> }
+                @if (curUser.CanView("PurchaseOrders")) { <li class="nav-item"><a class="nav-link" href="/PurchaseOrders/Index"><i class="bi bi-file-earmark-text"></i> PO</a></li> }
+                @if (curUser.CanView("PurchaseBills")) { <li class="nav-item"><a class="nav-link" href="/PurchaseBills/Index"><i class="bi bi-receipt"></i> Purchase Bills</a></li> }
+                @if (curUser.CanView("ITStore")) { <li class="nav-item"><a class="nav-link" href="/ITStore/Index"><i class="bi bi-box-seam"></i> IT Store</a></li> }
+                @if (curUser.CanView("Goals")) { <li class="nav-item"><a class="nav-link" href="/Goals/Index"><i class="bi bi-bullseye"></i> Goals</a></li> }
+                @if (curUser.CanView("Budget")) { <li class="nav-item"><a class="nav-link" href="/Budget/Index"><i class="bi bi-wallet2"></i> Budget</a></li> }
+                @if (curUser.CanView("Licenses")) { <li class="nav-item"><a class="nav-link" href="/Licenses/Index"><i class="bi bi-key"></i> Licenses</a></li> }
+                @if (curUser.CanView("Bills")) { <li class="nav-item"><a class="nav-link" href="/Bills/Index"><i class="bi bi-lightning-charge"></i> Bills</a></li> }
+                @if (curUser.CanView("Vendors")) { <li class="nav-item"><a class="nav-link" href="/Vendors/Index"><i class="bi bi-shop"></i> Vendors</a></li> }
+                @if (curUser.CanView("Endpoints")) { <li class="nav-item"><a class="nav-link" href="/Endpoints/Index"><i class="bi bi-activity"></i> Monitor</a></li> }
+                @if (curUser.IsAdmin) { <li class="nav-item"><a class="nav-link" href="/Users/Index"><i class="bi bi-people-fill"></i> Users</a></li> }
             </ul>
             <ul class="navbar-nav">
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle"></i> @userName
+                        <i class="bi bi-person-circle"></i> @curUser.Name
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><span class="dropdown-item-text text-muted small">@userRole</span></li>
+                        <li><span class="dropdown-item-text text-muted small">@curUser.Role</span></li>
                         <li><hr class="dropdown-divider"/></li>
                         <li><a class="dropdown-item text-danger" href="/Account/Logout"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
                     </ul>

@@ -1,0 +1,69 @@
+@model AMPMWeb.Services.UserRow
+@{
+    ViewData["Title"] = "Edit User";
+    var isSuper = Model.Role == "superadmin";
+}
+<div class="d-flex align-items-center mb-3 gap-3">
+    <a href="/Users/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0"><i class="bi bi-person-gear"></i> Edit User — @Model.Username</h5>
+</div>
+
+<form method="post" action="/Users/Edit/@Model.Id">
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header fw-bold" style="background:#0A192F;color:white">Account Details</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Username</label>
+                    <input type="text" class="form-control" value="@Model.Username" disabled/>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">New Password <span class="text-muted">(khaali chodo agar change nahi karni)</span></label>
+                    <input type="password" name="password" class="form-control" placeholder="••••••••"/>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Full Name</label>
+                    <input type="text" name="name" class="form-control" value="@Model.Name"/>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Department</label>
+                    <input type="text" name="department" class="form-control" value="@Model.Department"/>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Role</label>
+                    @if (isSuper)
+                    {
+                        <input type="text" class="form-control" value="Super Admin" disabled/>
+                        <div class="form-text">Super Admin role ko yahan se badla nahi ja sakta.</div>
+                    }
+                    else
+                    {
+                        <select name="role" class="form-select">
+                            <option value="user" selected="@(Model.Role != "admin")">User (module permissions apply)</option>
+                            <option value="admin" selected="@(Model.Role == "admin")">Admin (full access, can manage users)</option>
+                        </select>
+                    }
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    @if (!isSuper)
+                    {
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="isActive" name="isActive" @(Model.IsActive == 1 ? "checked" : "")/>
+                            <label class="form-check-label" for="isActive">Account Active</label>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Module Permissions</div>
+        <div class="card-body">
+            @await Html.PartialAsync("_PermissionsGrid")
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Save Changes</button>
+    <a href="/Users/Index" class="btn btn-secondary">Cancel</a>
+</form>

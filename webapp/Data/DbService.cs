@@ -1,5 +1,6 @@
 using Npgsql;
 using Newtonsoft.Json;
+using AMPMWeb.Services;
 
 namespace AMPMWeb.Data;
 
@@ -53,6 +54,10 @@ public class DbService
             CREATE TABLE IF NOT EXISTS it_issue_scans (id TEXT PRIMARY KEY, issue_id TEXT, file_name TEXT, file_data TEXT, content_type TEXT, uploaded_at TEXT, uploaded_by TEXT);
             CREATE TABLE IF NOT EXISTS po_scans (id TEXT PRIMARY KEY, po_number TEXT, file_name TEXT, file_data TEXT, content_type TEXT, uploaded_at TEXT, uploaded_by TEXT);
         ";
+        cmd.ExecuteNonQuery();
+
+        // Role-based access: which modules a user can view/approve (JSON blob per user)
+        cmd.CommandText = "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT;";
         cmd.ExecuteNonQuery();
 
         // Ensure admin user
@@ -281,6 +286,82 @@ public class DbService
                 .Count(g => g.GetValueOrDefault("status")?.ToString() is "Not Started" or "In Progress");
         } catch { return 0; }
     }
+
+    // ── Users (login accounts + module permissions) ─────────────
+    UserRow ReadUserRow(NpgsqlDataReader reader) => new UserRow {
+        Id           = reader.GetInt32(0),
+        Username     = reader.GetString(1),
+        PasswordHash = reader.GetString(2),
+        Name         = reader.IsDBNull(3) ? null : reader.GetString(3),
+        Role         = reader.IsDBNull(4) ? null : reader.GetString(4),
+        Department   = reader.IsDBNull(5) ? null : reader.GetString(5),
+        IsActive     = reader.IsDBNull(6) ? 1 : reader.GetInt32(6),
+        Permissions  = reader.IsDBNull(7) ? null : reader.GetString(7),
+    };
+
+    const string UserCols = "id,username,password_hash,name,role,department,is_active,permissions";
+
+    public List<UserRow> GetUsers()
+    {
+        using var conn = GetConn();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT {UserCols} FROM users ORDER BY id";
+        var list = new List<UserRow>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read()) list.Add(ReadUserRow(reader));
+        return list;
+    }
+
+    public UserRow? GetUserByUsername(string username)
+    {
+        using var conn = GetConn();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT {UserCols} FROM users WHERE lower(username)=lower(@u)";
+        cmd.Parameters.AddWithValue("@u", username);
+        using var reader = cmd.ExecuteReader();
+        return reader.Read() ? ReadUserRow(reader) : null;
+    }
+
+    public UserRow? GetUserById(int id)
+    {
+        using var conn = GetConn();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT {UserCols} FROM users WHERE id=@id";
+        cmd.Parameters.AddWithValue("@id", id);
+        using var reader = cmd.ExecuteReader();
+        return reader.Read() ? ReadUserRow(reader) : null;
+    }
+
+    public bool UsernameExists(string username, int excludeId = 0)
+        => QueryFirst<long>("SELECT COUNT(*) FROM users WHERE lower(username)=lower(@u) AND id<>@e", new { u = username, e = excludeId }) > 0;
+
+    public int CreateUser(string username, string passwordHash, string? name, string role, string? department, string permissionsJson)
+    {
+        using var conn = GetConn();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"INSERT INTO users (username,password_hash,name,role,department,is_active,permissions,created_at)
+                             VALUES (@u,@h,@n,@r,@d,1,@p,@t) RETURNING id";
+        cmd.Parameters.AddWithValue("@u", username);
+        cmd.Parameters.AddWithValue("@h", passwordHash);
+        cmd.Parameters.AddWithValue("@n", (object?)name ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@r", role);
+        cmd.Parameters.AddWithValue("@d", (object?)department ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@p", permissionsJson);
+        cmd.Parameters.AddWithValue("@t", DateTime.Now.ToString("o"));
+        return (int)cmd.ExecuteScalar()!;
+    }
+
+    public void UpdateUser(int id, string? name, string role, string? department, string permissionsJson, int isActive, string? newPasswordHash)
+    {
+        if (!string.IsNullOrEmpty(newPasswordHash))
+            Execute("UPDATE users SET name=@n, role=@r, department=@d, permissions=@p, is_active=@a, password_hash=@h WHERE id=@id",
+                new { n = (object?)name ?? DBNull.Value, r = role, d = (object?)department ?? DBNull.Value, p = permissionsJson, a = isActive, h = newPasswordHash, id });
+        else
+            Execute("UPDATE users SET name=@n, role=@r, department=@d, permissions=@p, is_active=@a WHERE id=@id",
+                new { n = (object?)name ?? DBNull.Value, r = role, d = (object?)department ?? DBNull.Value, p = permissionsJson, a = isActive, id });
+    }
+
+    public void DeleteUser(int id) => Execute("DELETE FROM users WHERE id=@id", new { id });
 }
 
 public class DashboardStats
