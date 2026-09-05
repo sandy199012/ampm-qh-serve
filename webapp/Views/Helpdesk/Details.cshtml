@@ -110,12 +110,12 @@
                     <input type="text" id="emailSubject" class="form-control" readonly/>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label fw-bold small">Ticket Details Preview</label>
+                    <label class="form-label fw-bold small">Message Preview</label>
                     <iframe id="emailPreviewFrame" style="width:100%;height:300px;border:1px solid #E5E7EB;border-radius:4px"></iframe>
-                    <div class="small text-muted mt-1">Outlook / Gmail se jo email jaayegi wo plain text hogi (upar wala formatted card sirf preview ke liye hai).</div>
+                    <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> "Copy Formatted Email + Open Outlook" dabane se yehi design clipboard mein copy ho jayega — Outlook khulne par body field mein <b>Ctrl+V</b> dabao, poora format waisa hi aa jayega.</div>
                 </div>
                 <div id="emailStatusMsg"></div>
-                <div class="small text-center mt-2">Outlook Web ki jagah desktop Outlook app try karna hai? <a href="#" onclick="sendViaOutlook();return false;">yahan click karo</a></div>
+                <div class="small text-center mt-2">Plain text hi bhejni hai (paste nahi karna)? <a href="#" onclick="sendViaOutlook();return false;">Desktop mail app</a> &nbsp;|&nbsp; <a href="#" onclick="sendViaGmail();return false;">Gmail</a></div>
             </div>
             <div class="modal-footer flex-wrap">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -123,8 +123,7 @@
                 {
                     <button class="btn btn-outline-success btn-sm" id="sendEmailBtn" onclick="sendEmailNow()"><i class="bi bi-send"></i> Send Automatically (SMTP)</button>
                 }
-                <button class="btn btn-outline-danger" onclick="sendViaGmail()"><i class="bi bi-google"></i> Gmail</button>
-                <button class="btn btn-primary" onclick="openOutlookWeb()"><i class="bi bi-microsoft"></i> Open in Outlook</button>
+                <button class="btn btn-primary" id="openOutlookBtn" onclick="openOutlookFormatted()"><i class="bi bi-clipboard-check"></i> Copy Formatted Email + Open Outlook</button>
             </div>
         </div>
     </div>
@@ -136,6 +135,7 @@ const ticket = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
 const itEmail = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.ItEmail));
 const ccEmails = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.CcEmails));
 const sendOnClose = @Html.Raw(ViewBag.SendOnClose ? "true" : "false");
+let cachedEmailHtml = '';
 
 function updateStatus(id, status) {
     fetch('/Helpdesk/UpdateStatus/' + id, {
@@ -201,21 +201,33 @@ function buildEmailBody() {
 }
 
 function openEmailModal() {
+    document.getElementById('emailTo').classList.remove('is-invalid');
     document.getElementById('emailTo').value = ticket.empEmail || '';
     const cc = [itEmail, ccEmails].filter(Boolean).join(', ');
     document.getElementById('emailCc').value = cc;
     document.getElementById('emailSubject').value = `[${ticket.ticketId}] [${ticket.priority}] ${ticket.title}`;
-    document.getElementById('emailPreviewFrame').src = '/Helpdesk/EmailPreview/' + encodeURIComponent(ticket.ticketId);
     document.getElementById('emailStatusMsg').innerHTML = '';
+    cachedEmailHtml = '';
+    fetch('/Helpdesk/EmailPreview/' + encodeURIComponent(ticket.ticketId))
+        .then(r => r.text())
+        .then(html => {
+            cachedEmailHtml = html;
+            document.getElementById('emailPreviewFrame').srcdoc = html;
+        });
     new bootstrap.Modal(document.getElementById('emailModal')).show();
 }
 
 function ensureEmpEmail() {
-    let to = document.getElementById('emailTo').value.trim();
+    const inp = document.getElementById('emailTo');
+    let to = inp.value.trim();
     if (!to) {
-        to = prompt('Employee ka email address:', '');
-        if (!to) return null;
-        document.getElementById('emailTo').value = to;
+        inp.classList.add('is-invalid');
+        inp.focus();
+        document.getElementById('emailStatusMsg').innerHTML = '<div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle"></i> Pehle employee ka email address bharo.</div>';
+        return null;
+    }
+    inp.classList.remove('is-invalid');
+    if (to !== ticket.empEmail) {
         fetch('/Helpdesk/SetEmpEmail', {
             method: 'POST',
             headers: {'Content-Type':'application/x-www-form-urlencoded'},
@@ -246,6 +258,40 @@ function openOutlookWeb() {
     let url = 'https://outlook.office.com/mail/deeplink/compose?to=' + encodeURIComponent(to) + '&subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
     if (cc) url += '&cc=' + encodeURIComponent(cc);
     window.open(url, '_blank');
+}
+
+function openOutlookFormatted() {
+    const to = ensureEmpEmail();
+    if (!to) return;
+    const cc = document.getElementById('emailCc').value;
+    const subject = document.getElementById('emailSubject').value;
+    let url = 'https://outlook.office.com/mail/deeplink/compose?to=' + encodeURIComponent(to) + '&subject=' + encodeURIComponent(subject);
+    if (cc) url += '&cc=' + encodeURIComponent(cc);
+    const win = window.open(url, '_blank');
+    const popupBlocked = !win || win.closed || typeof win.closed === 'undefined';
+    const statusEl = document.getElementById('emailStatusMsg');
+    const html = cachedEmailHtml || ('<pre style="white-space:pre-wrap;font-family:Segoe UI,Arial,sans-serif">' + buildEmailBody() + '</pre>');
+    const plain = buildEmailBody();
+    const doCopy = () => {
+        if (navigator.clipboard && window.ClipboardItem) {
+            return navigator.clipboard.write([
+                new ClipboardItem({
+                    'text/html': new Blob([html], { type: 'text/html' }),
+                    'text/plain': new Blob([plain], { type: 'text/plain' })
+                })
+            ]);
+        }
+        return navigator.clipboard.writeText(plain);
+    };
+    doCopy().then(() => {
+        if (popupBlocked) {
+            statusEl.innerHTML = '<div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle"></i> Formatted email clipboard mein copy ho gaya, lekin popup block ho gaya. <a href="' + url + '" target="_blank">Yahan click karke Outlook kholo</a>, phir body field mein <b>Ctrl+V</b> dabao.</div>';
+        } else {
+            statusEl.innerHTML = '<div class="alert alert-success small mb-0"><i class="bi bi-check-circle"></i> Formatted email copy ho gaya! Outlook khul gaya — body field mein click karke <b>Ctrl+V</b> dabao, poora design waisa hi paste ho jayega.</div>';
+        }
+    }).catch(err => {
+        statusEl.innerHTML = '<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle"></i> Clipboard copy fail ho gaya: ' + err + '. Preview box ko select karke Ctrl+C se manually copy karo.</div>';
+    });
 }
 
 function sendViaGmail() {
