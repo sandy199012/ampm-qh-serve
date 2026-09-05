@@ -61,7 +61,7 @@
                     <td>@if(!string.IsNullOrEmpty(priority)){<span class="badge bg-@pBadge">@priority</span>}</td>
                     <td><span class="badge bg-@badge">@status</span></td>
                     <td>
-                        <a href="/PurchaseOrders/Details/@poNo" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i></a>
+                        <a href="/PurchaseOrders/Details/@Uri.EscapeDataString(poNo)" class="btn btn-outline-primary btn-sm"><i class="bi bi-eye"></i></a>
                     </td>
                 </tr>
             }

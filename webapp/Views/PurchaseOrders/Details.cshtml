@@ -115,7 +115,7 @@
 <script>
 function updatePOStatus(id, status) {
     if(!confirm('Change status to: ' + status + '?')) return;
-    fetch('/PurchaseOrders/UpdateStatus/' + id, {
+    fetch('/PurchaseOrders/UpdateStatus/' + encodeURIComponent(id), {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: 'status=' + encodeURIComponent(status)

@@ -22,4 +22,7 @@ app.Services.GetRequiredService<DbService>().Init();
 app.UseStaticFiles();
 app.UseRouting();
 app.MapControllerRoute("default", "{controller=Account}/{action=Login}/{id?}");
+// Allow encoded slashes in route values
+app.MapControllerRoute("podetails", "PurchaseOrders/Details/{*id}", 
+    new { controller="PurchaseOrders", action="Details" });
 app.Run();

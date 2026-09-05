@@ -33,7 +33,9 @@ public class PurchaseOrdersController : Controller
     public IActionResult Details(string id)
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
-        var po = _db.QueryFirst<string>("SELECT data FROM po_list WHERE po_number=@id", new { id });
+        // Decode URL-encoded PO number (/ becomes %2F)
+        var poNumber = Uri.UnescapeDataString(id);
+        var po = _db.QueryFirst<string>("SELECT data FROM po_list WHERE po_number=@id", new { id = poNumber });
         if (po == null) return NotFound();
         return View(JsonConvert.DeserializeObject<Dictionary<string,object?>>(po) ?? new());
     }
@@ -115,12 +117,13 @@ public class PurchaseOrdersController : Controller
     [HttpPost]
     public IActionResult UpdateStatus(string id, string status)
     {
-        var raw = _db.QueryFirst<string>("SELECT data FROM po_list WHERE po_number=@id", new { id });
+        var poNumber = Uri.UnescapeDataString(id);
+        var raw = _db.QueryFirst<string>("SELECT data FROM po_list WHERE po_number=@id", new { id = poNumber });
         if (raw == null) return NotFound();
         var po = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
         po["status"] = status;
         _db.Execute("UPDATE po_list SET data=@d, status=@s WHERE po_number=@id",
-            new { d=JsonConvert.SerializeObject(po), s=status, id });
+            new { d=JsonConvert.SerializeObject(po), s=status, id=poNumber });
         return Json(new { ok=true });
     }
 }
