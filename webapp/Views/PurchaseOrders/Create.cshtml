@@ -1,5 +1,7 @@
 @{ViewData["Title"] = "New Purchase Order";
-  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING"};}
+  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING"};
+  var budgetItems = (List<Dictionary<string,object?>>)(ViewBag.BudgetItems ?? new List<Dictionary<string,object?>>());
+}
 
 <div class="d-flex align-items-center mb-4 gap-3">
     <a href="/PurchaseOrders/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
@@ -35,6 +37,13 @@
                         <option>Credit 30 Days</option><option>Credit 45 Days</option><option>On Delivery</option>
                     </select>
                 </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Link to Budget Line</label>
+                    <select name="budgetId" class="form-select">
+                        <option value="">-- None --</option>
+                        @foreach(var b in budgetItems)
+                        {<option value="@b.GetValueOrDefault("id")">@b.GetValueOrDefault("description") (@b.GetValueOrDefault("section"))</option>}
+                    </select>
+                </div>
             </div>
         </div>
     </div>
@@ -60,6 +69,32 @@
         </div>
     </div>
 
+    <!-- Bill To / Ship To -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#0891B2;color:white">Bill To</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Name</label>
+                    <input type="text" name="billToName" class="form-control" placeholder="AMPM Fashions Pvt. Ltd."/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">GSTIN</label>
+                    <input type="text" name="billToGst" class="form-control" placeholder="09AAFCA4854J1ZE"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Address</label>
+                    <textarea name="billToAddr" class="form-control" rows="2" placeholder="B-144, Sector 10, Noida - 201301"></textarea></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#0369A1;color:white">Ship To <span class="fw-normal small">(leave blank if same as Bill To)</span></div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Name</label>
+                    <input type="text" name="shipToName" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Address</label>
+                    <textarea name="shipToAddr" class="form-control" rows="3"></textarea></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Items -->
     <div class="col-12">
         <div class="card border-0 shadow-sm">
@@ -71,10 +106,11 @@
                 <table class="table mb-0" id="itemsTable">
                     <thead class="table-light">
                         <tr>
-                            <th style="width:40%">Description</th>
-                            <th style="width:10%">Qty</th>
+                            <th style="width:32%">Description</th>
+                            <th style="width:10%">HSN</th>
+                            <th style="width:9%">Qty</th>
                             <th style="width:12%">Rate (Rs.)</th>
-                            <th style="width:10%">GST %</th>
+                            <th style="width:9%">GST %</th>
                             <th style="width:13%">Amount</th>
                             <th style="width:5%"></th>
                         </tr>
@@ -82,6 +118,7 @@
                     <tbody id="itemsBody">
                         <tr id="item_0">
                             <td><input type="text" name="items[0][desc]" class="form-control form-control-sm" placeholder="Item description" required/></td>
+                            <td><input type="text" name="items[0][hsn]" class="form-control form-control-sm"/></td>
                             <td><input type="number" name="items[0][qty]" class="form-control form-control-sm qty" value="1" min="0.01" step="0.01" onchange="calcRow(0)"/></td>
                             <td><input type="number" name="items[0][rate]" class="form-control form-control-sm rate" value="0" min="0" step="0.01" onchange="calcRow(0)"/></td>
                             <td><input type="number" name="items[0][gst]" class="form-control form-control-sm gst" value="18" min="0" max="28" onchange="calcTotal()"/></td>
@@ -143,6 +180,7 @@ function addItem() {
     const i = itemCount++;
     const row = `<tr id="item_${i}">
         <td><input type="text" name="items[${i}][desc]" class="form-control form-control-sm" placeholder="Item description" required/></td>
+        <td><input type="text" name="items[${i}][hsn]" class="form-control form-control-sm"/></td>
         <td><input type="number" name="items[${i}][qty]" class="form-control form-control-sm qty" value="1" min="0.01" step="0.01" onchange="calcRow(${i})"/></td>
         <td><input type="number" name="items[${i}][rate]" class="form-control form-control-sm rate" value="0" min="0" step="0.01" onchange="calcRow(${i})"/></td>
         <td><input type="number" name="items[${i}][gst]" class="form-control form-control-sm gst" value="18" onchange="calcTotal()"/></td>

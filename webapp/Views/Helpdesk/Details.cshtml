@@ -34,6 +34,8 @@
             <div class="card-body">
                 <div class="row g-2">
                     <div class="col-md-4"><small class="text-muted d-block">Name</small><strong>@Model.GetValueOrDefault("empName")</strong></div>
+                    <div class="col-md-4"><small class="text-muted d-block">Designation</small><strong>@Model.GetValueOrDefault("empDesig")</strong></div>
+                    <div class="col-md-4"><small class="text-muted d-block">HOD</small><strong>@Model.GetValueOrDefault("empHod")</strong></div>
                     <div class="col-md-4"><small class="text-muted d-block">Department</small><strong>@Model.GetValueOrDefault("empDept")</strong></div>
                     <div class="col-md-4"><small class="text-muted d-block">Mobile</small><strong>@Model.GetValueOrDefault("empMobile")</strong></div>
                     <div class="col-md-4"><small class="text-muted d-block">Email</small><strong>@Model.GetValueOrDefault("empEmail")</strong></div>
@@ -53,9 +55,17 @@
             <div class="card-body">
                 <small class="text-muted d-block">Date Raised</small>
                 <strong>@Model.GetValueOrDefault("dateRaised")</strong>
+                @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("dateAcknowledged")?.ToString())){
+                    <small class="text-muted d-block mt-2">Date Acknowledged</small>
+                    <strong class="text-primary">@Model.GetValueOrDefault("dateAcknowledged")</strong>
+                }
                 @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("dateResolved")?.ToString())){
                     <small class="text-muted d-block mt-2">Date Resolved</small>
                     <strong class="text-success">@Model.GetValueOrDefault("dateResolved")</strong>
+                }
+                @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("dateClosed")?.ToString())){
+                    <small class="text-muted d-block mt-2">Date Closed</small>
+                    <strong class="text-secondary">@Model.GetValueOrDefault("dateClosed")</strong>
                 }
             </div>
         </div>

@@ -4,12 +4,17 @@
     var poNo = Model.GetValueOrDefault("poNumber")?.ToString() ?? "";
     var status = Model.GetValueOrDefault("status")?.ToString() ?? "Draft";
     var sBadge = status=="Approved"?"success":status=="Received"?"info":status=="Cancelled"?"danger":status=="Pending"?"warning":"secondary";
+    var bills = (List<Dictionary<string,object?>>)(ViewBag.Bills ?? new List<Dictionary<string,object?>>());
+    double billedTotal = bills.Sum(b => { double.TryParse(b.GetValueOrDefault("totalAmount")?.ToString(), out var a); return a; });
 }
 
 <div class="d-flex align-items-center mb-4 gap-3">
     <a href="/PurchaseOrders/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
     <h5 class="fw-bold mb-0 font-monospace">@poNo</h5>
     <span class="badge bg-@sBadge fs-6">@status</span>
+    <div class="ms-auto">
+        <a href="/PurchaseOrders/Print/@poNo" target="_blank" class="btn btn-outline-dark btn-sm"><i class="bi bi-printer"></i> Print / PDF</a>
+    </div>
 </div>
 
 <div class="row g-3">
@@ -24,6 +29,32 @@
                     <div class="col-md-6"><small class="text-muted d-block">GST No.</small><strong>@Model.GetValueOrDefault("vendorGst")</strong></div>
                     <div class="col-md-6"><small class="text-muted d-block">Payment Terms</small><strong>@Model.GetValueOrDefault("paymentTerms")</strong></div>
                     <div class="col-md-6"><small class="text-muted d-block">Delivery Date</small><strong>@Model.GetValueOrDefault("deliveryDate")</strong></div>
+                    @if (!string.IsNullOrEmpty(Model.GetValueOrDefault("budgetDesc")?.ToString()))
+                    {
+                    <div class="col-md-12"><small class="text-muted d-block">Linked Budget Line</small><strong>@Model.GetValueOrDefault("budgetDesc")</strong></div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header fw-bold" style="background:#0891B2;color:white">Bill To</div>
+                    <div class="card-body small">
+                        <strong>@Model.GetValueOrDefault("billToName")</strong><br/>
+                        GST: @Model.GetValueOrDefault("billToGst")<br/>
+                        @Model.GetValueOrDefault("billToAddr")
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header fw-bold" style="background:#0369A1;color:white">Ship To</div>
+                    <div class="card-body small">
+                        <strong>@Model.GetValueOrDefault("shipToName")</strong><br/>
+                        @Model.GetValueOrDefault("shipToAddr")
+                    </div>
                 </div>
             </div>
         </div>
@@ -56,13 +87,41 @@
                         double.TryParse(item["qty"]?.ToString(), out qty);
                         <tr>
                             <td>@sno</td>
-                            <td><strong>@item["description"]</strong><br/><small class="text-muted">@item["unit"]</small></td>
+                            <td><strong>@item["desc"]</strong></td>
                             <td class="small text-muted">@item["hsn"]</td>
                             <td class="text-center">@qty</td>
                             <td class="text-end">&#8377;@rate.ToString("N2")</td>
                             <td class="text-end fw-bold">&#8377;@((qty*rate).ToString("N2"))</td>
                         </tr>
                     }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Purchase Bills against this PO -->
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background:#7C3AED;color:white">
+                <span class="fw-bold">Purchase Bills (Actuals) — ₹@billedTotal.ToString("N2")</span>
+                <a href="/PurchaseBills/Create?poNumber=@Uri.EscapeDataString(poNo)" class="btn btn-sm btn-light"><i class="bi bi-plus"></i> Record Bill</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="table-light small">
+                        <tr><th>Bill No</th><th>Date</th><th>Amount</th><th>GST</th><th>Total</th></tr>
+                    </thead>
+                    <tbody>
+                        @if (!bills.Any()) { <tr><td colspan="5" class="text-center text-muted py-3">No bills recorded yet</td></tr> }
+                        @foreach (var b in bills)
+                        {
+                            <tr class="small">
+                                <td>@b.GetValueOrDefault("billNo")</td>
+                                <td>@b.GetValueOrDefault("billDate")</td>
+                                <td>₹@b.GetValueOrDefault("amount")</td>
+                                <td>₹@b.GetValueOrDefault("gstAmount")</td>
+                                <td class="fw-bold">₹@b.GetValueOrDefault("totalAmount")</td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
             </div>

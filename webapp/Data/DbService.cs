@@ -172,6 +172,9 @@ public class DbService
     public List<Dictionary<string,object?>> GetBudget()
         => KGetObj<List<Dictionary<string,object?>>>("budget") ?? new();
 
+    public void SaveBudget(List<Dictionary<string,object?>> budget)
+        => KSet("budget", budget);
+
     public List<Dictionary<string,object?>> GetBills()
         => KGetObj<List<Dictionary<string,object?>>>("bills") ?? new();
 

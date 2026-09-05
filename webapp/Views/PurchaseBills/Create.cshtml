@@ -1,0 +1,66 @@
+@{
+    ViewData["Title"] = "Record Purchase Bill";
+    var po = (Dictionary<string,object?>?)ViewBag.PO;
+    var allPOs = (List<Dictionary<string,object?>>)(ViewBag.AllPOs ?? new List<Dictionary<string,object?>>());
+    var budgetItems = (List<Dictionary<string,object?>>)(ViewBag.BudgetItems ?? new List<Dictionary<string,object?>>());
+    var poDefaultBudgetId = po?.GetValueOrDefault("budgetId")?.ToString() ?? "";
+}
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/PurchaseBills/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0">Record Purchase Bill</h5>
+</div>
+<div class="row justify-content-center"><div class="col-lg-7">
+<div class="card border-0 shadow-sm"><div class="card-body p-4">
+<form method="post" action="/PurchaseBills/Create">
+    <div class="row g-3">
+        <div class="col-12"><label class="form-label small fw-bold">Purchase Order *</label>
+            <select name="poNumber" id="poSelect" class="form-select" required onchange="onPoChange()">
+                <option value="">Select PO...</option>
+                @foreach (var p in allPOs)
+                {
+                    var pn = p.GetValueOrDefault("poNumber")?.ToString() ?? "";
+                    var vn = p.GetValueOrDefault("vendorName")?.ToString() ?? "";
+                    if (po != null && po.GetValueOrDefault("poNumber")?.ToString() == pn)
+                    { <option value="@pn" data-vendor="@vn" selected>@pn — @vn</option> }
+                    else
+                    { <option value="@pn" data-vendor="@vn">@pn — @vn</option> }
+                }
+            </select>
+        </div>
+        <div class="col-md-6"><label class="form-label small fw-bold">Vendor Name</label><input type="text" name="vendorName" id="vendorNameInput" class="form-control" value="@(po?.GetValueOrDefault("vendorName"))" required/></div>
+        <div class="col-md-6"><label class="form-label small fw-bold">Bill / Invoice No.</label><input type="text" name="billNo" class="form-control"/></div>
+        <div class="col-md-4"><label class="form-label small fw-bold">Bill Date *</label><input type="date" name="billDate" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" required/></div>
+        <div class="col-md-4"><label class="form-label small fw-bold">Amount (before GST)</label><input type="number" step="0.01" name="amount" class="form-control" required/></div>
+        <div class="col-md-4"><label class="form-label small fw-bold">GST Amount</label><input type="number" step="0.01" name="gstAmount" class="form-control" value="0"/></div>
+        <div class="col-12"><label class="form-label small fw-bold">Post actual to Budget line</label>
+            <select name="budgetId" class="form-select">
+                <option value="">-- Don't post to budget --</option>
+                @foreach (var b in budgetItems)
+                {
+                    var bid = b.GetValueOrDefault("id")?.ToString() ?? "";
+                    if (bid == poDefaultBudgetId)
+                    { <option value="@bid" selected>@b.GetValueOrDefault("description") (@b.GetValueOrDefault("section"))</option> }
+                    else
+                    { <option value="@bid">@b.GetValueOrDefault("description") (@b.GetValueOrDefault("section"))</option> }
+                }
+            </select>
+        </div>
+        <div class="col-12"><label class="form-label small fw-bold">Notes</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+    </div>
+    <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-dark px-4"><i class="bi bi-plus-circle"></i> Record Bill</button>
+        <a href="/PurchaseBills/Index" class="btn btn-outline-secondary px-4">Cancel</a>
+    </div>
+</form>
+</div></div>
+</div></div>
+
+@section Scripts {
+<script>
+function onPoChange(){
+    var sel = document.getElementById('poSelect');
+    var opt = sel.options[sel.selectedIndex];
+    document.getElementById('vendorNameInput').value = opt.getAttribute('data-vendor') || '';
+}
+</script>
+}

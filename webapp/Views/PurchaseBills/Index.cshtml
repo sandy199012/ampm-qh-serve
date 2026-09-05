@@ -1,0 +1,47 @@
+@model List<Dictionary<string,object?>>
+@{
+    ViewData["Title"] = "Purchase Bills";
+    double total = ViewBag.Total ?? 0;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0"><i class="bi bi-receipt text-dark"></i> Purchase Bills &mdash; @Model.Count <span class="text-muted small">(₹@total.ToString("N0"))</span></h5>
+    <a href="/PurchaseBills/Create" class="btn btn-dark btn-sm px-3"><i class="bi bi-plus-circle"></i> Record Bill</a>
+</div>
+
+@if (!string.IsNullOrEmpty(ViewBag.PoFilter as string))
+{
+    <div class="alert alert-light border small">Showing bills for PO <b>@ViewBag.PoFilter</b> — <a href="/PurchaseBills/Index">clear filter</a></div>
+}
+
+<div class="card border-0 shadow-sm">
+<div class="table-responsive">
+<table class="table table-hover mb-0">
+<thead class="table-light" style="font-size:11px">
+<tr><th class="ps-3">PO Number</th><th>Vendor</th><th>Bill No</th><th>Bill Date</th><th>Amount</th><th>GST</th><th>Total</th><th></th></tr>
+</thead>
+<tbody>
+@if(!Model.Any()){<tr><td colspan="8" class="text-center text-muted py-4">No purchase bills recorded</td></tr>}
+@foreach (var b in Model)
+{
+    var bid = b.GetValueOrDefault("id")?.ToString() ?? "";
+    var pn = b.GetValueOrDefault("poNumber")?.ToString() ?? "";
+    <tr>
+        <td class="ps-3 font-monospace small"><a href="/PurchaseOrders/Details/@Uri.EscapeDataString(pn)">@pn</a></td>
+        <td class="small">@b.GetValueOrDefault("vendorName")</td>
+        <td class="small">@b.GetValueOrDefault("billNo")</td>
+        <td class="small">@b.GetValueOrDefault("billDate")</td>
+        <td class="small">₹@b.GetValueOrDefault("amount")</td>
+        <td class="small">₹@b.GetValueOrDefault("gstAmount")</td>
+        <td class="small fw-bold">₹@b.GetValueOrDefault("totalAmount")</td>
+        <td>
+            <form method="post" action="/PurchaseBills/Delete/@bid" onsubmit="return confirm('Delete this bill? This reverses its posted amount from the Budget.')">
+                <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i></button>
+            </form>
+        </td>
+    </tr>
+}
+</tbody>
+</table>
+</div>
+</div>
