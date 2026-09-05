@@ -112,10 +112,10 @@ public class PurchaseBillsController : Controller
         JObject monthly = monthlyRaw as JObject ?? (monthlyRaw != null ? JObject.FromObject(monthlyRaw) : new JObject());
 
         double curActual = 0, curProjected = 0;
-        if (monthly[monthKey] is JObject mo)
+        if (monthly[monthKey] is JObject curMo)
         {
-            double.TryParse(mo["actual"]?.ToString(), out curActual);
-            double.TryParse(mo["projected"]?.ToString(), out curProjected);
+            double.TryParse(curMo["actual"]?.ToString(), out curActual);
+            double.TryParse(curMo["projected"]?.ToString(), out curProjected);
         }
         monthly[monthKey] = new JObject { ["projected"] = curProjected, ["actual"] = curActual + delta };
         item["monthly"] = monthly;
@@ -123,9 +123,9 @@ public class PurchaseBillsController : Controller
         double totalActual = 0, totalProjected = 0;
         foreach (var prop in monthly.Properties())
         {
-            var mo = prop.Value as JObject;
-            double.TryParse(mo?["actual"]?.ToString(), out var a); totalActual += a;
-            double.TryParse(mo?["projected"]?.ToString(), out var p); totalProjected += p;
+            var moItem = prop.Value as JObject;
+            double.TryParse(moItem?["actual"]?.ToString(), out var a); totalActual += a;
+            double.TryParse(moItem?["projected"]?.ToString(), out var p); totalProjected += p;
         }
         item["TotalActual"]    = totalActual;
         item["TotalProjected"] = totalProjected;
