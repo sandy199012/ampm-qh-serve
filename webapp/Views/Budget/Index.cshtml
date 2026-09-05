@@ -47,14 +47,14 @@
 </div>
 
 <!-- Budget Table -->
-@foreach(var section in sections)
+@foreach(var sectionName in sections)
 {
-    var sItems = Model.Where(b => b.GetValueOrDefault("section")?.ToString() == section).ToList();
+    var sItems = Model.Where(b => b.GetValueOrDefault("section")?.ToString() == sectionName).ToList();
     double sProj = sItems.Sum(b => { double.TryParse(b.GetValueOrDefault("TotalProjected")?.ToString(), out var v); return v; });
     double sAct  = sItems.Sum(b => { double.TryParse(b.GetValueOrDefault("TotalActual")?.ToString(), out var v); return v; });
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-header d-flex justify-content-between align-items-center" style="background:#0A192F;color:white">
-            <span class="fw-bold">@section</span>
+            <span class="fw-bold">@sectionName</span>
             <span class="small">Projected: &#8377;@sProj.ToString("N0") | Actual: &#8377;@sAct.ToString("N0")</span>
         </div>
         <div class="table-responsive">
