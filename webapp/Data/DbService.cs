@@ -50,6 +50,8 @@ public class DbService
             CREATE TABLE IF NOT EXISTS stock_issues (id TEXT PRIMARY KEY, item_id TEXT, issue_no TEXT, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS it_stock_items (id TEXT PRIMARY KEY, item_type TEXT, name TEXT NOT NULL, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS it_stock_issues (id TEXT PRIMARY KEY, item_id TEXT, issue_no TEXT, data TEXT NOT NULL, ts TEXT);
+            CREATE TABLE IF NOT EXISTS it_issue_scans (id TEXT PRIMARY KEY, issue_id TEXT, file_name TEXT, file_data TEXT, content_type TEXT, uploaded_at TEXT, uploaded_by TEXT);
+            CREATE TABLE IF NOT EXISTS po_scans (id TEXT PRIMARY KEY, po_number TEXT, file_name TEXT, file_data TEXT, content_type TEXT, uploaded_at TEXT, uploaded_by TEXT);
         ";
         cmd.ExecuteNonQuery();
 
@@ -193,6 +195,29 @@ public class DbService
     {
         var rows = Query<string>("SELECT data FROM vendors ORDER BY name");
         return rows.Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList();
+    }
+
+    // ── Scans (signed forms/PO copies) ───────────────────────
+    public Dictionary<string,object?>? GetLatestScan(string table, string keyColumn, string keyValue)
+    {
+        using var conn = GetConn();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT file_name, file_data, content_type FROM {table} WHERE {keyColumn}=@k ORDER BY uploaded_at DESC LIMIT 1";
+        cmd.Parameters.AddWithValue("@k", keyValue);
+        using var reader = cmd.ExecuteReader();
+        if (!reader.Read()) return null;
+        return new Dictionary<string,object?>
+        {
+            ["fileName"]    = reader.IsDBNull(0) ? null : reader.GetString(0),
+            ["fileData"]    = reader.IsDBNull(1) ? null : reader.GetString(1),
+            ["contentType"] = reader.IsDBNull(2) ? null : reader.GetString(2),
+        };
+    }
+
+    public HashSet<string> GetScannedKeys(string table, string keyColumn)
+    {
+        try { return Query<string>($"SELECT DISTINCT {keyColumn} FROM {table}").Where(s => !string.IsNullOrEmpty(s)).ToHashSet(); }
+        catch { return new(); }
     }
 
     // ── Stats ─────────────────────────────────────────────────

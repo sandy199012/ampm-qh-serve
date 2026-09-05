@@ -150,7 +150,7 @@
             </div>
         </div>
 
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm mb-3">
             <div class="card-header fw-bold" style="background:#7C3AED;color:white">Update Status</div>
             <div class="card-body">
                 <div class="d-grid gap-2">
@@ -159,6 +159,20 @@
                     <button class="btn btn-info btn-sm text-white" onclick="updatePOStatus('@poNo','Received')"><i class="bi bi-box-seam"></i> Mark Received</button>
                     <button class="btn btn-danger btn-sm" onclick="updatePOStatus('@poNo','Cancelled')"><i class="bi bi-x-circle"></i> Cancel</button>
                 </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#059669;color:white"><i class="bi bi-file-earmark-arrow-up"></i> Signed Copy</div>
+            <div class="card-body">
+                @if (ViewBag.HasScan == true)
+                {
+                    <a href="/PurchaseOrders/ViewScan/@poNo" target="_blank" class="btn btn-outline-success btn-sm w-100 mb-2"><i class="bi bi-file-earmark-check"></i> View Signed Copy</a>
+                }
+                <p class="small text-muted mb-2">PO print karke sign/scan karo, phir yahan upload karo.</p>
+                <input type="file" id="poScanFile" accept=".pdf,.jpg,.jpeg,.png" class="form-control form-control-sm mb-2"/>
+                <button type="button" class="btn btn-success btn-sm w-100" onclick="uploadPoScan()"><i class="bi bi-upload"></i> Upload Signed Copy</button>
+                <div id="poScanStatus" class="mt-2 small text-muted"></div>
             </div>
         </div>
     </div>
@@ -179,6 +193,17 @@ function updatePOStatus(id, status) {
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: 'status=' + encodeURIComponent(status)
     }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
+}
+function uploadPoScan() {
+    const file = document.getElementById('poScanFile').files[0];
+    if (!file) { alert('File select karo!'); return; }
+    const fd = new FormData();
+    fd.append('scan', file);
+    fetch('/PurchaseOrders/UploadScan/@poNo', { method:'POST', body:fd })
+        .then(r => r.json()).then(d => {
+            if(d.ok) { document.getElementById('poScanStatus').innerHTML = '✅ Uploaded: ' + d.fileName; setTimeout(()=>location.reload(), 900); }
+            else document.getElementById('poScanStatus').innerHTML = '❌ Error: ' + d.msg;
+        });
 }
 </script>
 }

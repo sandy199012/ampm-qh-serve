@@ -31,6 +31,7 @@ public class ITStoreController : Controller
         ViewBag.Issues = issues;
         ViewBag.TypeFilter = type;
         ViewBag.TotalIssued = issues.Sum(i => { int.TryParse(i.GetValueOrDefault("qty")?.ToString(), out var q); return q; });
+        ViewBag.ScannedIssues = _db.GetScannedKeys("it_issue_scans", "issue_id");
         return View(items);
     }
 
@@ -179,9 +180,93 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
         string base64 = Convert.ToBase64String(ms.ToArray());
         string scanId = Guid.NewGuid().ToString("N")[..8];
         try {
-            _db.Execute("INSERT INTO it_issue_scans (id,issue_id,file_name,file_data,uploaded_at,uploaded_by) VALUES (@id,@iid,@fn,@fd,@at,@by)",
-                new { id=scanId, iid=id, fn=scan.FileName, fd=base64, at=DateTime.Now.ToString("o"), by=HttpContext.Request.Cookies["ampm_name"] ?? "Sandy" });
+            _db.Execute("INSERT INTO it_issue_scans (id,issue_id,file_name,file_data,content_type,uploaded_at,uploaded_by) VALUES (@id,@iid,@fn,@fd,@ct,@at,@by)",
+                new { id=scanId, iid=id, fn=scan.FileName, fd=base64, ct=scan.ContentType, at=DateTime.Now.ToString("o"), by=HttpContext.Request.Cookies["ampm_name"] ?? "Sandy" });
         } catch { }
         return Json(new { ok=true, scanId, fileName=scan.FileName });
+    }
+
+    [HttpGet]
+    public IActionResult ViewScan(string id)
+    {
+        var scan = _db.GetLatestScan("it_issue_scans", "issue_id", id);
+        if (scan == null) return NotFound();
+        var bytes = Convert.FromBase64String(scan.GetValueOrDefault("fileData")?.ToString() ?? "");
+        var ct = scan.GetValueOrDefault("contentType")?.ToString();
+        return File(bytes, string.IsNullOrEmpty(ct) ? "application/octet-stream" : ct);
+    }
+
+    [HttpGet]
+    public IActionResult PrintIssue(string id)
+    {
+        var raw = _db.QueryFirst<string>("SELECT data FROM it_stock_issues WHERE issue_no=@id", new { id });
+        if (raw == null) return NotFound();
+        var issue = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
+        string S(string k) => issue.GetValueOrDefault(k)?.ToString() ?? "";
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append(@"<!DOCTYPE html><html><head><meta charset='UTF-8'>
+<title>Material Issue Form</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,Helvetica,sans-serif;color:#1E293B;margin:34px;font-size:13px}
+.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:3px solid #0A192F}
+.company-name{font-size:20px;font-weight:800;color:#0A192F;letter-spacing:.5px;margin:0 0 8px 0}
+.company-info{font-size:11px;color:#475569;line-height:1.7}
+.form-title{font-size:20px;font-weight:800;color:#0A192F;letter-spacing:.5px;text-align:right;margin:0 0 8px 0}
+.form-meta{font-size:12px;text-align:right;color:#334155;line-height:1.7}
+.form-meta b{color:#0A192F}
+
+.box{margin-top:24px;border:1.5px solid #99F6E4;border-radius:6px;padding:16px 18px}
+.box-label{color:#0D9488;font-size:10px;font-weight:700;letter-spacing:.6px;margin-bottom:12px}
+.grid{display:flex;flex-wrap:wrap;gap:26px}
+.item{min-width:160px}
+.item .k{font-size:10px;color:#64748B;letter-spacing:.5px;margin-bottom:3px}
+.item .v{font-size:14px;font-weight:700;color:#0F172A}
+
+.sig-row{display:flex;gap:16px;margin-top:70px}
+.sig-box{flex:1;border:1px solid #E2E8F0;border-radius:6px;padding:26px 12px 14px 12px;text-align:center}
+.sig-line{border-top:1px solid #94A3B8;margin:0 20px 10px 20px}
+.sig-name{font-size:12px;font-weight:700;color:#0F172A}
+.sig-role{font-size:10px;color:#64748B;margin-top:3px}
+
+.no-print{text-align:center;margin-bottom:20px}
+.no-print button{padding:9px 22px;background:#0A192F;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px}
+@media print{.no-print{display:none}body{margin:14px}}
+</style></head><body>
+
+<div class='no-print'><button onclick='window.print()'>Print / Save as PDF</button></div>
+
+<div class='header'>
+  <div>
+    <div class='company-name'>AMPM FASHIONS PVT LTD</div>
+    <div class='company-info'>B-144 SECTOR 10<br/>NOIDA- 201301<br/>IT Department</div>
+  </div>
+  <div>
+    <div class='form-title'>MATERIAL ISSUE FORM</div>
+    <div class='form-meta'><b>").Append(S("issueNo")).Append(@"</b><br/>Date: <b>").Append(S("issueDate")).Append(@"</b></div>
+  </div>
+</div>
+
+<div class='box'>
+  <div class='box-label'>ISSUE DETAILS</div>
+  <div class='grid'>
+    <div class='item'><div class='k'>ITEM</div><div class='v'>").Append(S("itemName")).Append(@"</div></div>
+    <div class='item'><div class='k'>TYPE</div><div class='v'>").Append(S("itemType")).Append(@"</div></div>
+    <div class='item'><div class='k'>QUANTITY</div><div class='v'>").Append(S("qty")).Append(@"</div></div>
+    <div class='item'><div class='k'>DEPARTMENT</div><div class='v'>").Append(S("dept")).Append(@"</div></div>
+    <div class='item'><div class='k'>ISSUED TO</div><div class='v'>").Append(S("empName")).Append(@"</div></div>
+    <div class='item'><div class='k'>PURPOSE</div><div class='v'>").Append(S("purpose")).Append(@"</div></div>
+    <div class='item'><div class='k'>ISSUED BY</div><div class='v'>").Append(S("issuedBy")).Append(@"</div></div>
+  </div>
+</div>
+
+<div class='sig-row'>
+  <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>Issued By</div><div class='sig-role'>IT Department</div></div>
+  <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>Received By</div><div class='sig-role'>").Append(S("empName")).Append(@" — Employee Signature</div></div>
+</div>
+
+</body></html>");
+        return Content(sb.ToString(), "text/html");
     }
 }

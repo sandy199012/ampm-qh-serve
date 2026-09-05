@@ -39,6 +39,7 @@ public class PurchaseOrdersController : Controller
         if (po == null) return NotFound();
         ViewBag.Bills = (_db.KGetObj<List<Dictionary<string,object?>>>("purchase_bills") ?? new())
             .Where(b => b.GetValueOrDefault("poNumber")?.ToString() == poNumber).ToList();
+        ViewBag.HasScan = _db.GetLatestScan("po_scans", "po_number", poNumber) != null;
         return View(JsonConvert.DeserializeObject<Dictionary<string,object?>>(po) ?? new());
     }
 
@@ -331,6 +332,33 @@ table.items tbody td{font-size:12px;padding:9px 6px;border-bottom:1px solid #F1F
 
 </body></html>");
         return Content(sb.ToString(), "text/html");
+    }
+
+    [HttpPost("/PurchaseOrders/UploadScan/{*id}")]
+    public async Task<IActionResult> UploadScan(string id, IFormFile scan)
+    {
+        var poNumber = Uri.UnescapeDataString(id);
+        if (scan == null || scan.Length == 0) return Json(new { ok=false, msg="No file" });
+        using var ms = new MemoryStream();
+        await scan.CopyToAsync(ms);
+        string base64 = Convert.ToBase64String(ms.ToArray());
+        string scanId = Guid.NewGuid().ToString("N")[..8];
+        try {
+            _db.Execute("INSERT INTO po_scans (id,po_number,file_name,file_data,content_type,uploaded_at,uploaded_by) VALUES (@id,@pn,@fn,@fd,@ct,@at,@by)",
+                new { id=scanId, pn=poNumber, fn=scan.FileName, fd=base64, ct=scan.ContentType, at=DateTime.Now.ToString("o"), by=HttpContext.Request.Cookies["ampm_name"] ?? "Sandy" });
+        } catch { }
+        return Json(new { ok=true, scanId, fileName=scan.FileName });
+    }
+
+    [HttpGet("/PurchaseOrders/ViewScan/{*id}")]
+    public IActionResult ViewScan(string id)
+    {
+        var poNumber = Uri.UnescapeDataString(id);
+        var scan = _db.GetLatestScan("po_scans", "po_number", poNumber);
+        if (scan == null) return NotFound();
+        var bytes = Convert.FromBase64String(scan.GetValueOrDefault("fileData")?.ToString() ?? "");
+        var ct = scan.GetValueOrDefault("contentType")?.ToString();
+        return File(bytes, string.IsNullOrEmpty(ct) ? "application/octet-stream" : ct);
     }
 
     static string NumberToWords(double num)
