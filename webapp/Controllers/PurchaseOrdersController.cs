@@ -97,7 +97,7 @@ public class PurchaseOrdersController : Controller
             ["vendorAddr"]   = form["vendorAddr"].ToString(),
             ["vendorPhone"]  = form["vendorPhone"].ToString(),
             ["vendorContact"]= form["vendorContact"].ToString(),
-            ["billToName"]   = string.IsNullOrWhiteSpace(form["billToName"].ToString()) ? "AMPM Fashions Pvt. Ltd." : form["billToName"].ToString(),
+            ["billToName"]   = string.IsNullOrWhiteSpace(form["billToName"].ToString()) ? "AMPM Fashions Pvt Ltd" : form["billToName"].ToString(),
             ["billToGst"]    = string.IsNullOrWhiteSpace(form["billToGst"].ToString()) ? "09AAFCA4854J1ZE" : form["billToGst"].ToString(),
             ["billToAddr"]   = string.IsNullOrWhiteSpace(form["billToAddr"].ToString()) ? "B-144, Sector 10, Noida - 201301" : form["billToAddr"].ToString(),
             ["shipToName"]   = string.IsNullOrWhiteSpace(form["shipToName"].ToString()) ? form["billToName"].ToString() : form["shipToName"].ToString(),
@@ -153,40 +153,149 @@ public class PurchaseOrdersController : Controller
         var itemsRaw = po.GetValueOrDefault("items");
         var items = itemsRaw is JArray ja ? ja.Cast<JObject>().ToList() : new List<JObject>();
 
+        string S(string key) => po.GetValueOrDefault(key)?.ToString() ?? "";
+        double.TryParse(S("subTotal"), out var subTotal);
+        double.TryParse(S("gstAmount"), out var gstAmount);
+        double.TryParse(S("grandTotal"), out var grandTotal);
+        var priority = S("priority");
+        var priColor = priority.Equals("Urgent", StringComparison.OrdinalIgnoreCase) || priority.Equals("High", StringComparison.OrdinalIgnoreCase) ? "#DC2626" : "#0F172A";
+        var status = string.IsNullOrEmpty(S("status")) ? "Draft" : S("status");
+
         var sb = new System.Text.StringBuilder();
-        sb.Append($@"<html><head><meta charset='UTF-8'><style>
-body{{font-family:Arial;font-size:12px;margin:30px;color:#111}}
-.hdrbox{{text-align:center;margin-bottom:6px}}
-.hdrbox h2{{margin:0}}
-.sub{{text-align:center;color:#555;font-size:11px;margin-bottom:16px}}
-.title{{text-align:center;background:#0A192F;color:white;padding:6px;font-weight:bold;margin-bottom:14px}}
-table{{border-collapse:collapse;width:100%;margin-bottom:14px}}
-td,th{{border:1px solid #333;padding:6px;font-size:11px}}
-th{{background:#eee;text-align:left}}
-.addrbox{{display:flex;gap:14px;margin-bottom:14px}}
-.addrbox > div{{flex:1;border:1px solid #333;padding:8px}}
-.addrbox h4{{margin:0 0 6px 0;font-size:12px;background:#1e3a5f;color:white;padding:4px 6px;margin:-8px -8px 8px -8px}}
-.totals td{{border:none;padding:3px 6px}}
-.totals{{width:300px;margin-left:auto}}
+        sb.Append(@"<!DOCTYPE html><html><head><meta charset='UTF-8'>
+<title>Purchase Order</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:Arial,Helvetica,sans-serif;color:#1E293B;margin:34px;font-size:13px}
+.header{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:3px solid #0A192F}
+.company-name{font-size:22px;font-weight:800;color:#0A192F;letter-spacing:.5px;margin:0 0 8px 0}
+.company-info{font-size:11px;color:#475569;line-height:1.7}
+.po-title{font-size:22px;font-weight:800;color:#0A192F;letter-spacing:.5px;text-align:right;margin:0 0 8px 0}
+.po-meta{font-size:12px;text-align:right;color:#334155;line-height:1.7}
+.po-meta b{color:#0A192F}
+.status-badge{font-size:11px;color:#94A3B8;text-align:right;margin-top:6px;font-style:italic}
+
+.box-row{display:flex;gap:14px;margin-top:22px}
+.box{flex:1;border:1.5px solid;border-radius:6px;padding:12px 14px}
+.box-label{font-size:10px;font-weight:700;letter-spacing:.6px;margin-bottom:8px}
+.box .nm{font-size:13px;font-weight:700;color:#0F172A;margin-bottom:2px}
+.box .line{font-size:11px;color:#475569;margin-top:3px}
+
+.vendor-box{border-color:#FDBA74}.vendor-box .box-label{color:#C2410C}
+.billto-box{border-color:#FDE68A}.billto-box .box-label{color:#B45309}
+.shipto-box{border-color:#99F6E4}.shipto-box .box-label{color:#0D9488}
+.deliver{color:#059669;font-weight:600}
+
+.req-box{margin-top:14px;border:1.5px solid #99F6E4;border-radius:6px;padding:14px 16px}
+.req-box .box-label{color:#0D9488;font-size:10px;font-weight:700;letter-spacing:.6px;margin-bottom:10px}
+.req-grid{display:flex;gap:34px;flex-wrap:wrap}
+.req-item{min-width:150px}
+.req-item .k{font-size:10px;color:#64748B;letter-spacing:.5px;margin-bottom:3px}
+.req-item .v{font-size:13px;font-weight:700;color:#0F172A}
+.req-item .v.small{font-size:10px;font-weight:400;color:#64748B;margin-top:2px}
+
+table.items{width:100%;border-collapse:collapse;margin-top:24px}
+table.items thead th{font-size:10px;color:#64748B;letter-spacing:.5px;text-align:left;padding:8px 6px;border-bottom:2px solid #E2E8F0}
+table.items tbody td{font-size:12px;padding:9px 6px;border-bottom:1px solid #F1F5F9}
+.num{text-align:right}.center{text-align:center}
+
+.totals-wrap{display:flex;justify-content:flex-end;margin-top:18px}
+.totals-box{width:300px;border:1.5px solid #E2E8F0;border-radius:6px;padding:14px 16px}
+.totals-box .row{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;color:#334155}
+.totals-box .row b{color:#0F172A}
+.totals-box .grand{border-top:2px solid #CBD5E1;margin-top:8px;padding-top:10px;display:flex;justify-content:space-between;align-items:baseline}
+.totals-box .grand .lbl{font-size:12px;color:#94A3B8;font-weight:700}
+.totals-box .grand .val{font-size:19px;font-weight:800;color:#0A192F}
+.words{font-size:11px;font-style:italic;color:#1D4ED8;text-align:right;margin-top:8px}
+
+.notes-box{margin-top:22px;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:6px;padding:12px 14px;font-size:11px;color:#78350F;line-height:1.7}
+
+.sig-row{display:flex;gap:16px;margin-top:56px}
+.sig-box{flex:1;border:1px solid #E2E8F0;border-radius:6px;padding:26px 12px 14px 12px;text-align:center}
+.sig-line{border-top:1px solid #94A3B8;margin:0 20px 10px 20px}
+.sig-name{font-size:12px;font-weight:700;color:#0F172A}
+.sig-role{font-size:10px;color:#64748B;margin-top:3px}
+
+.no-print{text-align:center;margin-bottom:20px}
+.no-print button{padding:9px 22px;background:#0A192F;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px}
+@media print{.no-print{display:none}body{margin:14px}}
 </style></head><body>
-<div class='hdrbox'><h2>AMPM FASHIONS PVT. LTD.</h2></div>
-<div class='sub'>B-144, Sector 10, Noida - 201301 | GSTIN: 09AAFCA4854J1ZE</div>
-<div class='title'>PURCHASE ORDER — {po.GetValueOrDefault("poNumber")}</div>
 
-<table>
-<tr><th style='width:25%'>PO Date</th><td>{po.GetValueOrDefault("date")}</td><th style='width:20%'>Priority</th><td>{po.GetValueOrDefault("priority")}</td></tr>
-<tr><th>Department</th><td>{po.GetValueOrDefault("dept")}</td><th>Delivery Date</th><td>{po.GetValueOrDefault("deliveryDate")}</td></tr>
-<tr><th>Payment Terms</th><td>{po.GetValueOrDefault("paymentTerms")}</td><th>Purpose</th><td>{po.GetValueOrDefault("purpose")}</td></tr>
-</table>
+<div class='no-print'><button onclick='window.print()'>Print / Save as PDF</button></div>
 
-<div class='addrbox'>
-<div><h4>VENDOR</h4><b>{po.GetValueOrDefault("vendorName")}</b><br/>GST: {po.GetValueOrDefault("vendorGst")}<br/>{po.GetValueOrDefault("vendorAddr")}<br/>Ph: {po.GetValueOrDefault("vendorPhone")} | {po.GetValueOrDefault("vendorContact")}</div>
-<div><h4>BILL TO</h4><b>{po.GetValueOrDefault("billToName")}</b><br/>GST: {po.GetValueOrDefault("billToGst")}<br/>{po.GetValueOrDefault("billToAddr")}</div>
-<div><h4>SHIP TO</h4><b>{po.GetValueOrDefault("shipToName")}</b><br/>{po.GetValueOrDefault("shipToAddr")}</div>
+<div class='header'>
+  <div>
+    <div class='company-name'>AMPM FASHIONS PVT LTD</div>
+    <div class='company-info'>
+      B-144 SECTOR 10<br/>NOIDA- 201301<br/>
+      &#9742; 9871988372 &nbsp;|&nbsp; &#9993; itsupport@ampm.in<br/>
+      GSTIN: <b>09AAFCA4854J1ZE</b>
+    </div>
+  </div>
+  <div>
+    <div class='po-title'>PURCHASE ORDER</div>
+    <div class='po-meta'>
+      <b>").Append(S("poNumber")).Append(@"</b><br/>
+      Date: <b>").Append(S("date")).Append(@"</b><br/>
+      Delivery By: <b>").Append(S("deliveryDate")).Append(@"</b>
+    </div>
+    <div class='status-badge'>").Append(status).Append(@"</div>
+  </div>
 </div>
 
-<table>
-<thead><tr><th>#</th><th>Description</th><th>HSN</th><th>Qty</th><th>Rate</th><th>GST%</th><th>Amount</th></tr></thead>
+<div class='box-row'>
+  <div class='box vendor-box'>
+    <div class='box-label'>VENDOR / SUPPLIER</div>
+    <div class='nm'>").Append(S("vendorName")).Append(@"</div>
+    <div class='line'>").Append(S("vendorAddr")).Append(@"</div>
+    <div class='line'>GSTIN: <b>").Append(S("vendorGst")).Append(@"</b></div>
+    <div class='line'>Attn: ").Append(S("vendorContact")).Append(@"</div>
+    <div class='line'>&#9742; ").Append(S("vendorPhone")).Append(@"</div>
+    <div class='line'>Payment Terms: <b>").Append(S("paymentTerms")).Append(@"</b></div>
+  </div>
+  <div class='box billto-box'>
+    <div class='box-label'>BILL TO</div>
+    <div class='nm'>").Append(S("billToName")).Append(@"</div>
+    <div class='line'>GSTIN: <b>").Append(S("billToGst")).Append(@"</b></div>
+    <div class='line'>").Append(S("billToAddr")).Append(@"</div>
+  </div>
+  <div class='box shipto-box'>
+    <div class='box-label'>SHIP TO / DELIVER TO</div>
+    <div class='nm'>").Append(S("shipToName")).Append(@"</div>
+    <div class='line'>").Append(S("shipToAddr")).Append(@"</div>
+    <div class='line deliver'>&#128197; Deliver by: ").Append(S("deliveryDate")).Append(@"</div>
+  </div>
+</div>
+
+<div class='req-box'>
+  <div class='box-label'>REQUISITION DETAILS</div>
+  <div class='req-grid'>
+    <div class='req-item'>
+      <div class='k'>REQUESTED BY</div>
+      <div class='v'>").Append(S("createdBy").ToUpper()).Append(@"</div>
+      <div class='v small'>SYSTEM ADMINISTRATOR</div>
+    </div>
+    <div class='req-item'>
+      <div class='k'>DEPARTMENT</div>
+      <div class='v'>").Append(S("dept")).Append(@"</div>
+    </div>
+    <div class='req-item'>
+      <div class='k'>APPROVED BY / HOD</div>
+      <div class='v'>").Append(S("approvedBy")).Append(@"</div>
+    </div>
+    <div class='req-item'>
+      <div class='k'>PRIORITY</div>
+      <div class='v' style='color:").Append(priColor).Append(@"'>").Append(priority).Append(@"</div>
+    </div>
+    <div class='req-item'>
+      <div class='k'>PURPOSE / REASON</div>
+      <div class='v'>").Append(S("purpose")).Append(@"</div>
+    </div>
+  </div>
+</div>
+
+<table class='items'>
+<thead><tr><th style='width:28px'>#</th><th>DESCRIPTION</th><th class='center'>QTY</th><th class='num'>RATE</th><th class='num'>AMOUNT</th><th class='center'>GST%</th><th class='num'>GST AMT</th><th class='num'>TOTAL</th></tr></thead>
 <tbody>");
         int sno = 0;
         foreach (var item in items)
@@ -194,25 +303,75 @@ th{{background:#eee;text-align:left}}
             sno++;
             double.TryParse(item["rate"]?.ToString(), out var rate);
             double.TryParse(item["qty"]?.ToString(), out var qty);
-            sb.Append($"<tr><td>{sno}</td><td>{item["desc"]}</td><td>{item["hsn"]}</td><td style='text-align:center'>{qty}</td><td style='text-align:right'>₹{rate:N2}</td><td style='text-align:center'>{item["gst"]}%</td><td style='text-align:right'>₹{(qty*rate):N2}</td></tr>");
+            double.TryParse(item["gst"]?.ToString(), out var gstPct);
+            var amount = qty * rate;
+            var gstAmt = amount * gstPct / 100;
+            var lineTotal = amount + gstAmt;
+            sb.Append($"<tr><td>{sno}</td><td>{item["desc"]}</td><td class='center'>{qty:0.##}</td><td class='num'>₹{rate:N2}</td><td class='num'>₹{amount:N2}</td><td class='center'>{gstPct:0.##}%</td><td class='num'>₹{gstAmt:N2}</td><td class='num'><b>₹{lineTotal:N2}</b></td></tr>");
         }
         sb.Append("</tbody></table>");
 
-        sb.Append($@"<table class='totals'>
-<tr><td>Sub Total</td><td style='text-align:right'>₹{po.GetValueOrDefault("subTotal")}</td></tr>
-<tr><td>GST ({po.GetValueOrDefault("gstType")})</td><td style='text-align:right'>₹{po.GetValueOrDefault("gstAmount")}</td></tr>
-<tr style='font-weight:bold;border-top:2px solid #333'><td>Grand Total</td><td style='text-align:right'>₹{po.GetValueOrDefault("grandTotal")}</td></tr>
-</table>");
+        sb.Append(@"<div class='totals-wrap'><div class='totals-box'>
+  <div class='row'>Subtotal <b>&#8377;").Append(subTotal.ToString("N2")).Append(@"</b></div>
+  <div class='row'>GST Total <b>&#8377;").Append(gstAmount.ToString("N2")).Append(@"</b></div>
+  <div class='grand'><span class='lbl'>GRAND TOTAL</span><span class='val'>&#8377;").Append(grandTotal.ToString("N2")).Append(@"</span></div>
+</div></div>
+<div class='words'>Amount in Words: <b>").Append(NumberToWords(grandTotal)).Append(@"</b></div>
 
-        if (!string.IsNullOrEmpty(po.GetValueOrDefault("notes")?.ToString()))
-            sb.Append($"<p><b>Notes/Terms:</b> {po.GetValueOrDefault("notes")}</p>");
+<div class='notes-box'><b>Notes:</b> E. &amp; O. E. 1. Our risk &amp; responsibility ceases on delivery of goods to the carrier. 2. No complaint whatsoever shall be entertained regarding quantity &amp; quality of the goods once the same are collected/Despatched from our work. 3. All disputes are subject to Gautam Budh Nagar Jurisdiction.</div>");
 
-        sb.Append($@"
-<div style='margin-top:50px;display:flex;justify-content:space-between'>
-<div style='width:40%;border-top:1px solid #333;padding-top:6px;text-align:center;font-size:11px'>Prepared By — {po.GetValueOrDefault("createdBy")}</div>
-<div style='width:40%;border-top:1px solid #333;padding-top:6px;text-align:center;font-size:11px'>Approved By — {po.GetValueOrDefault("approvedBy")}</div>
+        if (!string.IsNullOrEmpty(S("notes")))
+            sb.Append("<div class='notes-box' style='margin-top:10px'><b>Additional Notes:</b> ").Append(S("notes")).Append("</div>");
+
+        sb.Append(@"<div class='sig-row'>
+  <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>Prepared By</div><div class='sig-role'>IT Department</div></div>
+  <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>Approved By</div><div class='sig-role'>").Append(S("approvedBy")).Append(@"</div></div>
+  <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>Authorised Signatory</div><div class='sig-role'>Sandeep Kumar | HOD- Accounts &amp; Finance</div></div>
 </div>
+
 </body></html>");
         return Content(sb.ToString(), "text/html");
+    }
+
+    static string NumberToWords(double num)
+    {
+        long rupees = (long)Math.Round(num);
+        if (rupees == 0) return "Zero Rupees Only";
+        return ConvertIndian(rupees) + " Rupees Only";
+    }
+
+    static readonly string[] Ones = {"","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten",
+        "Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"};
+    static readonly string[] Tens = {"","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"};
+
+    static string TwoDigits(long x)
+    {
+        if (x < 20) return Ones[x];
+        return Tens[x/10] + (x%10 > 0 ? " " + Ones[x%10] : "");
+    }
+
+    static string ThreeDigits(long x)
+    {
+        string s = "";
+        if (x >= 100) { s += Ones[x/100] + " Hundred"; x %= 100; if (x > 0) s += " "; }
+        if (x > 0) s += TwoDigits(x);
+        return s;
+    }
+
+    static string ConvertIndian(long n)
+    {
+        if (n == 0) return "Zero";
+        var parts = new List<string>();
+        long crore = n / 10000000; n %= 10000000;
+        long lakh = n / 100000; n %= 100000;
+        long thousand = n / 1000; n %= 1000;
+        long rest = n;
+
+        if (crore > 0) parts.Add(TwoDigits(crore) + " Crore");
+        if (lakh > 0) parts.Add(TwoDigits(lakh) + " Lakh");
+        if (thousand > 0) parts.Add(TwoDigits(thousand) + " Thousand");
+        if (rest > 0) parts.Add(ThreeDigits(rest));
+
+        return string.Join(" ", parts);
     }
 }
