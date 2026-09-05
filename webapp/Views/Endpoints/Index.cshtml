@@ -1,0 +1,149 @@
+@model List<Dictionary<string,object?>>
+@{ViewData["Title"] = "Endpoint Monitor";}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0"><i class="bi bi-activity text-danger"></i> Endpoint Monitor</h5>
+    <div class="d-flex gap-2">
+        <button class="btn btn-success btn-sm px-3" onclick="checkAll()"><i class="bi bi-play-circle"></i> Check All</button>
+        <button class="btn btn-primary btn-sm px-3" onclick="addEndpoint()"><i class="bi bi-plus-circle"></i> Add</button>
+    </div>
+</div>
+
+<!-- Status Summary -->
+<div class="row g-2 mb-3" id="summary">
+    <div class="col-4"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4" id="totalCount">@Model.Count</div><div class="small text-muted">Total</div></div></div>
+    <div class="col-4"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success" id="upCount">-</div><div class="small text-muted">Online</div></div></div>
+    <div class="col-4"><div class="card border-0 bg-danger-subtle text-center py-2"><div class="fw-bold fs-4 text-danger" id="downCount">-</div><div class="small text-muted">Offline</div></div></div>
+</div>
+
+<!-- Last Check Time -->
+<div class="text-muted small mb-3" id="lastCheck">Not checked yet. Click "Check All" to start.</div>
+
+<!-- Endpoints Grid -->
+<div class="row g-3" id="endpointsGrid">
+@{int idx = 0;}
+@foreach(var ep in Model)
+{
+    var name = ep.GetValueOrDefault("name")?.ToString() ?? "";
+    var url  = ep.GetValueOrDefault("url")?.ToString() ?? "";
+    var cat  = ep.GetValueOrDefault("category")?.ToString() ?? "General";
+    var enabled = ep.GetValueOrDefault("enabled")?.ToString()?.ToLower() != "false";
+    <div class="col-md-4" id="ep_@idx">
+        <div class="card border-0 shadow-sm h-100" style="border-left:4px solid #CBD5E1!important">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="fw-bold mb-0">@name</h6>
+                        <span class="badge bg-secondary small">@cat</span>
+                    </div>
+                    <span class="badge bg-secondary" id="status_@idx">⏳ Pending</span>
+                </div>
+                <div class="small text-muted text-truncate mb-2"><a href="@url" target="_blank" class="text-muted">@url</a></div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted" id="ms_@idx"></small>
+                    <button class="btn btn-outline-primary btn-sm" onclick="checkOne(@idx, '@url')"><i class="bi bi-arrow-repeat"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+    idx++;
+}
+</div>
+
+<!-- Add Endpoint Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0A192F;color:white">
+                <h5 class="modal-title">Add Endpoint</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3"><label class="form-label fw-bold small">Name</label><input type="text" id="newName" class="form-control" placeholder="My Server"/></div>
+                <div class="mb-3"><label class="form-label fw-bold small">URL</label><input type="text" id="newUrl" class="form-control" placeholder="https://example.com"/></div>
+                <div class="mb-3"><label class="form-label fw-bold small">Category</label>
+                    <select id="newCat" class="form-select">
+                        @foreach(var c in new[]{"Internal","External","Cloud","Server","API","Other"})
+                        {<option>@c</option>}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEndpoint()">Add</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const endpoints = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
+
+async function checkOne(idx, url) {
+    const card = document.getElementById('ep_' + idx);
+    const badge = document.getElementById('status_' + idx);
+    const msEl = document.getElementById('ms_' + idx);
+    badge.className = 'badge bg-warning';
+    badge.textContent = '⏳ Checking...';
+    card.style.borderLeftColor = '#F59E0B';
+    try {
+        const res = await fetch('/api/endpoints/check?url=' + encodeURIComponent(url));
+        const d = await res.json();
+        if (d.ok && d.status < 400) {
+            badge.className = 'badge bg-success';
+            badge.textContent = '✅ Online (' + d.status + ')';
+            card.style.borderLeftColor = '#10B981';
+            msEl.textContent = d.ms + 'ms';
+        } else {
+            badge.className = 'badge bg-danger';
+            badge.textContent = '❌ ' + (d.status || 'Error');
+            card.style.borderLeftColor = '#EF4444';
+            msEl.textContent = d.error ? d.error.substring(0,30) : '';
+        }
+    } catch(e) {
+        badge.className = 'badge bg-danger';
+        badge.textContent = '❌ Failed';
+        card.style.borderLeftColor = '#EF4444';
+    }
+    updateSummary();
+}
+
+async function checkAll() {
+    document.getElementById('lastCheck').textContent = 'Checking... please wait';
+    const promises = endpoints.map((ep, i) => checkOne(i, ep.url));
+    await Promise.all(promises);
+    document.getElementById('lastCheck').textContent = 'Last checked: ' + new Date().toLocaleTimeString();
+}
+
+function updateSummary() {
+    let up = 0, down = 0;
+    document.querySelectorAll('[id^="status_"]').forEach(el => {
+        if (el.textContent.includes('✅')) up++;
+        else if (el.textContent.includes('❌')) down++;
+    });
+    document.getElementById('upCount').textContent = up;
+    document.getElementById('downCount').textContent = down;
+}
+
+function addEndpoint() {
+    new bootstrap.Modal(document.getElementById('addModal')).show();
+}
+
+function saveEndpoint() {
+    const name = document.getElementById('newName').value.trim();
+    const url  = document.getElementById('newUrl').value.trim();
+    const cat  = document.getElementById('newCat').value;
+    if (!name || !url) return alert('Name and URL required!');
+    endpoints.push({ name, url, category: cat, enabled: true });
+    fetch('/Endpoints/Save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(endpoints)
+    }).then(() => location.reload());
+}
+
+// Auto check on page load
+window.addEventListener('DOMContentLoaded', () => setTimeout(checkAll, 500));
+</script>
+}
