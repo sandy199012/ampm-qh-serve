@@ -74,6 +74,7 @@ public class AuthService
             Role = string.IsNullOrWhiteSpace(row.Role) ? "user" : row.Role!,
             Department = row.Department ?? "",
             Permissions = perms,
+            EmpId = row.EmpId,
         };
     }
 }
@@ -88,6 +89,7 @@ public class UserRow
     public string? Department { get; set; }
     public int IsActive { get; set; } = 1;
     public string? Permissions { get; set; }
+    public string? EmpId { get; set; }
 }
 
 public class ModulePermission
@@ -104,6 +106,7 @@ public class UserSession
     public string Role { get; set; } = "user";
     public string Department { get; set; } = "";
     public Dictionary<string, ModulePermission> Permissions { get; set; } = new();
+    public string? EmpId { get; set; }
 
     public bool IsSuperAdmin => Role == "superadmin";
     public bool IsAdmin => Role is "superadmin" or "admin";

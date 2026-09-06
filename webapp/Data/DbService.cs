@@ -60,6 +60,11 @@ public class DbService
         cmd.CommandText = "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions TEXT;";
         cmd.ExecuteNonQuery();
 
+        // Links a login account to an Employees record — lets the mobile app show
+        // an employee only the tickets raised for/by them (matched on this code).
+        cmd.CommandText = "ALTER TABLE users ADD COLUMN IF NOT EXISTS emp_id TEXT;";
+        cmd.ExecuteNonQuery();
+
         // Ensure admin user — and self-repair it. Login used to bypass this table entirely
         // (hardcoded username/password check), so an existing 'sandy' row could have a
         // stale/blank/invalid password hash that nobody ever noticed. Now that Login()
@@ -328,9 +333,10 @@ public class DbService
         Department   = reader.IsDBNull(5) ? null : reader.GetString(5),
         IsActive     = reader.IsDBNull(6) ? 1 : reader.GetInt32(6),
         Permissions  = reader.IsDBNull(7) ? null : reader.GetString(7),
+        EmpId        = reader.IsDBNull(8) ? null : reader.GetString(8),
     };
 
-    const string UserCols = "id,username,password_hash,name,role,department,is_active,permissions";
+    const string UserCols = "id,username,password_hash,name,role,department,is_active,permissions,emp_id";
 
     public List<UserRow> GetUsers()
     {
@@ -366,33 +372,45 @@ public class DbService
     public bool UsernameExists(string username, int excludeId = 0)
         => QueryFirst<long>("SELECT COUNT(*) FROM users WHERE lower(username)=lower(@u) AND id<>@e", new { u = username, e = excludeId }) > 0;
 
-    public int CreateUser(string username, string passwordHash, string? name, string role, string? department, string permissionsJson)
+    public int CreateUser(string username, string passwordHash, string? name, string role, string? department, string permissionsJson, string? empId = null)
     {
         using var conn = GetConn();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"INSERT INTO users (username,password_hash,name,role,department,is_active,permissions,created_at)
-                             VALUES (@u,@h,@n,@r,@d,1,@p,@t) RETURNING id";
+        cmd.CommandText = @"INSERT INTO users (username,password_hash,name,role,department,is_active,permissions,emp_id,created_at)
+                             VALUES (@u,@h,@n,@r,@d,1,@p,@e,@t) RETURNING id";
         cmd.Parameters.AddWithValue("@u", username);
         cmd.Parameters.AddWithValue("@h", passwordHash);
         cmd.Parameters.AddWithValue("@n", (object?)name ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@r", role);
         cmd.Parameters.AddWithValue("@d", (object?)department ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@p", permissionsJson);
+        cmd.Parameters.AddWithValue("@e", (object?)empId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@t", DateTime.Now.ToString("o"));
         return (int)cmd.ExecuteScalar()!;
     }
 
-    public void UpdateUser(int id, string? name, string role, string? department, string permissionsJson, int isActive, string? newPasswordHash)
+    public void UpdateUser(int id, string? name, string role, string? department, string permissionsJson, int isActive, string? newPasswordHash, string? empId = null)
     {
         if (!string.IsNullOrEmpty(newPasswordHash))
-            Execute("UPDATE users SET name=@n, role=@r, department=@d, permissions=@p, is_active=@a, password_hash=@h WHERE id=@id",
-                new { n = (object?)name ?? DBNull.Value, r = role, d = (object?)department ?? DBNull.Value, p = permissionsJson, a = isActive, h = newPasswordHash, id });
+            Execute("UPDATE users SET name=@n, role=@r, department=@d, permissions=@p, is_active=@a, password_hash=@h, emp_id=@e WHERE id=@id",
+                new { n = (object?)name ?? DBNull.Value, r = role, d = (object?)department ?? DBNull.Value, p = permissionsJson, a = isActive, h = newPasswordHash, e = (object?)empId ?? DBNull.Value, id });
         else
-            Execute("UPDATE users SET name=@n, role=@r, department=@d, permissions=@p, is_active=@a WHERE id=@id",
-                new { n = (object?)name ?? DBNull.Value, r = role, d = (object?)department ?? DBNull.Value, p = permissionsJson, a = isActive, id });
+            Execute("UPDATE users SET name=@n, role=@r, department=@d, permissions=@p, is_active=@a, emp_id=@e WHERE id=@id",
+                new { n = (object?)name ?? DBNull.Value, r = role, d = (object?)department ?? DBNull.Value, p = permissionsJson, a = isActive, e = (object?)empId ?? DBNull.Value, id });
     }
 
     public void DeleteUser(int id) => Execute("DELETE FROM users WHERE id=@id", new { id });
+
+    // Looks up one employee record by code — used to enrich mobile-raised tickets
+    // with name/dept/designation/etc. without the app having to send them all.
+    public Dictionary<string,object?>? GetEmployeeByCode(string code)
+    {
+        var raw = QueryFirst<string>("SELECT data FROM employees WHERE emp=@e", new { e = code });
+        if (raw == null) return null;
+        var data = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
+        data["emp"] = code;
+        return data;
+    }
 }
 
 public class DashboardStats

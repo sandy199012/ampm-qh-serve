@@ -42,6 +42,7 @@ public class UsersController : Controller
         var name = form["name"].ToString().Trim();
         var role = form["role"].ToString().Trim();
         var department = form["department"].ToString().Trim();
+        var empId = form["empId"].ToString().Trim();
 
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
@@ -57,7 +58,7 @@ public class UsersController : Controller
 
         var permsJson = JsonConvert.SerializeObject(BuildPermissionsFromForm(form));
         var hash = BCrypt.Net.BCrypt.HashPassword(password);
-        _db.CreateUser(username, hash, name, role, department, permsJson);
+        _db.CreateUser(username, hash, name, role, department, permsJson, string.IsNullOrWhiteSpace(empId) ? null : empId);
         TempData["Success"] = $"User '{username}' create ho gaya.";
         return RedirectToAction("Index");
     }
@@ -84,6 +85,7 @@ public class UsersController : Controller
         var department = form["department"].ToString().Trim();
         var role = form["role"].ToString().Trim();
         var isActive = form["isActive"] == "on" ? 1 : 0;
+        var empId = form["empId"].ToString().Trim();
 
         // The founding superadmin account can't be demoted or locked out from this screen.
         if (row.Role == "superadmin") { role = "superadmin"; isActive = 1; }
@@ -95,7 +97,7 @@ public class UsersController : Controller
         if (!string.IsNullOrWhiteSpace(newPassword))
             newHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
 
-        _db.UpdateUser(id, name, role, department, permsJson, isActive, newHash);
+        _db.UpdateUser(id, name, role, department, permsJson, isActive, newHash, string.IsNullOrWhiteSpace(empId) ? null : empId);
         TempData["Success"] = "User update ho gaya.";
         return RedirectToAction("Index");
     }

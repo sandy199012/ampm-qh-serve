@@ -14,8 +14,10 @@ public class ModulePermissionFilter : IActionFilter
     private readonly AuthService _auth;
     public ModulePermissionFilter(AuthService auth) { _auth = auth; }
 
+    // Api is exempt because it's the mobile app's entry point — it has no login
+    // cookie to check here, and instead verifies username+password on every call itself.
     static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
-        { "Account", "Home" };
+        { "Account", "Home", "Api" };
 
     public void OnActionExecuting(ActionExecutingContext context)
     {

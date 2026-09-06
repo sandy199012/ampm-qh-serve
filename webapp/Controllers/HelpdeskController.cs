@@ -312,7 +312,4 @@ public class HelpdeskController : Controller
     }
 
     static string CsvE(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";
-
-    [HttpGet("/api/tickets")]
-    public IActionResult ApiList() => Json(_db.GetTickets());
 }
