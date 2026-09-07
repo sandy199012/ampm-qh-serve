@@ -25,6 +25,13 @@ public class ModulePermissionFilter : IActionFilter
         if (ExemptControllers.Contains(controllerName)) return;
 
         var ctx = context.HttpContext;
+
+        // PC-inventory auto-report endpoint: called by the AMPM_PC_Agent script
+        // running unattended on office PCs — no browser/cookie session to check
+        // here, it verifies its own shared key instead (EndpointsController.ReportPc).
+        if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-pc", StringComparison.OrdinalIgnoreCase))
+            return;
+
         if (!_auth.IsLoggedIn(ctx))
         {
             context.Result = new RedirectToActionResult("Login", "Account", null);

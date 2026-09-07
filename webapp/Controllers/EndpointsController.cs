@@ -43,6 +43,53 @@ public class EndpointsController : Controller
         return Json(new { ok = true });
     }
 
+    // Shared key so only AMPM's own PC-inventory agent script can write here —
+    // change this (and the matching value in AMPM_PC_Agent.ps1) any time it needs rotating.
+    const string AgentKey = "AMPM-AGENT-2026";
+
+    // Called by AMPM_PC_Agent.ps1/.bat — run once (or on a schedule) on any office
+    // PC, it collects that PC's own hostname/IP/OS/CPU/RAM/disk and pushes it here,
+    // so PC Inventory fills itself in instead of typing/CSV-importing every machine.
+    // No login cookie exists for this caller, hence the shared key instead — see the
+    // matching exemption in Filters/ModulePermissionFilter.cs.
+    [HttpPost("/api/endpoints/report-pc")]
+    public IActionResult ReportPc([FromBody] Dictionary<string,object?> data)
+    {
+        if (data == null || data.GetValueOrDefault("key")?.ToString() != AgentKey)
+            return Unauthorized(new { ok = false, error = "Invalid or missing key" });
+
+        var hostname = data.GetValueOrDefault("hostname")?.ToString()?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(hostname))
+            return BadRequest(new { ok = false, error = "hostname missing" });
+
+        var pcs = _db.KGetObj<List<Dictionary<string,object?>>>("pc_inventory") ?? new();
+        var existing = pcs.FirstOrDefault(p =>
+            string.Equals(p.GetValueOrDefault("hostname")?.ToString(), hostname, StringComparison.OrdinalIgnoreCase));
+        var rec = existing ?? new Dictionary<string,object?>();
+
+        void SetIf(string srcKey, string dataKey)
+        {
+            var v = data.GetValueOrDefault(srcKey)?.ToString();
+            if (!string.IsNullOrWhiteSpace(v)) rec[dataKey] = v;
+        }
+        rec["hostname"] = hostname;
+        SetIf("ip", "ip");
+        SetIf("os", "os");
+        SetIf("cpu", "cpu");
+        SetIf("ramGb", "ramGb");
+        SetIf("diskFree", "diskFree");
+        SetIf("user", "user");
+        rec["lastSeen"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+        if (!rec.ContainsKey("qhVersion")) rec["qhVersion"] = "";
+        if (!rec.ContainsKey("qhService")) rec["qhService"] = "Not Installed";
+        if (!rec.ContainsKey("licenseKey")) rec["licenseKey"] = "";
+        if (!rec.ContainsKey("notes")) rec["notes"] = "Auto-reported by Agent";
+
+        if (existing == null) pcs.Add(rec);
+        _db.KSet("pc_inventory", pcs);
+        return Json(new { ok = true, hostname, updated = existing != null });
+    }
+
     // Quick-start: pull hostname/IP/OS already on file in Employees into PC Inventory
     [HttpPost("/Endpoints/ImportPcFromEmployees")]
     public IActionResult ImportPcFromEmployees()
