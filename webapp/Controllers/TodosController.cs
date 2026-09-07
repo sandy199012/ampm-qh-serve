@@ -52,8 +52,13 @@ public class TodosController : Controller
         return View(todos);
     }
 
+    // HTML <input type="time"> posts 24-hour "HH:mm" — reformat to a friendly
+    // 12-hour display string, or "" if left blank / unparsable.
+    static string FormatTime(string? raw)
+        => (!string.IsNullOrWhiteSpace(raw) && DateTime.TryParse(raw, out var tm)) ? tm.ToString("hh:mm tt") : "";
+
     [HttpPost]
-    public IActionResult Add(string task, string? priority, string? date)
+    public IActionResult Add(string task, string? priority, string? date, string? startTime, string? endTime)
     {
         var current = _auth.GetCurrentUser(HttpContext);
         if (current == null) return RedirectToAction("Login", "Account");
@@ -76,6 +81,8 @@ public class TodosController : Controller
             ["priority"]    = pr,
             ["status"]      = "Pending",
             ["taskDate"]    = taskDate,
+            ["startTime"]   = FormatTime(startTime),
+            ["endTime"]     = FormatTime(endTime),
             ["createdAt"]   = DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
             ["completedAt"] = null,
         };
@@ -180,7 +187,8 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
   <th style='width:28px'>S.No.</th>
   <th style='width:80px'>Date</th>
   {(allUsers ? "<th style='width:100px'>Employee</th>" : "")}
-  <th style='width:260px'>Task / Work Done</th>
+  <th style='width:220px'>Task / Work Done</th>
+  <th style='width:110px'>Time</th>
   <th style='width:60px'>Priority</th>
   <th style='width:80px'>Status</th>
   <th style='width:110px'>Added At</th>
@@ -194,7 +202,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
             var td = g.GetValueOrDefault("taskDate")?.ToString() ?? "";
             if (td != lastDate)
             {
-                sb.Append($"<tr><td colspan='{(allUsers ? 8 : 7)}' class='datehdr'>📅 {td}</td></tr>");
+                sb.Append($"<tr><td colspan='{(allUsers ? 9 : 8)}' class='datehdr'>📅 {td}</td></tr>");
                 lastDate = td;
             }
             sno++;
@@ -203,11 +211,14 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
             string rowCls = status switch { "Done" => "done", "In Progress" => "inprog", _ => "pending" };
             string prioCls = priority switch { "High" => "high", "Medium" => "medium", "Low" => "low", _ => "" };
             string statusStyle = status switch { "Done" => "color:#059669;font-weight:bold", "In Progress" => "color:#2563EB;font-weight:bold", _ => "color:#D97706;font-weight:bold" };
+            var st1 = g.GetValueOrDefault("startTime")?.ToString(); var et1 = g.GetValueOrDefault("endTime")?.ToString();
+            string timeRange = (!string.IsNullOrEmpty(st1) || !string.IsNullOrEmpty(et1)) ? $"{st1} - {et1}" : "";
             sb.Append($@"<tr class='{rowCls}'>
   <td style='text-align:center'>{sno}</td>
   <td style='text-align:center'>{td}</td>
   {(allUsers ? $"<td>{System.Net.WebUtility.HtmlEncode(g.GetValueOrDefault("userName")?.ToString())}</td>" : "")}
   <td>{System.Net.WebUtility.HtmlEncode(g.GetValueOrDefault("task")?.ToString())}</td>
+  <td style='text-align:center;white-space:nowrap'>{timeRange}</td>
   <td class='{prioCls}'>{priority}</td>
   <td style='{statusStyle};text-align:center'>{status}</td>
   <td style='text-align:center'>{g.GetValueOrDefault("createdAt")}</td>

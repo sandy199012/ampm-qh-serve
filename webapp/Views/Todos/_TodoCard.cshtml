@@ -9,6 +9,9 @@
     string status   = Model.GetValueOrDefault("status")?.ToString() ?? "Pending";
     string userName = Model.GetValueOrDefault("userName")?.ToString() ?? "";
     string created  = Model.GetValueOrDefault("createdAt")?.ToString() ?? "";
+    string startTime = Model.GetValueOrDefault("startTime")?.ToString() ?? "";
+    string endTime   = Model.GetValueOrDefault("endTime")?.ToString() ?? "";
+    string timeRange = (!string.IsNullOrEmpty(startTime) || !string.IsNullOrEmpty(endTime)) ? $"{startTime} – {endTime}" : "";
     string prioCls  = priority == "High" ? "high" : priority == "Low" ? "low" : "medium";
     string prioBadge = priority == "High" ? "danger" : priority == "Low" ? "success" : "warning";
 }
@@ -19,6 +22,10 @@
             <span class="badge bg-secondary mb-1"><i class="bi bi-person"></i> @userName</span>
         }
         <div class="mb-1">@task</div>
+        @if (!string.IsNullOrEmpty(timeRange))
+        {
+            <div class="small text-muted mb-1"><i class="bi bi-clock"></i> @timeRange</div>
+        }
         <div class="d-flex justify-content-between align-items-center">
             <div>
                 <span class="badge bg-@prioBadge">@priority</span>

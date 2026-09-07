@@ -78,6 +78,12 @@
             <form method="post" action="/Todos/Add" class="d-flex gap-2 flex-wrap align-items-center">
                 <input type="hidden" name="date" value="@dateStr"/>
                 <input type="text" name="task" class="form-control" style="flex:1;min-width:220px" placeholder="Aaj kya kaam kiya / karna hai... (task likho)" required/>
+                <div class="d-flex align-items-center gap-1">
+                    <small class="text-muted">From</small>
+                    <input type="time" name="startTime" class="form-control form-control-sm" style="width:120px"/>
+                    <small class="text-muted">To</small>
+                    <input type="time" name="endTime" class="form-control form-control-sm" style="width:120px"/>
+                </div>
                 <select name="priority" class="form-select" style="width:120px">
                     <option value="Medium" selected>Medium</option>
                     <option value="High">High</option>
