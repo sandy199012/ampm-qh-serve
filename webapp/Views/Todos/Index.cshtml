@@ -168,10 +168,21 @@
 @section Scripts {
 <script>
 function setTodoStatus(id, status) {
+    let extra = '';
+    if (status === 'In Progress') {
+        const step = prompt('What step are you taking on this task?');
+        if (step === null) return; // cancelled
+        extra = '&note=' + encodeURIComponent(step.trim());
+    } else if (status === 'Done') {
+        const lastStep = prompt('What was the last step you did to complete this?');
+        if (lastStep === null) return; // cancelled
+        const isVerified = confirm('Have you verified this is done correctly?\n\nOK = Yes, verified\nCancel = No, not verified');
+        extra = '&note=' + encodeURIComponent(lastStep.trim()) + '&verified=' + (isVerified ? 'Yes' : 'No');
+    }
     fetch('/Todos/SetStatus', {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
-        body: 'id=' + encodeURIComponent(id) + '&status=' + encodeURIComponent(status)
+        body: 'id=' + encodeURIComponent(id) + '&status=' + encodeURIComponent(status) + extra
     }).then(r => r.json()).then(d => { if (d.ok) location.reload(); else alert(d.error || 'Failed to update.'); });
 }
 function deleteTodo(id) {

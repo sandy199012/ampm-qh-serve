@@ -94,7 +94,7 @@ public class TodosController : Controller
     }
 
     [HttpPost]
-    public IActionResult SetStatus(string id, string status)
+    public IActionResult SetStatus(string id, string status, string? note, string? verified)
     {
         var current = _auth.GetCurrentUser(HttpContext);
         if (current == null) return Json(new { ok = false, error = "Login required." });
@@ -108,6 +108,17 @@ public class TodosController : Controller
 
         t["status"] = status;
         t["completedAt"] = status == "Done" ? DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt") : null;
+
+        // "In Progress" asks what step is being taken; "Done" asks the final step
+        // and whether it was verified — both surface on the card and in the Excel export.
+        if (status == "In Progress" && !string.IsNullOrWhiteSpace(note))
+            t["progressNote"] = note.Trim();
+        if (status == "Done")
+        {
+            if (!string.IsNullOrWhiteSpace(note)) t["lastStepNote"] = note.Trim();
+            t["verified"] = verified == "Yes" ? "Yes" : "No";
+        }
+
         _db.Execute("UPDATE todos SET data=@d WHERE id=@id", new { d = JsonConvert.SerializeObject(t), id });
         return Json(new { ok = true });
     }
@@ -191,6 +202,8 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
   <th style='width:110px'>Time</th>
   <th style='width:60px'>Priority</th>
   <th style='width:80px'>Status</th>
+  <th style='width:160px'>Step / Last Update</th>
+  <th style='width:70px'>Verified</th>
   <th style='width:110px'>Added At</th>
   <th style='width:110px'>Completed At</th>
 </tr></thead><tbody>");
@@ -202,7 +215,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
             var td = g.GetValueOrDefault("taskDate")?.ToString() ?? "";
             if (td != lastDate)
             {
-                sb.Append($"<tr><td colspan='{(allUsers ? 9 : 8)}' class='datehdr'>📅 {td}</td></tr>");
+                sb.Append($"<tr><td colspan='{(allUsers ? 11 : 10)}' class='datehdr'>📅 {td}</td></tr>");
                 lastDate = td;
             }
             sno++;
@@ -213,6 +226,13 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
             string statusStyle = status switch { "Done" => "color:#059669;font-weight:bold", "In Progress" => "color:#2563EB;font-weight:bold", _ => "color:#D97706;font-weight:bold" };
             var st1 = g.GetValueOrDefault("startTime")?.ToString(); var et1 = g.GetValueOrDefault("endTime")?.ToString();
             string timeRange = (!string.IsNullOrEmpty(st1) || !string.IsNullOrEmpty(et1)) ? $"{st1} - {et1}" : "";
+            string stepNote = status switch {
+                "Done" => g.GetValueOrDefault("lastStepNote")?.ToString() ?? "",
+                "In Progress" => g.GetValueOrDefault("progressNote")?.ToString() ?? "",
+                _ => ""
+            };
+            string verifiedVal = status == "Done" ? (g.GetValueOrDefault("verified")?.ToString() ?? "No") : "";
+            string verifiedStyle = verifiedVal == "Yes" ? "color:#059669;font-weight:bold" : (verifiedVal == "No" ? "color:#DC2626;font-weight:bold" : "");
             sb.Append($@"<tr class='{rowCls}'>
   <td style='text-align:center'>{sno}</td>
   <td style='text-align:center'>{td}</td>
@@ -221,6 +241,8 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
   <td style='text-align:center;white-space:nowrap'>{timeRange}</td>
   <td class='{prioCls}'>{priority}</td>
   <td style='{statusStyle};text-align:center'>{status}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(stepNote)}</td>
+  <td style='{verifiedStyle};text-align:center'>{verifiedVal}</td>
   <td style='text-align:center'>{g.GetValueOrDefault("createdAt")}</td>
   <td style='text-align:center'>{g.GetValueOrDefault("completedAt")}</td>
 </tr>");

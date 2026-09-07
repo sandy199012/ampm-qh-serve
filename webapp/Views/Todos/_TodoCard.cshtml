@@ -12,6 +12,9 @@
     string startTime = Model.GetValueOrDefault("startTime")?.ToString() ?? "";
     string endTime   = Model.GetValueOrDefault("endTime")?.ToString() ?? "";
     string timeRange = (!string.IsNullOrEmpty(startTime) || !string.IsNullOrEmpty(endTime)) ? $"{startTime} – {endTime}" : "";
+    string progressNote = Model.GetValueOrDefault("progressNote")?.ToString() ?? "";
+    string lastStepNote = Model.GetValueOrDefault("lastStepNote")?.ToString() ?? "";
+    string verified     = Model.GetValueOrDefault("verified")?.ToString() ?? "";
     string prioCls  = priority == "High" ? "high" : priority == "Low" ? "low" : "medium";
     string prioBadge = priority == "High" ? "danger" : priority == "Low" ? "success" : "warning";
 }
@@ -25,6 +28,28 @@
         @if (!string.IsNullOrEmpty(timeRange))
         {
             <div class="small text-muted mb-1"><i class="bi bi-clock"></i> @timeRange</div>
+        }
+        @if (status == "In Progress" && !string.IsNullOrEmpty(progressNote))
+        {
+            <div class="small mb-1"><i class="bi bi-arrow-right-circle text-primary"></i> <b>Step:</b> @progressNote</div>
+        }
+        @if (status == "Done")
+        {
+            @if (!string.IsNullOrEmpty(lastStepNote))
+            {
+                <div class="small mb-1"><i class="bi bi-flag text-success"></i> <b>Last step:</b> @lastStepNote</div>
+            }
+            <div class="small mb-1">
+                <i class="bi bi-shield-check"></i> <b>Verified:</b>
+                @if (verified == "Yes")
+                {
+                    <span class="badge bg-success">Yes</span>
+                }
+                else
+                {
+                    <span class="badge bg-danger">No</span>
+                }
+            </div>
         }
         <div class="d-flex justify-content-between align-items-center">
             <div>
