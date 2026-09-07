@@ -94,6 +94,9 @@ public class ITStoreController : Controller
         if (raw == null) return NotFound();
         var item = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
         item["id"] = id;
+        // Employee master list — lets the Issue form auto-fill dept/designation/HOD
+        // instead of Sandy typing every employee's details by hand each time.
+        ViewBag.Employees = _db.GetEmployees();
         return View(item);
     }
 
