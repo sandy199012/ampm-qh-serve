@@ -12,7 +12,7 @@ public class AuthService
     // (minus "Controller"), since the access filter checks by controller name.
     public static readonly string[] Modules = new[] {
         "Employees", "Helpdesk", "Assets", "PurchaseOrders", "PurchaseBills",
-        "ITStore", "Goals", "Budget", "Licenses", "Bills", "Vendors", "Endpoints"
+        "ITStore", "Goals", "Todos", "Budget", "Licenses", "Bills", "Vendors", "Endpoints"
     };
 
     public static readonly Dictionary<string,string> ModuleLabels = new() {
@@ -23,6 +23,7 @@ public class AuthService
         ["PurchaseBills"] = "Purchase Bills",
         ["ITStore"] = "IT Store",
         ["Goals"] = "Goals",
+        ["Todos"] = "Daily To-Do",
         ["Budget"] = "Budget",
         ["Licenses"] = "Licenses",
         ["Bills"] = "Bills",

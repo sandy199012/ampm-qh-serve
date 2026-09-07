@@ -34,6 +34,7 @@
                 @if (curUser.CanView("PurchaseBills")) { <li class="nav-item"><a class="nav-link" href="/PurchaseBills/Index"><i class="bi bi-receipt"></i> Purchase Bills</a></li> }
                 @if (curUser.CanView("ITStore")) { <li class="nav-item"><a class="nav-link" href="/ITStore/Index"><i class="bi bi-box-seam"></i> IT Store</a></li> }
                 @if (curUser.CanView("Goals")) { <li class="nav-item"><a class="nav-link" href="/Goals/Index"><i class="bi bi-bullseye"></i> Goals</a></li> }
+                @if (curUser.CanView("Todos")) { <li class="nav-item"><a class="nav-link" href="/Todos/Index"><i class="bi bi-check2-square"></i> To-Do</a></li> }
                 @if (curUser.CanView("Budget")) { <li class="nav-item"><a class="nav-link" href="/Budget/Index"><i class="bi bi-wallet2"></i> Budget</a></li> }
                 @if (curUser.CanView("Licenses")) { <li class="nav-item"><a class="nav-link" href="/Licenses/Index"><i class="bi bi-key"></i> Licenses</a></li> }
                 @if (curUser.CanView("Bills")) { <li class="nav-item"><a class="nav-link" href="/Bills/Index"><i class="bi bi-lightning-charge"></i> Bills</a></li> }

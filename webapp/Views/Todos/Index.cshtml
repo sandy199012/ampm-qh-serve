@@ -1,0 +1,180 @@
+@model List<Dictionary<string,object?>>
+@using AMPMWeb.Services
+@{
+    ViewData["Title"] = "Daily To-Do";
+    var current      = (UserSession)ViewBag.User;
+    bool canApprove  = ViewBag.CanApprove;
+    DateTime selDate = ViewBag.SelDate;
+    string dateStr   = ViewBag.DateStr;
+    string viewUser  = ViewBag.ViewUser;
+    bool viewingAll  = ViewBag.ViewingAll;
+    var users        = (List<UserRow>)ViewBag.Users;
+    int total = ViewBag.Total, pending = ViewBag.Pending, inprog = ViewBag.InProg, done = ViewBag.Done;
+    int pct = total > 0 ? (int)Math.Round(done * 100.0 / total) : 0;
+    bool isToday = selDate.Date == DateTime.Today;
+    bool isMine  = viewUser == current.Username && !viewingAll;
+    var pending_  = Model.Where(t => (t.GetValueOrDefault("status")?.ToString() ?? "Pending") == "Pending").ToList();
+    var inprog_   = Model.Where(t => t.GetValueOrDefault("status")?.ToString() == "In Progress").ToList();
+    var done_     = Model.Where(t => t.GetValueOrDefault("status")?.ToString() == "Done").ToList();
+}
+
+<style>
+    .todo-card{border-radius:10px;border:0;box-shadow:0 2px 6px rgba(0,0,0,.08);margin-bottom:10px;overflow:hidden}
+    .todo-card .body{padding:10px 12px;background:#fff}
+    .todo-card.high{border-left:5px solid #DC2626}
+    .todo-card.medium{border-left:5px solid #D97706}
+    .todo-card.low{border-left:5px solid #059669}
+    .kanban-head{border-radius:10px 10px 0 0;color:#fff;padding:10px 14px;font-weight:bold;display:flex;justify-content:space-between;align-items:center}
+    .kanban-col{background:#F8FAFC;border-radius:10px;padding:10px;min-height:200px}
+    .stat-tile{border-radius:12px;padding:14px;color:#fff;text-align:center}
+    .todo-actions button{border:0;background:none;font-size:15px;padding:2px 6px}
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-0"><i class="bi bi-check2-square text-primary"></i> Daily To-Do</h5>
+        <small class="text-muted">@selDate.ToString("dddd, dd-MMM-yyyy")</small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <form method="get" class="d-flex gap-2 align-items-center">
+            @if (canApprove) { <input type="hidden" name="user" value="@viewUser"/> }
+            <a href="?date=@selDate.AddDays(-1).ToString("yyyy-MM-dd")@(canApprove ? "&user=" + viewUser : "")" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chevron-left"></i></a>
+            <input type="date" name="date" value="@dateStr" class="form-control form-control-sm" style="width:150px" onchange="this.form.submit()"/>
+            <a href="?date=@selDate.AddDays(1).ToString("yyyy-MM-dd")@(canApprove ? "&user=" + viewUser : "")" class="btn btn-outline-secondary btn-sm"><i class="bi bi-chevron-right"></i></a>
+            @if (!isToday) { <a href="?date=@DateTime.Today.ToString("yyyy-MM-dd")@(canApprove ? "&user=" + viewUser : "")" class="btn btn-outline-primary btn-sm">Today</a> }
+        </form>
+        @if (canApprove)
+        {
+            <form method="get" class="d-flex align-items-center">
+                <input type="hidden" name="date" value="@dateStr"/>
+                <select name="user" class="form-select form-select-sm" style="width:190px" onchange="this.form.submit()">
+                    <option value="@current.Username" selected="@((viewUser == current.Username && !viewingAll) ? "selected" : "")">🙋 My Tasks</option>
+                    <option value="__all__" selected="@(viewingAll ? "selected" : "")">🔎 All Employees</option>
+                    @foreach (var u in users)
+                    {
+                        if (u.Username == current.Username) { continue; }
+                        <option value="@u.Username" selected="@((viewUser == u.Username) ? "selected" : "")">@(u.Name ?? u.Username)</option>
+                    }
+                </select>
+            </form>
+        }
+        <button type="button" class="btn btn-sm text-white px-3" style="background:linear-gradient(135deg,#059669,#10B981)" data-bs-toggle="modal" data-bs-target="#exportModal"><i class="bi bi-file-earmark-excel"></i> Excel Report</button>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="row g-2 mb-3">
+    <div class="col"><div class="stat-tile" style="background:linear-gradient(135deg,#334155,#1E293B)"><div class="fw-bold fs-4">@total</div><div class="small">Total</div></div></div>
+    <div class="col"><div class="stat-tile" style="background:linear-gradient(135deg,#F59E0B,#D97706)"><div class="fw-bold fs-4">@pending</div><div class="small">Pending</div></div></div>
+    <div class="col"><div class="stat-tile" style="background:linear-gradient(135deg,#3B82F6,#2563EB)"><div class="fw-bold fs-4">@inprog</div><div class="small">In Progress</div></div></div>
+    <div class="col"><div class="stat-tile" style="background:linear-gradient(135deg,#10B981,#059669)"><div class="fw-bold fs-4">@done</div><div class="small">Done</div></div></div>
+    <div class="col"><div class="stat-tile" style="background:linear-gradient(135deg,#7C3AED,#4F46E5)"><div class="fw-bold fs-4">@pct%</div><div class="small">Complete</div></div></div>
+</div>
+
+@if (isMine)
+{
+    <div class="card todo-card">
+        <div class="body">
+            <form method="post" action="/Todos/Add" class="d-flex gap-2 flex-wrap align-items-center">
+                <input type="hidden" name="date" value="@dateStr"/>
+                <input type="text" name="task" class="form-control" style="flex:1;min-width:220px" placeholder="Aaj kya kaam kiya / karna hai... (task likho)" required/>
+                <select name="priority" class="form-select" style="width:120px">
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                    <option value="Low">Low</option>
+                </select>
+                <button class="btn text-white px-3" style="background:linear-gradient(135deg,#4F46E5,#7C3AED)"><i class="bi bi-plus-circle"></i> Add Task</button>
+            </form>
+        </div>
+    </div>
+}
+
+<!-- Kanban board -->
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="kanban-head" style="background:linear-gradient(135deg,#F59E0B,#D97706)"><span><i class="bi bi-hourglass-split"></i> Pending</span><span class="badge bg-light text-dark">@pending_.Count</span></div>
+        <div class="kanban-col">
+            @if (!pending_.Any()) { <div class="text-center text-muted small py-4">Koi pending task nahi</div> }
+            @foreach (var t in pending_) { @await Html.PartialAsync("_TodoCard", t) }
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="kanban-head" style="background:linear-gradient(135deg,#3B82F6,#2563EB)"><span><i class="bi bi-arrow-repeat"></i> In Progress</span><span class="badge bg-light text-dark">@inprog_.Count</span></div>
+        <div class="kanban-col">
+            @if (!inprog_.Any()) { <div class="text-center text-muted small py-4">Kuch bhi in-progress nahi</div> }
+            @foreach (var t in inprog_) { @await Html.PartialAsync("_TodoCard", t) }
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="kanban-head" style="background:linear-gradient(135deg,#10B981,#059669)"><span><i class="bi bi-check-circle"></i> Done</span><span class="badge bg-light text-dark">@done_.Count</span></div>
+        <div class="kanban-col">
+            @if (!done_.Any()) { <div class="text-center text-muted small py-4">Abhi tak kuch done nahi</div> }
+            @foreach (var t in done_) { @await Html.PartialAsync("_TodoCard", t) }
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="get" action="/Todos/Export">
+                <div class="modal-header text-white" style="background:linear-gradient(135deg,#059669,#10B981)">
+                    <h6 class="modal-title"><i class="bi bi-file-earmark-excel"></i> Excel Report Download</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="small fw-semibold">From</label>
+                            <input type="date" name="from" class="form-control form-control-sm" value="@DateTime.Today.ToString("yyyy-MM-01")"/>
+                        </div>
+                        <div class="col-6">
+                            <label class="small fw-semibold">To</label>
+                            <input type="date" name="to" class="form-control form-control-sm" value="@dateStr"/>
+                        </div>
+                        @if (canApprove)
+                        {
+                            <div class="col-12">
+                                <label class="small fw-semibold">Employee</label>
+                                <select name="user" class="form-select form-select-sm">
+                                    <option value="__all__">🔎 All Employees</option>
+                                    <option value="@current.Username">🙋 Sirf Mera (My Tasks)</option>
+                                    @foreach (var u in users)
+                                    {
+                                        if (u.Username == current.Username) { continue; }
+                                        <option value="@u.Username">@(u.Name ?? u.Username)</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success btn-sm"><i class="bi bi-download"></i> Download</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+function setTodoStatus(id, status) {
+    fetch('/Todos/SetStatus', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: 'id=' + encodeURIComponent(id) + '&status=' + encodeURIComponent(status)
+    }).then(r => r.json()).then(d => { if (d.ok) location.reload(); else alert(d.error || 'Update fail ho gaya.'); });
+}
+function deleteTodo(id) {
+    if (!confirm('Ye task delete karna hai?')) return;
+    fetch('/Todos/Delete', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: 'id=' + encodeURIComponent(id)
+    }).then(r => r.json()).then(d => { if (d.ok) location.reload(); else alert(d.error || 'Delete fail ho gaya.'); });
+}
+</script>
+}

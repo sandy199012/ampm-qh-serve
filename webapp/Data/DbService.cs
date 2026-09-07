@@ -47,6 +47,7 @@ public class DbService
             CREATE TABLE IF NOT EXISTS cartridges (id TEXT PRIMARY KEY, name TEXT NOT NULL, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS cartridge_issues (id TEXT PRIMARY KEY, cartridge_id TEXT, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS goals (id TEXT PRIMARY KEY, week_no INTEGER, data TEXT NOT NULL, ts TEXT);
+            CREATE TABLE IF NOT EXISTS todos (id TEXT PRIMARY KEY, username TEXT, task_date TEXT, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS stock_items (id TEXT PRIMARY KEY, item_type TEXT, name TEXT NOT NULL, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS stock_issues (id TEXT PRIMARY KEY, item_id TEXT, issue_no TEXT, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS it_stock_items (id TEXT PRIMARY KEY, item_type TEXT, name TEXT NOT NULL, data TEXT NOT NULL, ts TEXT);

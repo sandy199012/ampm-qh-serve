@@ -18,9 +18,35 @@ function Log($msg) {
     if (-not $Silent) { Write-Host $msg }
 }
 
-$ip = (Get-NetIPAddress -AddressFamily IPv4 |
-    Where-Object { $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -ne '127.0.0.1' } |
-    Select-Object -First 1 -ExpandProperty IPAddress)
+# Pick the IP of whichever adapter actually carries internet traffic
+# (the default-route adapter), instead of just the first adapter found -
+# that avoids picking up VPN/VMware/VirtualBox/Hyper-V/Docker virtual
+# adapters that many PCs have alongside the real LAN/WiFi connection.
+$ip = $null
+try {
+    $route = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue |
+        Sort-Object -Property RouteMetric |
+        Select-Object -First 1
+    if ($route) {
+        $ip = Get-NetIPAddress -InterfaceIndex $route.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+            Where-Object { $_.IPAddress -notlike '169.254.*' } |
+            Select-Object -First 1 -ExpandProperty IPAddress
+    }
+} catch {}
+
+if (-not $ip) {
+    # Fallback: first IP on any adapter that is actually "Up", skipping
+    # link-local/loopback addresses.
+    $ip = Get-NetAdapter -ErrorAction SilentlyContinue |
+        Where-Object { $_.Status -eq 'Up' } |
+        Sort-Object -Property ifIndex |
+        ForEach-Object {
+            Get-NetIPAddress -InterfaceIndex $_.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+                Where-Object { $_.IPAddress -notlike '169.254.*' -and $_.IPAddress -ne '127.0.0.1' }
+        } | Select-Object -First 1 -ExpandProperty IPAddress
+}
+
+if (-not $ip) { $ip = 'Unknown' }
 
 $os  = (Get-CimInstance Win32_OperatingSystem).Caption
 $cpu = (Get-CimInstance Win32_Processor | Select-Object -First 1).Name

@@ -13,3 +13,10 @@ if not "%errorlevel%"=="0" (
 
 cd /d "%~dp0"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0AMPM_PC_Agent_Setup.ps1"
+echo.
+echo ================================================
+echo  Upar jo bhi likha hai, wahi result hai.
+echo  Agar error/red text dikha ho to screenshot ya
+echo  "ampm_setup_log.txt" (isi folder mein) Claude ko bhejo.
+echo ================================================
+pause

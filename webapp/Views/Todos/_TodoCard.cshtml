@@ -1,0 +1,46 @@
+@model Dictionary<string,object?>
+@using AMPMWeb.Services
+@{
+    var current     = (UserSession)ViewBag.User;
+    bool viewingAll = ViewBag.ViewingAll;
+    string id       = Model.GetValueOrDefault("id")?.ToString() ?? "";
+    string task     = Model.GetValueOrDefault("task")?.ToString() ?? "";
+    string priority = Model.GetValueOrDefault("priority")?.ToString() ?? "Medium";
+    string status   = Model.GetValueOrDefault("status")?.ToString() ?? "Pending";
+    string userName = Model.GetValueOrDefault("userName")?.ToString() ?? "";
+    string created  = Model.GetValueOrDefault("createdAt")?.ToString() ?? "";
+    string prioCls  = priority == "High" ? "high" : priority == "Low" ? "low" : "medium";
+    string prioBadge = priority == "High" ? "danger" : priority == "Low" ? "success" : "warning";
+}
+<div class="card todo-card @prioCls">
+    <div class="body">
+        @if (viewingAll && !string.IsNullOrEmpty(userName))
+        {
+            <span class="badge bg-secondary mb-1"><i class="bi bi-person"></i> @userName</span>
+        }
+        <div class="mb-1">@task</div>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <span class="badge bg-@prioBadge">@priority</span>
+                <small class="text-muted ms-1">@created</small>
+            </div>
+            <div class="todo-actions">
+                @if (status == "Pending")
+                {
+                    <button title="Start" onclick="setTodoStatus('@id','In Progress')"><i class="bi bi-play-circle text-primary"></i></button>
+                    <button title="Mark Done" onclick="setTodoStatus('@id','Done')"><i class="bi bi-check-circle text-success"></i></button>
+                }
+                else if (status == "In Progress")
+                {
+                    <button title="Back to Pending" onclick="setTodoStatus('@id','Pending')"><i class="bi bi-pause-circle text-warning"></i></button>
+                    <button title="Mark Done" onclick="setTodoStatus('@id','Done')"><i class="bi bi-check-circle text-success"></i></button>
+                }
+                else
+                {
+                    <button title="Reopen" onclick="setTodoStatus('@id','Pending')"><i class="bi bi-arrow-counterclockwise text-secondary"></i></button>
+                }
+                <button title="Delete" onclick="deleteTodo('@id')"><i class="bi bi-trash text-danger"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
