@@ -66,7 +66,7 @@ public class TodosController : Controller
 
         if (string.IsNullOrWhiteSpace(task))
         {
-            TempData["Error"] = "Task likhna zaroori hai.";
+            TempData["Error"] = "Task description is required.";
             return RedirectToAction("Index", new { date = taskDate });
         }
 
@@ -89,7 +89,7 @@ public class TodosController : Controller
         _db.Execute("INSERT INTO todos (id,username,task_date,data,ts) VALUES (@id,@u,@d,@data,@ts)",
             new { id, u = current.Username, d = taskDate, data = JsonConvert.SerializeObject(todo), ts = DateTime.Now.ToString("o") });
 
-        TempData["Success"] = "Task add ho gaya!";
+        TempData["Success"] = "Task added successfully!";
         return RedirectToAction("Index", new { date = taskDate });
     }
 
@@ -100,11 +100,11 @@ public class TodosController : Controller
         if (current == null) return Json(new { ok = false, error = "Login required." });
 
         var raw = _db.QueryFirst<string>("SELECT data FROM todos WHERE id=@id", new { id });
-        if (raw == null) return Json(new { ok = false, error = "Task nahi mila." });
+        if (raw == null) return Json(new { ok = false, error = "Task not found." });
         var t = JsonConvert.DeserializeObject<Dictionary<string, object?>>(raw) ?? new();
         var owner = t.GetValueOrDefault("username")?.ToString() ?? "";
         if (owner != current.Username && !current.CanApprove("Todos"))
-            return Json(new { ok = false, error = "Sirf apna task update kar sakte ho." });
+            return Json(new { ok = false, error = "You can only update your own tasks." });
 
         t["status"] = status;
         t["completedAt"] = status == "Done" ? DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt") : null;
@@ -119,11 +119,11 @@ public class TodosController : Controller
         if (current == null) return Json(new { ok = false, error = "Login required." });
 
         var raw = _db.QueryFirst<string>("SELECT data FROM todos WHERE id=@id", new { id });
-        if (raw == null) return Json(new { ok = false, error = "Task nahi mila." });
+        if (raw == null) return Json(new { ok = false, error = "Task not found." });
         var t = JsonConvert.DeserializeObject<Dictionary<string, object?>>(raw) ?? new();
         var owner = t.GetValueOrDefault("username")?.ToString() ?? "";
         if (owner != current.Username && !current.CanApprove("Todos"))
-            return Json(new { ok = false, error = "Sirf apna task delete kar sakte ho." });
+            return Json(new { ok = false, error = "You can only delete your own tasks." });
 
         _db.Execute("DELETE FROM todos WHERE id=@id", new { id });
         return Json(new { ok = true });

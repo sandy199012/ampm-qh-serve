@@ -172,7 +172,7 @@
                 {
                     <a href="/PurchaseOrders/ViewScan/@poNo" target="_blank" class="btn btn-outline-success btn-sm w-100 mb-2"><i class="bi bi-file-earmark-check"></i> View Signed Copy</a>
                 }
-                <p class="small text-muted mb-2">PO print karke sign/scan karo, phir yahan upload karo.</p>
+                <p class="small text-muted mb-2">Print the PO, get it signed/scanned, then upload it here.</p>
                 <input type="file" id="poScanFile" accept=".pdf,.jpg,.jpeg,.png" class="form-control form-control-sm mb-2"/>
                 <button type="button" class="btn btn-success btn-sm w-100" onclick="uploadPoScan()"><i class="bi bi-upload"></i> Upload Signed Copy</button>
                 <div id="poScanStatus" class="mt-2 small text-muted"></div>
@@ -195,11 +195,11 @@ function updatePOStatus(id, status) {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: 'status=' + encodeURIComponent(status)
-    }).then(r => r.json()).then(d => { if(d.ok) location.reload(); else alert(d.error || 'Status update fail ho gaya.'); });
+    }).then(r => r.json()).then(d => { if(d.ok) location.reload(); else alert(d.error || 'Failed to update status.'); });
 }
 function uploadPoScan() {
     const file = document.getElementById('poScanFile').files[0];
-    if (!file) { alert('File select karo!'); return; }
+    if (!file) { alert('Please select a file!'); return; }
     const fd = new FormData();
     fd.append('scan', file);
     fetch('/PurchaseOrders/UploadScan/@poNo', { method:'POST', body:fd })

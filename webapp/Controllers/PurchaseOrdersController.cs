@@ -134,7 +134,7 @@ public class PurchaseOrdersController : Controller
     public IActionResult UpdateStatus(string id, string status)
     {
         if (status == "Approved" && _auth.GetCurrentUser(HttpContext)?.CanApprove("PurchaseOrders") != true)
-            return Json(new { ok = false, error = "Aapke paas PO approve karne ki permission nahi hai." });
+            return Json(new { ok = false, error = "You don't have permission to approve POs." });
 
         var poNumber = Uri.UnescapeDataString(id);
         var raw = _db.QueryFirst<string>("SELECT data FROM po_list WHERE po_number=@id", new { id = poNumber });

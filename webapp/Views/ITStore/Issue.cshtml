@@ -28,7 +28,7 @@
         <div class="col-md-6">
             <label class="form-label fw-bold">Employee Name *</label>
             <input type="text" name="empName" id="empName" class="form-control" required
-                   list="empList" autocomplete="off" placeholder="Naam type karo, list se select karo"/>
+                   list="empList" autocomplete="off" placeholder="Type a name, select from the list"/>
             <datalist id="empList">
                 @foreach(var e in empLookup){<option value="@e.name"></option>}
             </datalist>
@@ -72,7 +72,7 @@
 </form>
 </div></div>
 <div class="alert alert-light border mt-3 small text-muted">
-    <i class="bi bi-info-circle"></i> Issue karne ke baad "Issue History" table mein us row se <b>Print</b> karke form nikalo, employee se sign karwao, scan karke <b>Upload</b> button se attach kar do.
+    <i class="bi bi-info-circle"></i> After issuing, go to that row in the "Issue History" table and <b>Print</b> the form, get it signed by the employee, then scan it and attach it using the <b>Upload</b> button.
 </div>
 </div></div>
 

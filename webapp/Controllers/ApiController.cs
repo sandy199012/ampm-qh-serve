@@ -54,7 +54,7 @@ public class ApiController : Controller
         var username = data.GetValueOrDefault("username")?.ToString() ?? Request.Query["username"].ToString();
         var password = data.GetValueOrDefault("password")?.ToString() ?? Request.Query["password"].ToString();
         var user = _auth.Login(username ?? "", password ?? "");
-        if (user == null) return Json(new { ok = false, error = "Username ya password galat hai." });
+        if (user == null) return Json(new { ok = false, error = "Invalid username or password." });
 
         string desig = "";
         if (!string.IsNullOrWhiteSpace(user.EmpId))

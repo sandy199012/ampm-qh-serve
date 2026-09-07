@@ -253,7 +253,7 @@ public class HelpdeskController : Controller
     [HttpPost]
     public async Task<IActionResult> SendTestEmail(string to)
     {
-        var html = "<div style='font-family:Segoe UI,Arial,sans-serif;padding:16px'><h3>AMPM IT Helpdesk &mdash; Test Email</h3><p>Agar ye email aapko mil raha hai, to SMTP settings sahi se kaam kar rahi hain.</p></div>";
+        var html = "<div style='font-family:Segoe UI,Arial,sans-serif;padding:16px'><h3>AMPM IT Helpdesk &mdash; Test Email</h3><p>If you are receiving this email, your SMTP settings are working correctly.</p></div>";
         var (ok, error) = await _email.SendAsync(to, null, "AMPM Helpdesk — Test Email", html);
         return Json(new { ok, error });
     }

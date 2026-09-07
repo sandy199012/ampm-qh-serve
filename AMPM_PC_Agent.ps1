@@ -101,18 +101,18 @@ try {
     $resp = Invoke-RestMethod -Uri $serverUrl -Method Post -Body $payload -ContentType 'application/json' -TimeoutSec 25
     if ($resp.ok -eq $true) {
         Log "OK - sent ($($software.Count) software entries)"
-        if (-not $Silent) { Write-Host " DONE - website ke PC Inventory mein bhej diya gaya." -ForegroundColor Green }
+        if (-not $Silent) { Write-Host " DONE - sent to the website's PC Inventory." -ForegroundColor Green }
     } else {
         Log "Server rejected: $($resp | ConvertTo-Json -Compress)"
-        if (-not $Silent) { Write-Host " Server ne mana kar diya - upar wala message dekho." -ForegroundColor Yellow }
+        if (-not $Silent) { Write-Host " Server rejected the request - see the message above." -ForegroundColor Yellow }
     }
 } catch {
     Log "FAILED - $_"
-    if (-not $Silent) { Write-Host " FAILED - internet check karo. Error: $_" -ForegroundColor Red }
+    if (-not $Silent) { Write-Host " FAILED - check your internet connection. Error: $_" -ForegroundColor Red }
 }
 
 if (-not $Silent) {
     Write-Host ""
     Write-Host "Log file: $logFile"
-    Read-Host "Enter dabao band karne ke liye"
+    Read-Host "Press Enter to close"
 }

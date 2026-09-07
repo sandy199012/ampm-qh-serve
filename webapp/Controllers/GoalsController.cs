@@ -38,7 +38,7 @@ public class GoalsController : Controller
     public IActionResult Complete(string id)
     {
         if (_auth.GetCurrentUser(HttpContext)?.CanApprove("Goals") != true)
-            return Json(new { ok = false, error = "Aapke paas goals approve/complete karne ki permission nahi hai." });
+            return Json(new { ok = false, error = "You don't have permission to approve/complete goals." });
 
         var raw = _db.QueryFirst<string>("SELECT data FROM goals WHERE id=@id", new { id });
         if (raw == null) return NotFound();

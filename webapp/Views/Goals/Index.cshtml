@@ -135,7 +135,7 @@
 function completeGoal(id) {
     if (!confirm('Mark as Completed?')) return;
     fetch('/Goals/Complete/' + id, {method:'POST'})
-        .then(r => r.json()).then(d => { if(d.ok) location.reload(); else alert(d.error || 'Goal complete karne mein fail ho gaya.'); });
+        .then(r => r.json()).then(d => { if(d.ok) location.reload(); else alert(d.error || 'Failed to complete the goal.'); });
 }
 function carryForward(week) {
     if (!confirm('Move all incomplete goals from Week ' + week + ' to next week?')) return;

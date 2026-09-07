@@ -112,10 +112,10 @@
                 <div class="mb-2">
                     <label class="form-label fw-bold small">Message Preview</label>
                     <iframe id="emailPreviewFrame" style="width:100%;height:300px;border:1px solid #E5E7EB;border-radius:4px"></iframe>
-                    <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> "Copy Formatted Email + Open Outlook" dabane se yehi design clipboard mein copy ho jayega — Outlook khulne par body field mein <b>Ctrl+V</b> dabao, poora format waisa hi aa jayega.</div>
+                    <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> Clicking "Copy Formatted Email + Open Outlook" copies this exact design to your clipboard — once Outlook opens, press <b>Ctrl+V</b> in the body field and the full formatting will paste exactly as shown.</div>
                 </div>
                 <div id="emailStatusMsg"></div>
-                <div class="small text-center mt-2">Plain text hi bhejni hai (paste nahi karna)? <a href="#" onclick="sendViaOutlook();return false;">Desktop mail app</a> &nbsp;|&nbsp; <a href="#" onclick="sendViaGmail();return false;">Gmail</a></div>
+                <div class="small text-center mt-2">Want to send plain text instead (no pasting)? <a href="#" onclick="sendViaOutlook();return false;">Desktop mail app</a> &nbsp;|&nbsp; <a href="#" onclick="sendViaGmail();return false;">Gmail</a></div>
             </div>
             <div class="modal-footer flex-wrap">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -155,7 +155,7 @@ function submitResolve(id) {
         body: 'status=Resolved&resolution=' + encodeURIComponent(res)
     }).then(r => r.json()).then(d => {
         if (!d.ok) return;
-        if (sendOnClose && confirm('Ticket resolved! Employee ko resolution email bhejni hai?')) {
+        if (sendOnClose && confirm('Ticket resolved! Send resolution email to the employee?')) {
             location.href = '/Helpdesk/Details/' + id + '?openEmail=1';
         } else {
             location.reload();
@@ -223,7 +223,7 @@ function ensureEmpEmail() {
     if (!to) {
         inp.classList.add('is-invalid');
         inp.focus();
-        document.getElementById('emailStatusMsg').innerHTML = '<div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle"></i> Pehle employee ka email address bharo.</div>';
+        document.getElementById('emailStatusMsg').innerHTML = '<div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle"></i> Please enter the employee email address first.</div>';
         return null;
     }
     inp.classList.remove('is-invalid');
@@ -285,12 +285,12 @@ function openOutlookFormatted() {
     };
     doCopy().then(() => {
         if (popupBlocked) {
-            statusEl.innerHTML = '<div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle"></i> Formatted email clipboard mein copy ho gaya, lekin popup block ho gaya. <a href="' + url + '" target="_blank">Yahan click karke Outlook kholo</a>, phir body field mein <b>Ctrl+V</b> dabao.</div>';
+            statusEl.innerHTML = '<div class="alert alert-warning small mb-0"><i class="bi bi-exclamation-triangle"></i> Formatted email copied to clipboard, but the popup was blocked. <a href="' + url + '" target="_blank">Click here to open Outlook</a>, then press <b>Ctrl+V</b> in the body field.</div>';
         } else {
-            statusEl.innerHTML = '<div class="alert alert-success small mb-0"><i class="bi bi-check-circle"></i> Formatted email copy ho gaya! Outlook khul gaya — body field mein click karke <b>Ctrl+V</b> dabao, poora design waisa hi paste ho jayega.</div>';
+            statusEl.innerHTML = '<div class="alert alert-success small mb-0"><i class="bi bi-check-circle"></i> Formatted email copied! Outlook has opened — click in the body field and press <b>Ctrl+V</b>, the full design will paste exactly as shown.</div>';
         }
     }).catch(err => {
-        statusEl.innerHTML = '<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle"></i> Clipboard copy fail ho gaya: ' + err + '. Preview box ko select karke Ctrl+C se manually copy karo.</div>';
+        statusEl.innerHTML = '<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle"></i> Clipboard copy failed: ' + err + '. Select the preview box and copy manually with Ctrl+C.</div>';
     });
 }
 
@@ -321,9 +321,9 @@ function sendEmailNow() {
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-send"></i> Send Email';
         if (d.ok) {
-            statusEl.innerHTML = '<div class="alert alert-success small mb-0"><i class="bi bi-check-circle"></i> Email bhej diya gaya ' + to + ' ko!</div>';
+            statusEl.innerHTML = '<div class="alert alert-success small mb-0"><i class="bi bi-check-circle"></i> Email sent to ' + to + '!</div>';
         } else {
-            statusEl.innerHTML = '<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle"></i> Bhej nahi paya: ' + (d.error || 'Unknown error') + '</div>';
+            statusEl.innerHTML = '<div class="alert alert-danger small mb-0"><i class="bi bi-x-circle"></i> Failed to send: ' + (d.error || 'Unknown error') + '</div>';
         }
     }).catch(err => {
         btn.disabled = false;

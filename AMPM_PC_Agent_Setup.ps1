@@ -10,7 +10,7 @@ try {
     $taskName   = 'AMPM PC Inventory Agent'
 
     if (-not (Test-Path $scriptPath)) {
-        throw "AMPM_PC_Agent.ps1 nahi mila at '$scriptPath' - dono files (Setup + Agent) same folder mein hone chahiye."
+        throw "AMPM_PC_Agent.ps1 not found at '$scriptPath' - both files (Setup + Agent) must be in the same folder."
     }
 
     Log "Registering scheduled task '$taskName'..."
@@ -32,30 +32,30 @@ try {
         -Trigger @($triggerStartup, $triggerRepeat) -Principal $principal -Settings $settings `
         -Description 'Reports this PC (hostname/IP/OS/CPU/RAM/disk/installed software) to the AMPM IT Tool website - at every restart and every 10 minutes.' | Out-Null
 
-    Log "DONE - '$taskName' scheduled task install ho gaya."
+    Log "DONE - '$taskName' scheduled task installed."
     Write-Host ""
-    Write-Host " Ab is PC ka data automatically bhejta rahega:" -ForegroundColor Green
-    Write-Host "   - Har system restart pe"
-    Write-Host "   - Har 10 minute mein"
+    Write-Host " This PC's data will now be sent automatically:" -ForegroundColor Green
+    Write-Host "   - On every system restart"
+    Write-Host "   - Every 10 minutes"
     Write-Host ""
-    Write-Host " Turant test karne ke liye AMPM_PC_Agent.bat bhi chala sakte ho."
+    Write-Host " You can also run AMPM_PC_Agent.bat any time to test it immediately."
 
     # Also run it once right now, so Sandy sees a result immediately instead
     # of waiting up to 10 minutes for the first automatic run.
     Write-Host ""
-    Write-Host " Pehla test run kar rahe hain abhi..."
+    Write-Host " Running a first test now..."
     & powershell -NoProfile -ExecutionPolicy Bypass -File "$scriptPath" -Silent
     Log "First manual test run triggered."
 }
 catch {
     Log "SETUP FAILED: $($_.Exception.Message)"
     Write-Host ""
-    Write-Host " SETUP FAILED - ye poora error Claude ko bhejo:" -ForegroundColor Red
+    Write-Host " SETUP FAILED - send this full error to Claude:" -ForegroundColor Red
     Write-Host " $_" -ForegroundColor Red
     Write-Host ""
-    Write-Host " Common wajah: is file ko Administrator se nahi chalaya (right-click - Run as administrator)."
+    Write-Host " Common cause: this file was not run as Administrator (right-click - Run as administrator)."
 }
 
 Write-Host ""
 Write-Host "Log file: $logFile"
-Read-Host "Enter dabao band karne ke liye"
+Read-Host "Press Enter to close"

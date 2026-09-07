@@ -46,12 +46,12 @@ public class UsersController : Controller
 
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            TempData["Error"] = "Username aur password dono zaroori hain.";
+            TempData["Error"] = "Username and password are both required.";
             return RedirectToAction("Create");
         }
         if (_db.UsernameExists(username))
         {
-            TempData["Error"] = "Yeh username pehle se maujood hai, dusra try karo.";
+            TempData["Error"] = "This username already exists, please try another one.";
             return RedirectToAction("Create");
         }
         if (role != "admin") role = "user";
@@ -59,7 +59,7 @@ public class UsersController : Controller
         var permsJson = JsonConvert.SerializeObject(BuildPermissionsFromForm(form));
         var hash = BCrypt.Net.BCrypt.HashPassword(password);
         _db.CreateUser(username, hash, name, role, department, permsJson, string.IsNullOrWhiteSpace(empId) ? null : empId);
-        TempData["Success"] = $"User '{username}' create ho gaya.";
+        TempData["Success"] = $"User '{username}' created successfully.";
         return RedirectToAction("Index");
     }
 
@@ -98,7 +98,7 @@ public class UsersController : Controller
             newHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
 
         _db.UpdateUser(id, name, role, department, permsJson, isActive, newHash, string.IsNullOrWhiteSpace(empId) ? null : empId);
-        TempData["Success"] = "User update ho gaya.";
+        TempData["Success"] = "User updated successfully.";
         return RedirectToAction("Index");
     }
 
@@ -109,17 +109,17 @@ public class UsersController : Controller
         if (row == null) return NotFound();
         if (row.Role == "superadmin")
         {
-            TempData["Error"] = "Superadmin account delete nahi ho sakta.";
+            TempData["Error"] = "Superadmin account cannot be deleted.";
             return RedirectToAction("Index");
         }
         var me = _auth.GetCurrentUser(HttpContext);
         if (me != null && me.Id == id)
         {
-            TempData["Error"] = "Aap apna khud ka account delete nahi kar sakte.";
+            TempData["Error"] = "You cannot delete your own account.";
             return RedirectToAction("Index");
         }
         _db.DeleteUser(id);
-        TempData["Success"] = "User delete ho gaya.";
+        TempData["Success"] = "User deleted successfully.";
         return RedirectToAction("Index");
     }
 

@@ -77,7 +77,7 @@
         <div class="body">
             <form method="post" action="/Todos/Add" class="d-flex gap-2 flex-wrap align-items-center">
                 <input type="hidden" name="date" value="@dateStr"/>
-                <input type="text" name="task" class="form-control" style="flex:1;min-width:220px" placeholder="Aaj kya kaam kiya / karna hai... (task likho)" required/>
+                <input type="text" name="task" class="form-control" style="flex:1;min-width:220px" placeholder="What did you do / need to do today... (type task)" required/>
                 <div class="d-flex align-items-center gap-1">
                     <small class="text-muted">From</small>
                     <input type="time" name="startTime" class="form-control form-control-sm" style="width:120px"/>
@@ -100,21 +100,21 @@
     <div class="col-md-4">
         <div class="kanban-head" style="background:linear-gradient(135deg,#F59E0B,#D97706)"><span><i class="bi bi-hourglass-split"></i> Pending</span><span class="badge bg-light text-dark">@pending_.Count</span></div>
         <div class="kanban-col">
-            @if (!pending_.Any()) { <div class="text-center text-muted small py-4">Koi pending task nahi</div> }
+            @if (!pending_.Any()) { <div class="text-center text-muted small py-4">No pending tasks</div> }
             @foreach (var t in pending_) { @await Html.PartialAsync("_TodoCard", t) }
         </div>
     </div>
     <div class="col-md-4">
         <div class="kanban-head" style="background:linear-gradient(135deg,#3B82F6,#2563EB)"><span><i class="bi bi-arrow-repeat"></i> In Progress</span><span class="badge bg-light text-dark">@inprog_.Count</span></div>
         <div class="kanban-col">
-            @if (!inprog_.Any()) { <div class="text-center text-muted small py-4">Kuch bhi in-progress nahi</div> }
+            @if (!inprog_.Any()) { <div class="text-center text-muted small py-4">Nothing in progress</div> }
             @foreach (var t in inprog_) { @await Html.PartialAsync("_TodoCard", t) }
         </div>
     </div>
     <div class="col-md-4">
         <div class="kanban-head" style="background:linear-gradient(135deg,#10B981,#059669)"><span><i class="bi bi-check-circle"></i> Done</span><span class="badge bg-light text-dark">@done_.Count</span></div>
         <div class="kanban-col">
-            @if (!done_.Any()) { <div class="text-center text-muted small py-4">Abhi tak kuch done nahi</div> }
+            @if (!done_.Any()) { <div class="text-center text-muted small py-4">Nothing done yet</div> }
             @foreach (var t in done_) { @await Html.PartialAsync("_TodoCard", t) }
         </div>
     </div>
@@ -145,7 +145,7 @@
                                 <label class="small fw-semibold">Employee</label>
                                 <select name="user" class="form-select form-select-sm">
                                     <option value="__all__">🔎 All Employees</option>
-                                    <option value="@current.Username">🙋 Sirf Mera (My Tasks)</option>
+                                    <option value="@current.Username">🙋 Just Mine (My Tasks)</option>
                                     @foreach (var u in users)
                                     {
                                         if (u.Username == current.Username) { continue; }
@@ -172,15 +172,15 @@ function setTodoStatus(id, status) {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: 'id=' + encodeURIComponent(id) + '&status=' + encodeURIComponent(status)
-    }).then(r => r.json()).then(d => { if (d.ok) location.reload(); else alert(d.error || 'Update fail ho gaya.'); });
+    }).then(r => r.json()).then(d => { if (d.ok) location.reload(); else alert(d.error || 'Failed to update.'); });
 }
 function deleteTodo(id) {
-    if (!confirm('Ye task delete karna hai?')) return;
+    if (!confirm('Delete this task?')) return;
     fetch('/Todos/Delete', {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
         body: 'id=' + encodeURIComponent(id)
-    }).then(r => r.json()).then(d => { if (d.ok) location.reload(); else alert(d.error || 'Delete fail ho gaya.'); });
+    }).then(r => r.json()).then(d => { if (d.ok) location.reload(); else alert(d.error || 'Failed to delete.'); });
 }
 </script>
 }

@@ -136,7 +136,7 @@
                 <div class="modal-content">
                     <div class="modal-header"><h6 class="modal-title fw-bold">Upload Signed Form — @ino</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                     <div class="modal-body">
-                        <p class="small text-muted">Issue form print karke sign/scan karo, phir yahan upload karo.</p>
+                        <p class="small text-muted">Print the issue form, get it signed/scanned, then upload it here.</p>
                         <input type="file" id="scanFile-@ino" accept=".pdf,.jpg,.jpeg,.png" class="form-control form-control-sm mb-2"/>
                         <small class="text-muted">PDF, JPG, PNG (max 5MB)</small>
                     </div>
@@ -155,7 +155,7 @@
 function uploadIssueScan(issueNo) {
     const fileInput = document.getElementById('scanFile-' + issueNo);
     const file = fileInput.files[0];
-    if (!file) { alert('File select karo!'); return; }
+    if (!file) { alert('Please select a file!'); return; }
     const fd = new FormData();
     fd.append('scan', file);
     fetch('/ITStore/UploadScan/' + issueNo, { method:'POST', body:fd })

@@ -4,8 +4,8 @@ cd /d "%~dp0"
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0AMPM_PC_Agent.ps1"
 echo.
 echo ================================================
-echo  Upar jo bhi likha hai, wahi result hai.
-echo  Agar error/red text dikha ho to screenshot ya
-echo  "ampm_agent_log.txt" (isi folder mein) Claude ko bhejo.
+echo  Whatever is printed above is the result.
+echo  If you see an error/red text, send a screenshot
+echo  or "ampm_agent_log.txt" (in this same folder) to Claude.
 echo ================================================
 pause
