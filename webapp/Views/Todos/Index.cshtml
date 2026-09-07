@@ -48,12 +48,12 @@
             <form method="get" class="d-flex align-items-center">
                 <input type="hidden" name="date" value="@dateStr"/>
                 <select name="user" class="form-select form-select-sm" style="width:190px" onchange="this.form.submit()">
-                    <option value="@current.Username" selected="@((viewUser == current.Username && !viewingAll) ? "selected" : "")">🙋 My Tasks</option>
-                    <option value="__all__" selected="@(viewingAll ? "selected" : "")">🔎 All Employees</option>
+                    <option value="@current.Username" selected="@(viewUser == current.Username && !viewingAll)">🙋 My Tasks</option>
+                    <option value="__all__" selected="@viewingAll">🔎 All Employees</option>
                     @foreach (var u in users)
                     {
                         if (u.Username == current.Username) { continue; }
-                        <option value="@u.Username" selected="@((viewUser == u.Username) ? "selected" : "")">@(u.Name ?? u.Username)</option>
+                        <option value="@u.Username" selected="@(viewUser == u.Username)">@(u.Name ?? u.Username)</option>
                     }
                 </select>
             </form>
