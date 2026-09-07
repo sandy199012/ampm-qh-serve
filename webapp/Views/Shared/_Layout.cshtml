@@ -27,6 +27,7 @@
         <div class="collapse navbar-collapse" id="nav">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/Performance/Index"><i class="bi bi-graph-up-arrow"></i> Performance</a></li>
                 @if (curUser.CanView("Employees")) { <li class="nav-item"><a class="nav-link" href="/Employees/Index"><i class="bi bi-people"></i> Employees</a></li> }
                 @if (curUser.CanView("Helpdesk")) { <li class="nav-item"><a class="nav-link" href="/Helpdesk/Index"><i class="bi bi-headset"></i> Helpdesk</a></li> }
                 @if (curUser.CanView("Assets")) { <li class="nav-item"><a class="nav-link" href="/Assets/Index"><i class="bi bi-pc-display"></i> Assets</a></li> }

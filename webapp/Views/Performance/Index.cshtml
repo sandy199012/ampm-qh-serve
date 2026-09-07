@@ -1,0 +1,125 @@
+@using AMPMWeb.Services
+@using AMPMWeb.Controllers
+@{
+    ViewData["Title"] = "My Performance";
+    var current        = (UserSession)ViewBag.User;
+    bool canViewOthers  = ViewBag.CanViewOthers;
+    string viewUsername = ViewBag.ViewUsername;
+    string viewName     = ViewBag.ViewName;
+    var users           = (List<UserRow>)ViewBag.Users;
+    string from         = ViewBag.From;
+    string to           = ViewBag.To;
+    var s               = (PerformanceStats)ViewBag.Stats;
+    bool isMine         = viewUsername == current.Username;
+
+    string ScoreColor(int pct) => pct >= 75 ? "#059669" : pct >= 40 ? "#D97706" : "#DC2626";
+}
+
+<style>
+    .stat-tile{border-radius:12px;padding:14px;color:#fff;text-align:center}
+    .perf-card{border-radius:12px;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.06);padding:16px;margin-bottom:16px}
+    .perf-card h6{font-weight:bold;margin-bottom:12px}
+    .score-ring{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+        font-size:28px;font-weight:bold;color:#fff;margin:0 auto}
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow text-primary"></i> @(isMine ? "My Performance" : viewName + "'s Performance")</h5>
+        <small class="text-muted">@from to @to</small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+            @if (canViewOthers) { <input type="hidden" name="user" value="@viewUsername"/> }
+            <input type="date" name="from" value="@from" class="form-control form-control-sm" style="width:150px"/>
+            <span class="text-muted small">to</span>
+            <input type="date" name="to" value="@to" class="form-control form-control-sm" style="width:150px"/>
+            <button class="btn btn-outline-primary btn-sm">Apply</button>
+        </form>
+        @if (canViewOthers)
+        {
+            <form method="get" class="d-flex align-items-center">
+                <input type="hidden" name="from" value="@from"/>
+                <input type="hidden" name="to" value="@to"/>
+                <select name="user" class="form-select form-select-sm" style="width:190px" onchange="this.form.submit()">
+                    <option value="@current.Username" selected="@(viewUsername == current.Username)">🙋 My Performance</option>
+                    @foreach (var u in users)
+                    {
+                        if (u.Username == current.Username) { continue; }
+                        <option value="@u.Username" selected="@(viewUsername == u.Username)">@(u.Name ?? u.Username)</option>
+                    }
+                </select>
+            </form>
+        }
+        <a class="btn btn-sm text-white px-3" style="background:linear-gradient(135deg,#059669,#10B981)"
+           href="/Performance/Export?from=@from&to=@to@(canViewOthers ? "&user=" + viewUsername : "")">
+            <i class="bi bi-file-earmark-excel"></i> Excel Report
+        </a>
+    </div>
+</div>
+
+<!-- Overall score -->
+<div class="perf-card text-center">
+    <div class="score-ring" style="background:@ScoreColor(s.OverallPct)">@s.OverallPct%</div>
+    <div class="mt-2 fw-bold">Overall Performance Score</div>
+    <div class="text-muted small">Average of To-Do, Goals and Helpdesk completion — based on whichever of these have activity in this period</div>
+</div>
+
+<div class="row g-3">
+    <!-- Daily To-Do -->
+    <div class="col-md-4">
+        <div class="perf-card h-100">
+            <h6><i class="bi bi-check2-square text-primary"></i> Daily To-Do</h6>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#334155,#1E293B)"><div class="fw-bold fs-5">@s.TodoTotal</div><div class="small">Total</div></div></div>
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#10B981,#059669)"><div class="fw-bold fs-5">@s.TodoDone</div><div class="small">Done</div></div></div>
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#3B82F6,#2563EB)"><div class="fw-bold fs-5">@s.TodoInProg</div><div class="small">In Progress</div></div></div>
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#F59E0B,#D97706)"><div class="fw-bold fs-5">@s.TodoPending</div><div class="small">Pending</div></div></div>
+            </div>
+            <div class="small text-muted mb-1"><i class="bi bi-shield-check"></i> @s.TodoVerified of @s.TodoDone done tasks verified</div>
+            <div class="progress" style="height:10px">
+                <div class="progress-bar bg-success" style="width:@(s.TodoPct)%"></div>
+            </div>
+            <div class="text-end small fw-bold mt-1">@s.TodoPct% complete</div>
+        </div>
+    </div>
+
+    <!-- Weekly Goals -->
+    <div class="col-md-4">
+        <div class="perf-card h-100">
+            <h6><i class="bi bi-bullseye text-primary"></i> Weekly Goals</h6>
+            @if (!s.GoalsTagged)
+            {
+                <div class="small text-muted mb-2"><i class="bi bi-info-circle"></i> Goals aren't tagged to individual employees yet — showing the whole department sheet.</div>
+            }
+            <div class="row g-2 mb-2">
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#334155,#1E293B)"><div class="fw-bold fs-5">@s.GoalsTotal</div><div class="small">Total</div></div></div>
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#10B981,#059669)"><div class="fw-bold fs-5">@s.GoalsDone</div><div class="small">Completed</div></div></div>
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#3B82F6,#2563EB)"><div class="fw-bold fs-5">@s.GoalsInProg</div><div class="small">In Progress</div></div></div>
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#DC2626,#991B1B)"><div class="fw-bold fs-5">@s.GoalsNotStarted</div><div class="small">Not Started</div></div></div>
+            </div>
+            <div class="progress" style="height:10px">
+                <div class="progress-bar bg-success" style="width:@(s.GoalsPct)%"></div>
+            </div>
+            <div class="text-end small fw-bold mt-1">@s.GoalsPct% complete</div>
+        </div>
+    </div>
+
+    <!-- Helpdesk -->
+    <div class="col-md-4">
+        <div class="perf-card h-100">
+            <h6><i class="bi bi-headset text-primary"></i> Helpdesk Tickets</h6>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#334155,#1E293B)"><div class="fw-bold fs-5">@s.TkTotal</div><div class="small">Assigned</div></div></div>
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#10B981,#059669)"><div class="fw-bold fs-5">@s.TkResolved</div><div class="small">Resolved</div></div></div>
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#3B82F6,#2563EB)"><div class="fw-bold fs-5">@s.TkInProg</div><div class="small">In Progress</div></div></div>
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#DC2626,#991B1B)"><div class="fw-bold fs-5">@s.TkOpen</div><div class="small">Open</div></div></div>
+            </div>
+            <div class="small text-muted mb-1"><i class="bi bi-clock-history"></i> Avg. resolution time: @s.AvgResolutionHrs hrs</div>
+            <div class="progress" style="height:10px">
+                <div class="progress-bar bg-success" style="width:@(s.TkPct)%"></div>
+            </div>
+            <div class="text-end small fw-bold mt-1">@s.TkPct% resolved</div>
+        </div>
+    </div>
+</div>

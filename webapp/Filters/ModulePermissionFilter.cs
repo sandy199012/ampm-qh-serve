@@ -16,8 +16,11 @@ public class ModulePermissionFilter : IActionFilter
 
     // Api is exempt because it's the mobile app's entry point — it has no login
     // cookie to check here, and instead verifies username+password on every call itself.
+    // Performance is exempt because it's a personal dashboard — every logged-in
+    // user can see their own numbers there; the controller itself still restricts
+    // viewing SOMEONE ELSE's numbers to admins/superadmins.
     static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
-        { "Account", "Home", "Api" };
+        { "Account", "Home", "Api", "Performance" };
 
     public void OnActionExecuting(ActionExecutingContext context)
     {
