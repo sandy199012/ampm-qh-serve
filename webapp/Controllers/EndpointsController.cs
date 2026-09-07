@@ -79,6 +79,10 @@ public class EndpointsController : Controller
         SetIf("ramGb", "ramGb");
         SetIf("diskFree", "diskFree");
         SetIf("user", "user");
+        // Installed-software list (array of {name, version}) — collected by the
+        // agent from the Windows Uninstall registry keys. Stored as-is; the
+        // PC Inventory view renders it in a per-PC "Installed Software" modal.
+        if (data.TryGetValue("software", out var sw) && sw != null) rec["software"] = sw;
         rec["lastSeen"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
         if (!rec.ContainsKey("qhVersion")) rec["qhVersion"] = "";
         if (!rec.ContainsKey("qhService")) rec["qhService"] = "Not Installed";

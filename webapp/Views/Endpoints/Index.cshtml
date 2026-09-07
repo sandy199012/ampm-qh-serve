@@ -110,6 +110,7 @@
                         <th>QH Service</th>
                         <th>License Key</th>
                         <th>Last Seen</th>
+                        <th>Software</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -277,6 +278,28 @@
     </div>
 </div>
 
+<!-- ═══ Installed Software Modal (populated by AMPM_PC_Agent) ═══ -->
+<div class="modal fade" id="softwareModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#0A192F;color:white">
+                <h5 class="modal-title" id="swModalTitle">Installed Software</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="swSearch" class="form-control form-control-sm mb-2" placeholder="Search software..." onkeyup="filterSwList()"/>
+                <table class="table table-sm table-hover mb-0">
+                    <thead><tr><th>Name</th><th>Version</th></tr></thead>
+                    <tbody id="swListBody"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- ═══ Add/Edit License Modal ═══ -->
 <div class="modal fade" id="licModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -414,13 +437,16 @@ function renderPc() {
             <td>${svcBadge}</td>
             <td class="small font-monospace">${esc(p.licenseKey)}</td>
             <td class="small text-muted">${esc(p.lastSeen)}</td>
+            <td>${Array.isArray(p.software) && p.software.length
+                ? `<button class="btn btn-outline-info btn-sm" onclick="viewSoftware(${i})"><i class="bi bi-box-seam"></i> ${p.software.length}</button>`
+                : '<span class="text-muted small">—</span>'}</td>
             <td>
                 <button class="btn btn-outline-warning btn-sm" onclick="openPcModal(${i})" title="Edit"><i class="bi bi-pencil"></i></button>
                 <button class="btn btn-outline-danger btn-sm" onclick="deletePc(${i})" title="Delete"><i class="bi bi-trash"></i></button>
             </td>
         </tr>`;
     });
-    body.innerHTML = rows || '<tr><td colspan="12" class="text-center text-muted py-4">No PCs added yet</td></tr>';
+    body.innerHTML = rows || '<tr><td colspan="13" class="text-center text-muted py-4">No PCs added yet</td></tr>';
     document.getElementById('pcTotal').textContent = total;
     document.getElementById('pcQhOk').textContent = qhOk;
     document.getElementById('pcQhMissing').textContent = qhMissing;
@@ -450,7 +476,9 @@ function savePc() {
     const i = parseInt(document.getElementById('pcIdx').value);
     const hostname = document.getElementById('pcHostname').value.trim();
     if (!hostname) return alert('Hostname is required!');
-    const rec = {
+    // Start from the existing record (if editing) so agent-reported fields like
+    // "software" — which this form doesn't show — survive a manual save.
+    const rec = Object.assign({}, (i >= 0 ? pcs[i] : {}), {
         hostname,
         ip: document.getElementById('pcIp').value.trim(),
         os: document.getElementById('pcOs').value.trim(),
@@ -463,9 +491,32 @@ function savePc() {
         qhService: document.getElementById('pcQhService').value,
         licenseKey: document.getElementById('pcLicenseKey').value.trim(),
         notes: document.getElementById('pcNotes').value.trim()
-    };
+    });
     if (i >= 0) pcs[i] = rec; else pcs.push(rec);
     persistPc(() => { renderPc(); bootstrap.Modal.getInstance(document.getElementById('pcModal')).hide(); });
+}
+
+function viewSoftware(i) {
+    const p = pcs[i];
+    const list = Array.isArray(p.software) ? p.software.slice().sort((a,b) => (a.name||'').localeCompare(b.name||'')) : [];
+    document.getElementById('swModalTitle').textContent = `Installed Software — ${p.hostname} (${list.length})`;
+    document.getElementById('swSearch').value = '';
+    window._swList = list;
+    renderSwList(list);
+    new bootstrap.Modal(document.getElementById('softwareModal')).show();
+}
+
+function renderSwList(list) {
+    const body = document.getElementById('swListBody');
+    body.innerHTML = list.length
+        ? list.map(s => `<tr><td>${esc(s.name)}</td><td class="text-muted small">${esc(s.version)}</td></tr>`).join('')
+        : '<tr><td colspan="2" class="text-center text-muted py-3">No software reported</td></tr>';
+}
+
+function filterSwList() {
+    const q = document.getElementById('swSearch').value.toLowerCase();
+    const list = (window._swList || []).filter(s => (s.name||'').toLowerCase().includes(q));
+    renderSwList(list);
 }
 
 function deletePc(i) {
