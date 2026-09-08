@@ -60,6 +60,9 @@
                 @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("dateAcknowledged")?.ToString())){
                     <small class="text-muted d-block mt-2">Date Acknowledged</small>
                     <strong class="text-primary">@Model.GetValueOrDefault("dateAcknowledged")</strong>
+                    @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("ackComment")?.ToString())){
+                        <div class="small text-muted mt-1"><i class="bi bi-chat-left-text"></i> @Model.GetValueOrDefault("ackComment")</div>
+                    }
                 }
                 @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("dateResolved")?.ToString())){
                     <small class="text-muted d-block mt-2">Date Resolved</small>
@@ -68,6 +71,12 @@
                 @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("dateClosed")?.ToString())){
                     <small class="text-muted d-block mt-2">Date Closed</small>
                     <strong class="text-secondary">@Model.GetValueOrDefault("dateClosed")</strong>
+                    @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("closeWorkDone")?.ToString())){
+                        <div class="small text-muted mt-1"><i class="bi bi-tools"></i> Work done: @Model.GetValueOrDefault("closeWorkDone")</div>
+                    }
+                    @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("closeIssue")?.ToString())){
+                        <div class="small text-muted mt-1"><i class="bi bi-exclamation-circle"></i> Issue: @Model.GetValueOrDefault("closeIssue")</div>
+                    }
                 }
             </div>
         </div>
@@ -138,10 +147,22 @@ const sendOnClose = @Html.Raw(ViewBag.SendOnClose ? "true" : "false");
 let cachedEmailHtml = '';
 
 function updateStatus(id, status) {
+    let extra = '';
+    if (status === 'In Progress') {
+        const comment = prompt('Acknowledging this ticket — enter a comment:');
+        if (comment === null) return;
+        extra = '&ackComment=' + encodeURIComponent(comment.trim());
+    } else if (status === 'Closed') {
+        const workDone = prompt('What did you do to resolve this ticket?');
+        if (workDone === null) return;
+        const issue = prompt('What was the issue?');
+        if (issue === null) return;
+        extra = '&closeWorkDone=' + encodeURIComponent(workDone.trim()) + '&closeIssue=' + encodeURIComponent(issue.trim());
+    }
     fetch('/Helpdesk/UpdateStatus/' + id, {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
-        body: 'status=' + encodeURIComponent(status)
+        body: 'status=' + encodeURIComponent(status) + extra
     }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
 }
 function showResolve(id) {

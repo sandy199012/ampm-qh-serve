@@ -259,7 +259,7 @@ public class HelpdeskController : Controller
     }
 
     [HttpPost]
-    public IActionResult UpdateStatus(string id, string status, string? resolution)
+    public IActionResult UpdateStatus(string id, string status, string? resolution, string? ackComment, string? closeWorkDone, string? closeIssue)
     {
         var raw = _db.QueryFirst<string>("SELECT data FROM tickets WHERE ticket_id=@id", new { id });
         if (raw == null) return NotFound();
@@ -269,6 +269,8 @@ public class HelpdeskController : Controller
 
         if (status == "In Progress" && string.IsNullOrEmpty(ticket.GetValueOrDefault("dateAcknowledged")?.ToString()))
             ticket["dateAcknowledged"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+        if (status == "In Progress" && !string.IsNullOrWhiteSpace(ackComment))
+            ticket["ackComment"] = ackComment.Trim();
 
         if (status == "Resolved" || status == "Closed")
         {
@@ -277,7 +279,11 @@ public class HelpdeskController : Controller
                 ticket["resolutionHrs"] = Math.Round((DateTime.Now - dr).TotalHours, 2);
         }
         if (status == "Closed")
+        {
             ticket["dateClosed"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            if (!string.IsNullOrWhiteSpace(closeWorkDone)) ticket["closeWorkDone"] = closeWorkDone.Trim();
+            if (!string.IsNullOrWhiteSpace(closeIssue)) ticket["closeIssue"] = closeIssue.Trim();
+        }
 
         _db.SaveTicket(ticket);
         return Json(new { ok = true });
@@ -288,7 +294,7 @@ public class HelpdeskController : Controller
     {
         var tickets = _db.GetTickets();
         var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Ticket ID,Date Raised,Employee,Designation,HOD,Department,Mobile,Title,Issue Type,Priority,Assigned To,Status,Date Acknowledged,Date Resolved,Date Closed,Resolution Hours");
+        csv.AppendLine("Ticket ID,Date Raised,Employee,Designation,HOD,Department,Mobile,Title,Issue Type,Priority,Assigned To,Status,Date Acknowledged,Ack Comment,Date Resolved,Resolution,Date Closed,Work Done (Close),Issue (Close),Resolution Hours");
         foreach (var t in tickets)
             csv.AppendLine(string.Join(",",
                 CsvE(t.GetValueOrDefault("ticketId")?.ToString()),
@@ -304,8 +310,12 @@ public class HelpdeskController : Controller
                 CsvE(t.GetValueOrDefault("assignedTo")?.ToString()),
                 CsvE(t.GetValueOrDefault("status")?.ToString()),
                 CsvE(t.GetValueOrDefault("dateAcknowledged")?.ToString()),
+                CsvE(t.GetValueOrDefault("ackComment")?.ToString()),
                 CsvE(t.GetValueOrDefault("dateResolved")?.ToString()),
+                CsvE(t.GetValueOrDefault("resolution")?.ToString()),
                 CsvE(t.GetValueOrDefault("dateClosed")?.ToString()),
+                CsvE(t.GetValueOrDefault("closeWorkDone")?.ToString()),
+                CsvE(t.GetValueOrDefault("closeIssue")?.ToString()),
                 CsvE(t.GetValueOrDefault("resolutionHrs")?.ToString())
             ));
         return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"Helpdesk_{DateTime.Now:yyyyMMdd}.csv");
