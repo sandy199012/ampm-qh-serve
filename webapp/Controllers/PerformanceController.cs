@@ -14,7 +14,6 @@ public class PerformanceStats
 {
     public int TodoTotal, TodoDone, TodoInProg, TodoPending, TodoVerified, TodoPct;
     public int GoalsTotal, GoalsDone, GoalsInProg, GoalsNotStarted, GoalsOnHold, GoalsPct;
-    public bool GoalsTagged;
     public int TkTotal, TkResolved, TkOpen, TkInProg, TkPct;
     public double AvgResolutionHrs;
     public int OverallPct;
@@ -25,17 +24,6 @@ public class PerformanceController : Controller
     private readonly DbService _db;
     private readonly AuthService _auth;
     public PerformanceController(DbService db, AuthService auth) { _db = db; _auth = auth; }
-
-    // Goals/Tickets don't store a username — "assignedTo" is free text typed
-    // into a form. Match it against both the display name and the login
-    // username so old records tagged either way still count.
-    static bool TaggedTo(Dictionary<string, object?> row, string field, string name, string username)
-    {
-        var v = row.GetValueOrDefault(field)?.ToString() ?? "";
-        if (string.IsNullOrWhiteSpace(v)) return false;
-        return (!string.IsNullOrWhiteSpace(name) && v.Contains(name, StringComparison.OrdinalIgnoreCase))
-            || (!string.IsNullOrWhiteSpace(username) && v.Contains(username, StringComparison.OrdinalIgnoreCase));
-    }
 
     (string viewUsername, string viewName, bool canViewOthers, DateTime fromD, DateTime toD) Resolve(
         UserSession current, string? user, string? from, string? to)
@@ -69,13 +57,12 @@ public class PerformanceController : Controller
         s.TodoPct = s.TodoTotal > 0 ? (int)Math.Round(s.TodoDone * 100.0 / s.TodoTotal) : 0;
 
         // ── Weekly Goals ─────────────────────────────────────
-        var allGoals = _db.Query<string>("SELECT data FROM goals ORDER BY week_no, ts")
+        // Goals aren't tagged to a specific employee in this schema (the Create
+        // form has no "assigned to" field at all), so this is the whole IT
+        // department goal sheet — same for every viewer. Shown all-time, since
+        // goals are tracked by week number rather than a calendar date.
+        var myGoals = _db.Query<string>("SELECT data FROM goals ORDER BY week_no, ts")
             .Select(r => JsonConvert.DeserializeObject<Dictionary<string, object?>>(r) ?? new()).ToList();
-        bool anyTagged = allGoals.Any(g => !string.IsNullOrWhiteSpace(g.GetValueOrDefault("assignedTo")?.ToString()));
-        var myGoals = anyTagged
-            ? allGoals.Where(g => TaggedTo(g, "assignedTo", viewName, viewUsername)).ToList()
-            : allGoals; // nothing tagged yet in this dataset — show the whole department sheet rather than an empty screen
-        s.GoalsTagged = anyTagged;
         s.GoalsTotal = myGoals.Count;
         s.GoalsDone = myGoals.Count(g => g.GetValueOrDefault("status")?.ToString() == "Completed");
         s.GoalsInProg = myGoals.Count(g => g.GetValueOrDefault("status")?.ToString() == "In Progress");
@@ -84,8 +71,11 @@ public class PerformanceController : Controller
         s.GoalsPct = s.GoalsTotal > 0 ? (int)Math.Round(s.GoalsDone * 100.0 / s.GoalsTotal) : 0;
 
         // ── Helpdesk tickets ─────────────────────────────────
+        // "Assigned To" on a ticket is a free-text field that in practice just
+        // says "IT Team" (not a specific technician), so there's no reliable
+        // per-employee split here either — this is every ticket raised in the
+        // period, i.e. the IT team's overall helpdesk performance.
         var myTickets = _db.GetTickets()
-            .Where(t => TaggedTo(t, "assignedTo", viewName, viewUsername))
             .Where(t => DateTime.TryParse(t.GetValueOrDefault("dateRaised")?.ToString(), out var dr) && dr.Date >= fromD && dr.Date <= toD)
             .ToList();
         s.TkTotal = myTickets.Count;
@@ -168,7 +158,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 </table>
 
 <table>
-  <tr><td colspan='2' class='sh'>WEEKLY GOALS{(s.GoalsTagged ? "" : " (department-wide — not individually tagged yet)")}</td></tr>
+  <tr><td colspan='2' class='sh'>WEEKLY GOALS (IT Department — not tracked per employee)</td></tr>
   <tr><td class='sl'>Total Goals</td><td class='sv'>{s.GoalsTotal}</td></tr>
   <tr><td class='sl'>Completed</td><td class='sv green'>{s.GoalsDone}</td></tr>
   <tr><td class='sl'>In Progress</td><td class='sv blue'>{s.GoalsInProg}</td></tr>
@@ -178,8 +168,8 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 </table>
 
 <table>
-  <tr><td colspan='2' class='sh'>HELPDESK TICKETS</td></tr>
-  <tr><td class='sl'>Total Assigned</td><td class='sv'>{s.TkTotal}</td></tr>
+  <tr><td colspan='2' class='sh'>HELPDESK TICKETS (IT Department — not tracked per employee)</td></tr>
+  <tr><td class='sl'>Total Raised</td><td class='sv'>{s.TkTotal}</td></tr>
   <tr><td class='sl'>Resolved / Closed</td><td class='sv green'>{s.TkResolved}</td></tr>
   <tr><td class='sl'>Open</td><td class='sv red'>{s.TkOpen}</td></tr>
   <tr><td class='sl'>In Progress</td><td class='sv blue'>{s.TkInProg}</td></tr>

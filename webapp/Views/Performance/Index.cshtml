@@ -88,10 +88,7 @@
     <div class="col-md-4">
         <div class="perf-card h-100">
             <h6><i class="bi bi-bullseye text-primary"></i> Weekly Goals</h6>
-            @if (!s.GoalsTagged)
-            {
-                <div class="small text-muted mb-2"><i class="bi bi-info-circle"></i> Goals aren't tagged to individual employees yet — showing the whole department sheet.</div>
-            }
+            <div class="small text-muted mb-2"><i class="bi bi-info-circle"></i> IT Department sheet — goals aren't tracked per employee yet.</div>
             <div class="row g-2 mb-2">
                 <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#334155,#1E293B)"><div class="fw-bold fs-5">@s.GoalsTotal</div><div class="small">Total</div></div></div>
                 <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#10B981,#059669)"><div class="fw-bold fs-5">@s.GoalsDone</div><div class="small">Completed</div></div></div>
@@ -109,8 +106,9 @@
     <div class="col-md-4">
         <div class="perf-card h-100">
             <h6><i class="bi bi-headset text-primary"></i> Helpdesk Tickets</h6>
+            <div class="small text-muted mb-2"><i class="bi bi-info-circle"></i> IT Department tickets — "Assigned To" isn't tracked per technician yet.</div>
             <div class="row g-2 mb-2">
-                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#334155,#1E293B)"><div class="fw-bold fs-5">@s.TkTotal</div><div class="small">Assigned</div></div></div>
+                <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#334155,#1E293B)"><div class="fw-bold fs-5">@s.TkTotal</div><div class="small">Raised</div></div></div>
                 <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#10B981,#059669)"><div class="fw-bold fs-5">@s.TkResolved</div><div class="small">Resolved</div></div></div>
                 <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#3B82F6,#2563EB)"><div class="fw-bold fs-5">@s.TkInProg</div><div class="small">In Progress</div></div></div>
                 <div class="col-6"><div class="stat-tile" style="background:linear-gradient(135deg,#DC2626,#991B1B)"><div class="fw-bold fs-5">@s.TkOpen</div><div class="small">Open</div></div></div>
