@@ -55,11 +55,19 @@ public class PurchaseOrdersController : Controller
     [HttpPost]
     public IActionResult Create(IFormCollection form)
     {
-        // Generate PO Number
+        // Generate PO Number — based on the highest existing sequence for this FY, not the row count,
+        // so a gap (a deleted/missing number in the middle) never collides with an existing higher number.
         var year = DateTime.Now.Year;
         var fy = DateTime.Now.Month >= 4 ? $"{year}-{(year+1).ToString()[2..]}" : $"{year-1}-{year.ToString()[2..]}";
-        var existing = _db.GetPOs().Count + 1;
-        var poNumber = $"AMPM/IT/PO/{fy}/{existing:D4}";
+        var fyPrefix = $"AMPM/IT/PO/{fy}/";
+        var existingPOs = _db.GetPOs();
+        var maxSeq = existingPOs
+            .Select(p => p.GetValueOrDefault("poNumber")?.ToString() ?? "")
+            .Where(pn => pn.StartsWith(fyPrefix))
+            .Select(pn => int.TryParse(pn.Substring(fyPrefix.Length), out var n) ? n : 0)
+            .DefaultIfEmpty(0)
+            .Max();
+        var poNumber = $"{fyPrefix}{(maxSeq + 1):D4}";
 
         // Parse items from form
         var items = new List<Dictionary<string,object?>>();
