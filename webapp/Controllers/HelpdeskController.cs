@@ -297,37 +297,120 @@ public class HelpdeskController : Controller
         return Json(new { ok = true });
     }
 
+    // ── Colorful Excel Report (HTML table, opens directly in Excel) ─────────
     [HttpGet("/Helpdesk/Export")]
-    public IActionResult Export()
+    public IActionResult Export(string? status, string? priority)
     {
-        var tickets = _db.GetTickets();
-        var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Ticket ID,Date Raised,Employee,Designation,HOD,Department,Mobile,Title,Issue Type,Priority,Assigned To,Status,Date Acknowledged,Ack Comment,Date Resolved,Resolution,Date Closed,Work Done (Close),Issue (Close),Resolution Hours");
-        foreach (var t in tickets)
-            csv.AppendLine(string.Join(",",
-                CsvE(t.GetValueOrDefault("ticketId")?.ToString()),
-                CsvE(t.GetValueOrDefault("dateRaised")?.ToString()),
-                CsvE(t.GetValueOrDefault("empName")?.ToString()),
-                CsvE(t.GetValueOrDefault("empDesig")?.ToString()),
-                CsvE(t.GetValueOrDefault("empHod")?.ToString()),
-                CsvE(t.GetValueOrDefault("empDept")?.ToString()),
-                CsvE(t.GetValueOrDefault("empMobile")?.ToString()),
-                CsvE(t.GetValueOrDefault("title")?.ToString()),
-                CsvE(t.GetValueOrDefault("issueType")?.ToString()),
-                CsvE(t.GetValueOrDefault("priority")?.ToString()),
-                CsvE(t.GetValueOrDefault("assignedTo")?.ToString()),
-                CsvE(t.GetValueOrDefault("status")?.ToString()),
-                CsvE(t.GetValueOrDefault("dateAcknowledged")?.ToString()),
-                CsvE(t.GetValueOrDefault("ackComment")?.ToString()),
-                CsvE(t.GetValueOrDefault("dateResolved")?.ToString()),
-                CsvE(t.GetValueOrDefault("resolution")?.ToString()),
-                CsvE(t.GetValueOrDefault("dateClosed")?.ToString()),
-                CsvE(t.GetValueOrDefault("closeWorkDone")?.ToString()),
-                CsvE(t.GetValueOrDefault("closeIssue")?.ToString()),
-                CsvE(t.GetValueOrDefault("resolutionHrs")?.ToString())
-            ));
-        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"Helpdesk_{DateTime.Now:yyyyMMdd}.csv");
-    }
+        var tickets = _db.GetTickets(string.IsNullOrEmpty(status) ? null : status);
+        if (!string.IsNullOrEmpty(priority))
+            tickets = tickets.Where(t => t.GetValueOrDefault("priority")?.ToString() == priority).ToList();
 
-    static string CsvE(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";
+        int total    = tickets.Count;
+        int open     = tickets.Count(t => t.GetValueOrDefault("status")?.ToString() == "Open");
+        int inprog   = tickets.Count(t => t.GetValueOrDefault("status")?.ToString() == "In Progress");
+        int resolved = tickets.Count(t => t.GetValueOrDefault("status")?.ToString() == "Resolved");
+        int closed   = tickets.Count(t => t.GetValueOrDefault("status")?.ToString() == "Closed");
+        var hrsList  = tickets.Select(t => double.TryParse(t.GetValueOrDefault("resolutionHrs")?.ToString(), out var h) ? h : (double?)null)
+            .Where(h => h.HasValue).Select(h => h!.Value).ToList();
+        double avgHrs = hrsList.Any() ? Math.Round(hrsList.Average(), 1) : 0;
+        int closedPct = total > 0 ? (int)Math.Round((resolved + closed) * 100.0 / total) : 0;
+        string scope = (string.IsNullOrEmpty(status) ? "All Status" : status) + (string.IsNullOrEmpty(priority) ? "" : $" · {priority} Priority");
+
+        string E(string? s) => System.Net.WebUtility.HtmlEncode(s ?? "");
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append($@"<html><head><meta charset='UTF-8'><style>
+body{{font-family:Arial,sans-serif;font-size:11px;margin:12px}}
+table{{border-collapse:collapse;width:100%}}
+th{{background:#DC2626;color:#FFF;padding:7px 5px;text-align:center;font-size:10px;border:1px solid #991B1B}}
+td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px}}
+.hdr{{background:linear-gradient(90deg,#0A192F,#1E3A5F);background-color:#0A192F;color:#FFF;font-size:15px;font-weight:bold;padding:10px 14px}}
+.sub{{background:#1E293B;color:#94A3B8;font-size:10px;padding:5px 14px;letter-spacing:1px}}
+.wki{{background:#FEF2F2;padding:7px 14px;font-size:10px;color:#374151;border:1px solid #E2E8F0}}
+.open{{background:#FEF2F2}} .inprog{{background:#EFF6FF}} .resolved{{background:#F0FDF4}} .closedRow{{background:#F8FAFC}}
+.critical{{background:#FEE2E2;color:#991B1B;font-weight:bold;text-align:center}}
+.high{{background:#FFEDD5;color:#C2410C;font-weight:bold;text-align:center}}
+.medium{{background:#FEF3C7;color:#92400E;font-weight:bold;text-align:center}}
+.low{{background:#D1FAE5;color:#065F46;font-weight:bold;text-align:center}}
+.sh{{background:#DC2626;color:#FFF;font-weight:bold;text-align:center;padding:7px}}
+.sl{{background:#F1F5F9;font-weight:bold;color:#374151;padding:6px 10px}}
+.sv{{text-align:center;font-weight:bold;padding:6px}}
+.red{{color:#DC2626}} .green{{color:#059669}} .blue{{color:#2563EB}} .gray{{color:#4B5563}}
+</style></head><body>
+<table style='margin-bottom:14px;border:1px solid #DC2626'>
+  <tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — IT HELPDESK TICKET REPORT</td></tr>
+  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {DateTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
+  <tr><td class='wki'><b>Filter:</b> {E(scope)} &nbsp;&nbsp; <b>Total Tickets:</b> {total} &nbsp;&nbsp; <b>Prepared By:</b> Sandeep Kumar Singh Kushwaha — IT System Administrator</td></tr>
+</table>
+<table>
+<thead><tr>
+  <th style='width:26px'>S.No.</th>
+  <th style='width:110px'>Ticket ID</th>
+  <th style='width:80px'>Date Raised</th>
+  <th style='width:110px'>Employee</th>
+  <th style='width:90px'>Department</th>
+  <th style='width:180px'>Issue Title</th>
+  <th style='width:110px'>Issue Type</th>
+  <th style='width:55px'>Priority</th>
+  <th style='width:75px'>Status</th>
+  <th style='width:80px'>Acknowledged</th>
+  <th style='width:150px'>Ack Comment</th>
+  <th style='width:80px'>Resolved</th>
+  <th style='width:150px'>Resolution</th>
+  <th style='width:80px'>Closed</th>
+  <th style='width:150px'>Work Done (Close)</th>
+  <th style='width:150px'>Issue (Close)</th>
+  <th style='width:60px'>Res. Hrs</th>
+</tr></thead><tbody>");
+
+        int sno = 0;
+        foreach (var t in tickets)
+        {
+            sno++;
+            var st = t.GetValueOrDefault("status")?.ToString() ?? "Open";
+            var pr = t.GetValueOrDefault("priority")?.ToString() ?? "Medium";
+            string rowCls = st switch { "Open" => "open", "In Progress" => "inprog", "Resolved" => "resolved", "Closed" => "closedRow", _ => "" };
+            string prioCls = pr switch { "Critical" => "critical", "High" => "high", "Medium" => "medium", "Low" => "low", _ => "" };
+            string statusStyle = st switch { "Open" => "color:#DC2626;font-weight:bold", "In Progress" => "color:#2563EB;font-weight:bold", "Resolved" => "color:#059669;font-weight:bold", _ => "color:#4B5563;font-weight:bold" };
+            sb.Append($@"<tr class='{rowCls}'>
+  <td style='text-align:center'>{sno}</td>
+  <td style='text-align:center;font-weight:bold;color:#0A192F'>{E(t.GetValueOrDefault("ticketId")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("dateRaised")?.ToString())}</td>
+  <td>{E(t.GetValueOrDefault("empName")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("empDept")?.ToString())}</td>
+  <td>{E(t.GetValueOrDefault("title")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("issueType")?.ToString())}</td>
+  <td class='{prioCls}'>{E(pr)}</td>
+  <td style='{statusStyle};text-align:center'>{E(st)}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("dateAcknowledged")?.ToString())}</td>
+  <td>{E(t.GetValueOrDefault("ackComment")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("dateResolved")?.ToString())}</td>
+  <td>{E(t.GetValueOrDefault("resolution")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("dateClosed")?.ToString())}</td>
+  <td>{E(t.GetValueOrDefault("closeWorkDone")?.ToString())}</td>
+  <td>{E(t.GetValueOrDefault("closeIssue")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("resolutionHrs")?.ToString())}</td>
+</tr>");
+        }
+        sb.Append($@"</tbody></table>
+<br>
+<table style='width:360px;margin-top:14px;border:1px solid #DC2626'>
+  <tr><td colspan='2' class='sh'>REPORT SUMMARY</td></tr>
+  <tr><td class='sl'>Total Tickets</td><td class='sv'>{total}</td></tr>
+  <tr class='open'><td class='sl'>Open</td><td class='sv red'>{open}</td></tr>
+  <tr class='inprog'><td class='sl'>In Progress</td><td class='sv blue'>{inprog}</td></tr>
+  <tr class='resolved'><td class='sl'>Resolved</td><td class='sv green'>{resolved}</td></tr>
+  <tr class='closedRow'><td class='sl'>Closed</td><td class='sv gray'>{closed}</td></tr>
+  <tr><td class='sl'>Avg. Resolution Time</td><td class='sv'>{avgHrs} hrs</td></tr>
+  <tr style='background:#F0FDF4'><td class='sl'>Resolved / Closed Rate</td><td class='sv green' style='font-size:13px'>{closedPct}%</td></tr>
+</table>
+<br>
+<div style='font-size:10px;color:#6B7280;border-top:1px solid #E2E8F0;padding-top:6px'>
+  <b>Sandeep Kumar Singh Kushwaha</b> | IT System Administrator | AMPM Fashions Pvt Ltd<br>
+  +91 93156 31188 | B-144, Sector 10, Noida - 201301
+</div></body></html>");
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        return File(bytes, "application/vnd.ms-excel", $"AMPM_Helpdesk_Report_{DateTime.Now:yyyyMMdd}.xls");
+    }
 }

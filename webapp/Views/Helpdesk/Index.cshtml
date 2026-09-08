@@ -4,7 +4,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><i class="bi bi-headset text-danger"></i> Helpdesk Tickets</h5>
     <a href="/Helpdesk/EmailSettings" class="btn btn-outline-secondary btn-sm px-3" title="Email Settings"><i class="bi bi-envelope-gear"></i></a>
-    <a href="/Helpdesk/Export" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Export CSV</a>
+    <a href="/Helpdesk/Export?status=@ViewBag.Status&priority=@ViewBag.Priority" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-file-earmark-excel"></i> Excel Report</a>
     <a href="/Helpdesk/Create" class="btn btn-danger btn-sm px-3">
         <i class="bi bi-plus-circle"></i> New Ticket
     </a>
