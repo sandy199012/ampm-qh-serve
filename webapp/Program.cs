@@ -1,6 +1,7 @@
 using AMPMWeb.Data;
 using AMPMWeb.Services;
 using AMPMWeb.Filters;
+using AMPMWeb.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.DataProtection;
 
@@ -15,7 +16,13 @@ builder.Services.AddSingleton<ModulePermissionFilter>();
 builder.Services.AddControllersWithViews(o => {
     o.Filters.Add(new IgnoreAntiforgeryTokenAttribute());
     o.Filters.AddService<ModulePermissionFilter>();
-}).AddRazorRuntimeCompilation();
+}).AddRazorRuntimeCompilation()
+  // Without this, [FromBody] Dictionary<string,object?> params (used by the
+  // Endpoints "Save/SavePcInventory/SaveLicenses" JSON endpoints) deserialize
+  // string/bool/number values into JsonElement instead of plain CLR types —
+  // which then corrupts into "{"ValueKind":N}" garbage when later
+  // re-serialized with Newtonsoft.Json elsewhere in this app.
+  .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new ObjectToInferredTypesConverter()));
 
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");

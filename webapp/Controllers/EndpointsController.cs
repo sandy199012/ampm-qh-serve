@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using AMPMWeb.Data;
 using AMPMWeb.Services;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace AMPMWeb.Controllers;
 
@@ -304,6 +305,45 @@ public class EndpointsController : Controller
         } catch (Exception ex) {
             return Json(new { ok=false, error=ex.Message });
         }
+    }
+
+    // ── One-time repair for data corrupted by the JsonElement/[FromBody] bug
+    // (values that got saved as e.g. {"ValueKind":3} instead of plain text).
+    // The original text in those fields is unrecoverable — this just clears
+    // the garbage back to "" so the tables render normally again; re-enter
+    // or re-import the real values afterward. Safe to run any time: it only
+    // touches fields that actually show the corruption signature.
+    [HttpPost("/Endpoints/RepairData")]
+    public IActionResult RepairData()
+    {
+        int fixedCount = 0;
+        fixedCount += RepairCorruptedStrings("qh_licenses");
+        fixedCount += RepairCorruptedStrings("pc_inventory");
+        fixedCount += RepairCorruptedStrings("endpoints");
+        TempData["Success"] = fixedCount > 0
+            ? $"Repaired {fixedCount} corrupted field(s). The original text in those fields could not be recovered — please re-enter or re-import them."
+            : "No corrupted data found — nothing to repair.";
+        return RedirectToAction("Index");
+    }
+
+    int RepairCorruptedStrings(string kvKey)
+    {
+        var list = _db.KGetObj<List<Dictionary<string,object?>>>(kvKey);
+        if (list == null) return 0;
+        int fixedCount = 0;
+        foreach (var rec in list)
+        {
+            foreach (var k in rec.Keys.ToList())
+            {
+                if (rec[k] is JObject jo && jo.ContainsKey("ValueKind"))
+                {
+                    rec[k] = "";
+                    fixedCount++;
+                }
+            }
+        }
+        if (fixedCount > 0) _db.KSet(kvKey, list);
+        return fixedCount;
     }
 
     static List<Dictionary<string,object?>> DefaultEndpoints() => new()
