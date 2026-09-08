@@ -54,6 +54,7 @@ public class DbService
             CREATE TABLE IF NOT EXISTS it_stock_issues (id TEXT PRIMARY KEY, item_id TEXT, issue_no TEXT, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS it_issue_scans (id TEXT PRIMARY KEY, issue_id TEXT, file_name TEXT, file_data TEXT, content_type TEXT, uploaded_at TEXT, uploaded_by TEXT);
             CREATE TABLE IF NOT EXISTS po_scans (id TEXT PRIMARY KEY, po_number TEXT, file_name TEXT, file_data TEXT, content_type TEXT, uploaded_at TEXT, uploaded_by TEXT);
+            CREATE TABLE IF NOT EXISTS bill_scans (id TEXT PRIMARY KEY, bill_id TEXT, file_name TEXT, file_data TEXT, content_type TEXT, uploaded_at TEXT, uploaded_by TEXT);
         ";
         cmd.ExecuteNonQuery();
 
