@@ -23,7 +23,15 @@ public class HelpdeskController : Controller
         return View(tickets);
     }
 
-    [HttpGet] public IActionResult Create() { ViewBag.User = _auth.GetCurrentUser(HttpContext); return View(); }
+    [HttpGet]
+    public IActionResult Create()
+    {
+        ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        ViewBag.Employees = _db.GetEmployees()
+            .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
+            .ToList();
+        return View();
+    }
 
     [HttpPost]
     public IActionResult Create(IFormCollection form)
