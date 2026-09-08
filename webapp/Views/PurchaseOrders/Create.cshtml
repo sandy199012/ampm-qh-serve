@@ -1,6 +1,7 @@
 @{ViewData["Title"] = "New Purchase Order";
   string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING"};
   var budgetItems = (List<Dictionary<string,object?>>)(ViewBag.BudgetItems ?? new List<Dictionary<string,object?>>());
+  var vendors = (List<Dictionary<string,object?>>)(ViewBag.Vendors ?? new List<Dictionary<string,object?>>());
 }
 
 <div class="d-flex align-items-center mb-4 gap-3">
@@ -53,16 +54,27 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Vendor Details</div>
             <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Select Vendor</label>
+                    <select id="vendorSelect" class="form-select" onchange="fillVendor()">
+                        <option value="">-- Select Existing Vendor (or type manually below) --</option>
+                        @foreach(var v in vendors)
+                        {<option value="@v.GetValueOrDefault("vendorId")">@v.GetValueOrDefault("name")</option>}
+                    </select>
+                    @if (!vendors.Any())
+                    {
+                        <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> No vendors in Vendor Master yet — <a href="/Vendors/Create">add one</a> or type details manually below.</div>
+                    }
+                </div>
                 <div class="mb-3"><label class="form-label small fw-bold">Vendor Name *</label>
                     <input type="text" name="vendorName" id="vendorName" class="form-control" required placeholder="Vendor/Supplier name"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">GST Number</label>
-                    <input type="text" name="vendorGst" class="form-control" placeholder="GSTIN"/></div>
+                    <input type="text" name="vendorGst" id="vendorGst" class="form-control" placeholder="GSTIN"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Address</label>
-                    <textarea name="vendorAddr" class="form-control" rows="2"></textarea></div>
+                    <textarea name="vendorAddr" id="vendorAddr" class="form-control" rows="2"></textarea></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Phone</label>
-                    <input type="text" name="vendorPhone" class="form-control"/></div>
+                    <input type="text" name="vendorPhone" id="vendorPhone" class="form-control"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Contact Person</label>
-                    <input type="text" name="vendorContact" class="form-control"/></div>
+                    <input type="text" name="vendorContact" id="vendorContact" class="form-control"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Approved By</label>
                     <input type="text" name="approvedBy" class="form-control" value="Sandeep Kumar Singh Kushwaha"/></div>
             </div>
@@ -175,6 +187,19 @@
 @section Scripts {
 <script>
 let itemCount = 1;
+const vendorsData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(vendors));
+
+function fillVendor() {
+    const id = document.getElementById('vendorSelect').value;
+    if (!id) return;
+    const v = vendorsData.find(x => (x.vendorId || '').toString() === id);
+    if (!v) return;
+    document.getElementById('vendorName').value = v.name || '';
+    document.getElementById('vendorGst').value = v.gst || '';
+    document.getElementById('vendorAddr').value = v.address || '';
+    document.getElementById('vendorPhone').value = v.phone || '';
+    document.getElementById('vendorContact').value = v.contactPerson || '';
+}
 
 function addItem() {
     const i = itemCount++;

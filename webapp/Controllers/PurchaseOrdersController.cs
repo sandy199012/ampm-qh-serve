@@ -48,6 +48,7 @@ public class PurchaseOrdersController : Controller
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         ViewBag.BudgetItems = _db.GetBudget();
+        ViewBag.Vendors = _db.GetVendors();
         return View();
     }
 
