@@ -6,6 +6,12 @@
     <div class="d-flex gap-2">
         <a href="/Employees/Import" class="btn btn-outline-primary btn-sm px-3"><i class="bi bi-upload"></i> Import CSV</a>
         <a href="/Employees/Export" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Export CSV</a>
+        @if (((AMPMWeb.Services.UserSession?)ViewBag.User)?.IsAdmin == true)
+        {
+            <form method="post" action="/Employees/ProvisionMobileLogins" class="d-inline" onsubmit="return confirm('Create a mobile app login for every active employee who doesn\'t have one yet? Initial password = their employee code, and they will be asked to change it on first login.')">
+                <button type="submit" class="btn btn-outline-dark btn-sm px-3" title="Create mobile app logins for employees who don't have one"><i class="bi bi-phone"></i> Provision Mobile Logins</button>
+            </form>
+        }
         <a href="/Employees/Create" class="btn btn-primary btn-sm px-3"><i class="bi bi-plus-circle"></i> Add Employee</a>
     </div>
 </div>

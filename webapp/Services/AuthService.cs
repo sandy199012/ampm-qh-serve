@@ -76,6 +76,7 @@ public class AuthService
             Department = row.Department ?? "",
             Permissions = perms,
             EmpId = row.EmpId,
+            MustChangePassword = row.MustChangePassword == 1,
         };
     }
 }
@@ -91,6 +92,7 @@ public class UserRow
     public int IsActive { get; set; } = 1;
     public string? Permissions { get; set; }
     public string? EmpId { get; set; }
+    public int MustChangePassword { get; set; } = 0;
 }
 
 public class ModulePermission
@@ -108,6 +110,7 @@ public class UserSession
     public string Department { get; set; } = "";
     public Dictionary<string, ModulePermission> Permissions { get; set; } = new();
     public string? EmpId { get; set; }
+    public bool MustChangePassword { get; set; }
 
     public bool IsSuperAdmin => Role == "superadmin";
     public bool IsAdmin => Role is "superadmin" or "admin";

@@ -87,6 +87,38 @@ public class EmployeesController : Controller
         return RedirectToAction("Index");
     }
 
+    // Bulk-creates a mobile-app login (username = employee code, initial
+    // password = employee code, forced to change it on first use) for every
+    // active employee who doesn't already have one linked. Admin only.
+    [HttpPost("/Employees/ProvisionMobileLogins")]
+    public IActionResult ProvisionMobileLogins()
+    {
+        var me = _auth.GetCurrentUser(HttpContext);
+        if (me == null || !me.IsAdmin) return Unauthorized();
+
+        var existingUsers = _db.GetUsers();
+        var takenUsernames = existingUsers.Select(u => u.Username.ToLower()).ToHashSet();
+        var linkedEmpIds = existingUsers.Select(u => u.EmpId).Where(e => !string.IsNullOrWhiteSpace(e)).ToHashSet();
+
+        var emps = _db.GetEmployees().Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString())).ToList();
+        int created = 0, skipped = 0;
+        foreach (var e in emps)
+        {
+            var code = e.GetValueOrDefault("emp")?.ToString()?.Trim() ?? "";
+            if (string.IsNullOrEmpty(code)) { skipped++; continue; }
+            if (linkedEmpIds.Contains(code) || takenUsernames.Contains(code.ToLower())) { skipped++; continue; }
+
+            var name = e.GetValueOrDefault("name")?.ToString() ?? code;
+            var dept = e.GetValueOrDefault("dept")?.ToString() ?? "";
+            var hash = BCrypt.Net.BCrypt.HashPassword(code);
+            _db.CreateUser(code, hash, name, "user", dept, "{}", code, mustChangePassword: true);
+            created++;
+        }
+
+        TempData["Success"] = $"Mobile logins provisioned: {created} created, {skipped} skipped (already had a login). Initial password = employee code; they'll be asked to change it on first login.";
+        return RedirectToAction("Index");
+    }
+
     [HttpPost]
     public IActionResult MarkExited(string id)
     {

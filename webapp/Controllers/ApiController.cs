@@ -55,24 +55,41 @@ public class ApiController : Controller
         var password = data.GetValueOrDefault("password")?.ToString() ?? Request.Query["password"].ToString();
         var user = _auth.Login(username ?? "", password ?? "");
         if (user == null) return Json(new { ok = false, error = "Invalid username or password." });
+        return Json(BuildLoginPayload(user));
+    }
 
+    Dictionary<string, object?> BuildLoginPayload(UserSession user)
+    {
         string desig = "";
         if (!string.IsNullOrWhiteSpace(user.EmpId))
         {
             var emp = _db.GetEmployeeByCode(user.EmpId);
             desig = emp?.GetValueOrDefault("designation")?.ToString() ?? "";
         }
-
-        return Json(new
+        return new Dictionary<string, object?>
         {
-            ok = true,
-            username = user.Username,
-            name = user.Name,
-            dept = user.Department,
-            desig,
-            empId = user.EmpId ?? "",
-            isAdmin = user.IsAdmin,
-        });
+            ["ok"] = true,
+            ["username"] = user.Username,
+            ["name"] = user.Name,
+            ["dept"] = user.Department,
+            ["desig"] = desig,
+            ["empId"] = user.EmpId ?? "",
+            ["isAdmin"] = user.IsAdmin,
+            ["mustChangePassword"] = user.MustChangePassword,
+        };
+    }
+
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword()
+    {
+        var user = AuthenticateRequest();
+        if (user == null) return Unauthorized();
+        var data = await ReadBody(Request);
+        var newPassword = data.GetValueOrDefault("newPassword")?.ToString() ?? "";
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 4)
+            return Json(new { ok = false, error = "New password must be at least 4 characters." });
+        _db.SetPassword(user.Id, BCrypt.Net.BCrypt.HashPassword(newPassword));
+        return Json(new { ok = true });
     }
 
     [HttpGet("tickets")]

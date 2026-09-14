@@ -67,6 +67,11 @@ public class DbService
         cmd.CommandText = "ALTER TABLE users ADD COLUMN IF NOT EXISTS emp_id TEXT;";
         cmd.ExecuteNonQuery();
 
+        // Set on bulk-provisioned mobile logins (initial password = employee code)
+        // so the app can force a password change on first successful login.
+        cmd.CommandText = "ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password INTEGER DEFAULT 0;";
+        cmd.ExecuteNonQuery();
+
         // Ensure admin user — and self-repair it. Login used to bypass this table entirely
         // (hardcoded username/password check), so an existing 'sandy' row could have a
         // stale/blank/invalid password hash that nobody ever noticed. Now that Login()
@@ -209,6 +214,9 @@ public class DbService
         => Execute("INSERT INTO kv (k,v) VALUES (@k,@v) ON CONFLICT (k) DO UPDATE SET v=@v",
             new { k = key, v = JsonConvert.SerializeObject(value) });
 
+    public void KDelete(string key)
+        => Execute("DELETE FROM kv WHERE k=@k", new { k = key });
+
     // ── Assets ────────────────────────────────────────────────
     public List<Dictionary<string,object?>> GetAssets()
         => KGetObj<List<Dictionary<string,object?>>>("asset_stock") ?? new();
@@ -336,9 +344,10 @@ public class DbService
         IsActive     = reader.IsDBNull(6) ? 1 : reader.GetInt32(6),
         Permissions  = reader.IsDBNull(7) ? null : reader.GetString(7),
         EmpId        = reader.IsDBNull(8) ? null : reader.GetString(8),
+        MustChangePassword = reader.IsDBNull(9) ? 0 : reader.GetInt32(9),
     };
 
-    const string UserCols = "id,username,password_hash,name,role,department,is_active,permissions,emp_id";
+    const string UserCols = "id,username,password_hash,name,role,department,is_active,permissions,emp_id,must_change_password";
 
     public List<UserRow> GetUsers()
     {
@@ -374,12 +383,12 @@ public class DbService
     public bool UsernameExists(string username, int excludeId = 0)
         => QueryFirst<long>("SELECT COUNT(*) FROM users WHERE lower(username)=lower(@u) AND id<>@e", new { u = username, e = excludeId }) > 0;
 
-    public int CreateUser(string username, string passwordHash, string? name, string role, string? department, string permissionsJson, string? empId = null)
+    public int CreateUser(string username, string passwordHash, string? name, string role, string? department, string permissionsJson, string? empId = null, bool mustChangePassword = false)
     {
         using var conn = GetConn();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"INSERT INTO users (username,password_hash,name,role,department,is_active,permissions,emp_id,created_at)
-                             VALUES (@u,@h,@n,@r,@d,1,@p,@e,@t) RETURNING id";
+        cmd.CommandText = @"INSERT INTO users (username,password_hash,name,role,department,is_active,permissions,emp_id,must_change_password,created_at)
+                             VALUES (@u,@h,@n,@r,@d,1,@p,@e,@m,@t) RETURNING id";
         cmd.Parameters.AddWithValue("@u", username);
         cmd.Parameters.AddWithValue("@h", passwordHash);
         cmd.Parameters.AddWithValue("@n", (object?)name ?? DBNull.Value);
@@ -387,9 +396,15 @@ public class DbService
         cmd.Parameters.AddWithValue("@d", (object?)department ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@p", permissionsJson);
         cmd.Parameters.AddWithValue("@e", (object?)empId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@m", mustChangePassword ? 1 : 0);
         cmd.Parameters.AddWithValue("@t", DateTime.Now.ToString("o"));
         return (int)cmd.ExecuteScalar()!;
     }
+
+    // Sets a new password and clears the forced-change flag — used by the mobile
+    // app's "change password" call (after the user is authenticated).
+    public void SetPassword(int id, string newHash)
+        => Execute("UPDATE users SET password_hash=@h, must_change_password=0 WHERE id=@id", new { h = newHash, id });
 
     public void UpdateUser(int id, string? name, string role, string? department, string permissionsJson, int isActive, string? newPasswordHash, string? empId = null)
     {
@@ -402,6 +417,18 @@ public class DbService
     }
 
     public void DeleteUser(int id) => Execute("DELETE FROM users WHERE id=@id", new { id });
+
+    // Finds the login account linked to an Employee Master code (used by the
+    // mobile app's OTP login, which authenticates by employee code, not username).
+    public UserRow? GetUserByEmpId(string empId)
+    {
+        using var conn = GetConn();
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"SELECT {UserCols} FROM users WHERE emp_id=@e LIMIT 1";
+        cmd.Parameters.AddWithValue("@e", empId);
+        using var reader = cmd.ExecuteReader();
+        return reader.Read() ? ReadUserRow(reader) : null;
+    }
 
     // Looks up one employee record by code — used to enrich mobile-raised tickets
     // with name/dept/designation/etc. without the app having to send them all.
