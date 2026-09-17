@@ -3,7 +3,9 @@ using AMPMWeb.Data;
 using AMPMWeb.Services;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using ClosedXML.Excel;
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Spreadsheet;
 
 namespace AMPMWeb.Controllers;
 
@@ -379,11 +381,15 @@ public class EndpointsController : Controller
     }
 
     // Real .xlsx report generated from Sandy's own AMPM_IT_Reporting_Template.xlsx
-    // (embedded into the app at build time — see the csproj). We only fill in the
-    // data cells of the "Software Register" sheet; every sheet (Dashboard, Software
-    // Register, Online Subscriptions, IT Spend Log, Lists), formula, style, column
-    // width and dropdown stays exactly as in the original workbook — the Dashboard's
-    // totals/renewal counts recalculate on their own from the data we write in.
+    // (embedded into the app at build time — see the csproj). We surgically set only
+    // the data cells of the "Software Register" sheet using the raw Open XML SDK —
+    // NOT a higher-level library like ClosedXML, because those tend to fully
+    // re-parse/re-serialize every part of the workbook (styles, conditional
+    // formatting, etc.) on save, and this template's conditional-formatting rules
+    // (e.g. highlighting "Due within 30 days") aren't round-trippable by ClosedXML's
+    // formula parser. Writing cells directly leaves every other sheet, formula,
+    // style, column width, dropdown and conditional format byte-for-byte untouched —
+    // the Dashboard's totals/renewal counts recalculate on their own from the data.
     [HttpGet("/Endpoints/ExportSoftwareRegister")]
     public IActionResult ExportSoftwareRegister()
     {
@@ -396,54 +402,142 @@ public class EndpointsController : Controller
         if (resourceName == null)
             return StatusCode(500, "Report template is missing from the app build.");
 
-        using var templateStream = asm.GetManifestResourceStream(resourceName)!;
-        using var wb = new XLWorkbook(templateStream);
-        var ws = wb.Worksheet("Software Register");
+        using var ms = new MemoryStream();
+        using (var templateStream = asm.GetManifestResourceStream(resourceName)!)
+            templateStream.CopyTo(ms);
+        ms.Position = 0;
 
-        // The template's SoftwareRegisterTable and its per-row formulas
-        // (Utilization %, Days to Renewal, Renewal Flag) run from row 7 to row 206 —
-        // we only ever write into the data columns of that same range.
-        const int firstRow = 7, lastRow = 206;
-        int row = firstRow;
-        foreach (var l in lics)
+        using (var doc = SpreadsheetDocument.Open(ms, true))
         {
-            if (row > lastRow) break; // template's pre-built rows are full
+            var wbPart = doc.WorkbookPart!;
+            var sheet = wbPart.Workbook.Descendants<Sheet>().First(s => s.Name == "Software Register");
+            var wsPart = (WorksheetPart)wbPart.GetPartById(sheet.Id!.Value!);
+            var sheetData = wsPart.Worksheet.GetFirstChild<SheetData>()!;
+            var sstPart = wbPart.SharedStringTablePart ?? wbPart.AddNewPart<SharedStringTablePart>();
+            sstPart.SharedStringTable ??= new SharedStringTable();
 
-            ws.Cell(row, 1).Value = S(l, "recordId");            // A Record ID
-            ws.Cell(row, 2).Value = S(l, "software");            // B Software / Application
-            ws.Cell(row, 3).Value = S(l, "category");            // C Category
-            ws.Cell(row, 4).Value = S(l, "deployment");          // D Deployment
-            ws.Cell(row, 5).Value = S(l, "purpose");             // E Purpose / Module
-            ws.Cell(row, 6).Value = S(l, "vendor");              // F Vendor
-            ws.Cell(row, 7).Value = S(l, "businessOwner");       // G Business Owner
-            ws.Cell(row, 8).Value = S(l, "itOwner");             // H IT Owner
-            ws.Cell(row, 9).Value = S(l, "department");          // I Department
-            ws.Cell(row, 10).Value = S(l, "licenseType");        // J License Type
-            if (double.TryParse(S(l, "purchasedLicenses"), out var purchased)) ws.Cell(row, 11).Value = purchased; // K
-            if (double.TryParse(S(l, "assignedLicenses"), out var assigned)) ws.Cell(row, 12).Value = assigned;    // L
-            // column 13 (M) = Utilization % — template formula, left untouched
-            ws.Cell(row, 14).Value = S(l, "versionPlan");        // N Version / Plan
-            if (DateTime.TryParse(S(l, "startDate"), out var startDate)) ws.Cell(row, 15).Value = startDate;       // O
-            if (DateTime.TryParse(S(l, "renewalDate"), out var renewalDate)) ws.Cell(row, 16).Value = renewalDate; // P
-            if (double.TryParse(S(l, "annualCost"), out var annualCost)) ws.Cell(row, 17).Value = annualCost;      // Q
-            ws.Cell(row, 18).Value = S(l, "paymentFrequency");   // R Payment Frequency
-            ws.Cell(row, 19).Value = S(l, "autoRenew");          // S Auto-Renew
-            ws.Cell(row, 20).Value = S(l, "criticality");        // T Criticality
-            ws.Cell(row, 21).Value = S(l, "dataSensitivity");    // U Data Sensitivity
-            ws.Cell(row, 22).Value = S(l, "ssoMfa");             // V SSO / MFA
-            ws.Cell(row, 23).Value = S(l, "contractPo");         // W Contract / PO No.
-            ws.Cell(row, 24).Value = S(l, "invoiceNo");          // X Invoice No.
-            ws.Cell(row, 25).Value = S(l, "status");             // Y Status
-            // columns 26 (Z) / 27 (AA) = Days to Renewal / Renewal Flag — template formulas, left untouched
-            ws.Cell(row, 28).Value = S(l, "riskIssue");          // AB Risk / Issue
-            ws.Cell(row, 29).Value = S(l, "actionRequired");     // AC Action Required
-            ws.Cell(row, 30).Value = S(l, "remarks");            // AD Remarks
-            row++;
+            int SharedStringIndex(string text)
+            {
+                int i = 0;
+                foreach (var item in sstPart.SharedStringTable.Elements<SharedStringItem>())
+                {
+                    if (item.InnerText == text) return i;
+                    i++;
+                }
+                sstPart.SharedStringTable.AppendChild(new SharedStringItem(new Text(text)));
+                sstPart.SharedStringTable.Count = (sstPart.SharedStringTable.Count?.Value ?? 0) + 1;
+                sstPart.SharedStringTable.UniqueCount = (sstPart.SharedStringTable.UniqueCount?.Value ?? 0) + 1;
+                return i;
+            }
+
+            static string ColumnLetter(int index)
+            {
+                string s = "";
+                while (index > 0)
+                {
+                    int rem = (index - 1) % 26;
+                    s = (char)('A' + rem) + s;
+                    index = (index - 1) / 26;
+                }
+                return s;
+            }
+
+            static int ColumnNumber(string colLetters)
+            {
+                int n = 0;
+                foreach (char c in colLetters) n = n * 26 + (c - 'A' + 1);
+                return n;
+            }
+
+            Row GetOrCreateRow(uint rowIndex)
+            {
+                var row = sheetData.Elements<Row>().FirstOrDefault(r => r.RowIndex is not null && r.RowIndex.Value == rowIndex);
+                if (row != null) return row;
+                row = new Row { RowIndex = rowIndex };
+                var before = sheetData.Elements<Row>().FirstOrDefault(r => r.RowIndex is not null && r.RowIndex.Value > rowIndex);
+                if (before != null) sheetData.InsertBefore(row, before); else sheetData.AppendChild(row);
+                return row;
+            }
+
+            Cell GetOrCreateCell(Row row, int colIndex, uint rowIndex)
+            {
+                string cellRef = ColumnLetter(colIndex) + rowIndex;
+                var cell = row.Elements<Cell>().FirstOrDefault(c => c.CellReference is not null && c.CellReference.Value == cellRef);
+                if (cell != null) return cell;
+                cell = new Cell { CellReference = cellRef };
+                Cell? before = null;
+                foreach (var c in row.Elements<Cell>())
+                {
+                    var refVal = c.CellReference?.Value ?? "";
+                    var letters = new string(refVal.TakeWhile(char.IsLetter).ToArray());
+                    if (letters.Length > 0 && ColumnNumber(letters) > colIndex) { before = c; break; }
+                }
+                if (before != null) row.InsertBefore(cell, before); else row.AppendChild(cell);
+                return cell;
+            }
+
+            void SetText(uint rowIndex, int colIndex, string value)
+            {
+                if (string.IsNullOrEmpty(value)) return;
+                var cell = GetOrCreateCell(GetOrCreateRow(rowIndex), colIndex, rowIndex);
+                cell.CellValue = new CellValue(SharedStringIndex(value).ToString());
+                cell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
+            }
+
+            void SetNumber(uint rowIndex, int colIndex, double value)
+            {
+                var cell = GetOrCreateCell(GetOrCreateRow(rowIndex), colIndex, rowIndex);
+                cell.CellValue = new CellValue(value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                cell.DataType = null;
+            }
+
+            void SetDate(uint rowIndex, int colIndex, DateTime value) => SetNumber(rowIndex, colIndex, value.ToOADate());
+
+            // The template's SoftwareRegisterTable and its per-row formulas
+            // (Utilization %, Days to Renewal, Renewal Flag) run from row 7 to row 206 —
+            // we only ever write into the data columns of that same range.
+            const uint firstRow = 7, lastRow = 206;
+            uint row = firstRow;
+            foreach (var l in lics)
+            {
+                if (row > lastRow) break; // template's pre-built rows are full
+
+                SetText(row, 1, S(l, "recordId"));           // A Record ID
+                SetText(row, 2, S(l, "software"));           // B Software / Application
+                SetText(row, 3, S(l, "category"));           // C Category
+                SetText(row, 4, S(l, "deployment"));         // D Deployment
+                SetText(row, 5, S(l, "purpose"));            // E Purpose / Module
+                SetText(row, 6, S(l, "vendor"));             // F Vendor
+                SetText(row, 7, S(l, "businessOwner"));      // G Business Owner
+                SetText(row, 8, S(l, "itOwner"));            // H IT Owner
+                SetText(row, 9, S(l, "department"));         // I Department
+                SetText(row, 10, S(l, "licenseType"));       // J License Type
+                if (double.TryParse(S(l, "purchasedLicenses"), out var purchased)) SetNumber(row, 11, purchased); // K
+                if (double.TryParse(S(l, "assignedLicenses"), out var assigned)) SetNumber(row, 12, assigned);    // L
+                // column 13 (M) = Utilization % — template formula, left untouched
+                SetText(row, 14, S(l, "versionPlan"));       // N Version / Plan
+                if (DateTime.TryParse(S(l, "startDate"), out var startDate)) SetDate(row, 15, startDate);         // O
+                if (DateTime.TryParse(S(l, "renewalDate"), out var renewalDate)) SetDate(row, 16, renewalDate);   // P
+                if (double.TryParse(S(l, "annualCost"), out var annualCost)) SetNumber(row, 17, annualCost);      // Q
+                SetText(row, 18, S(l, "paymentFrequency"));  // R Payment Frequency
+                SetText(row, 19, S(l, "autoRenew"));         // S Auto-Renew
+                SetText(row, 20, S(l, "criticality"));       // T Criticality
+                SetText(row, 21, S(l, "dataSensitivity"));   // U Data Sensitivity
+                SetText(row, 22, S(l, "ssoMfa"));            // V SSO / MFA
+                SetText(row, 23, S(l, "contractPo"));        // W Contract / PO No.
+                SetText(row, 24, S(l, "invoiceNo"));         // X Invoice No.
+                SetText(row, 25, S(l, "status"));            // Y Status
+                // columns 26 (Z) / 27 (AA) = Days to Renewal / Renewal Flag — template formulas, left untouched
+                SetText(row, 28, S(l, "riskIssue"));         // AB Risk / Issue
+                SetText(row, 29, S(l, "actionRequired"));    // AC Action Required
+                SetText(row, 30, S(l, "remarks"));           // AD Remarks
+                row++;
+            }
+
+            doc.Save();
         }
 
-        using var outStream = new MemoryStream();
-        wb.SaveAs(outStream);
-        return File(outStream.ToArray(),
+        return File(ms.ToArray(),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             $"AMPM_IT_Software_Register_{DateTime.Now:yyyyMMdd}.xlsx");
     }
