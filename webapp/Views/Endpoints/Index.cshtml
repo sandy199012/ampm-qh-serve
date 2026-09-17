@@ -3,6 +3,7 @@
     ViewData["Title"] = "Endpoint Monitor";
     var pcInv = (List<Dictionary<string,object?>>)ViewBag.PcInventory;
     var licenses = (List<Dictionary<string,object?>>)ViewBag.Licenses;
+    var softwareRegister = (List<Dictionary<string,object?>>)ViewBag.SoftwareRegister;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -13,6 +14,7 @@
     <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-uptime" type="button">🌐 Uptime Monitor</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pc" type="button">💻 PC Inventory &amp; Antivirus</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-lic" type="button">🔑 License Manager</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-swreg" type="button">🗂️ IT Software Register</button></li>
 </ul>
 
 <div class="tab-content">
@@ -120,26 +122,76 @@
     </div>
 </div>
 
-<!-- ══════════════ TAB 3: LICENSE MANAGER (IT Software Register) ══════════════ -->
+<!-- ══════════════ TAB 3: LICENSE MANAGER ══════════════ -->
 <div class="tab-pane fade" id="tab-lic">
 
     @if (!licenses.Any())
     {
         <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> No software/license records on file yet — add them one by one, or import your list as a CSV. Use <a href="/Endpoints/ExportLicenses">Export</a> first to see the exact column format.
+            <i class="bi bi-info-circle"></i> No Quick Heal licenses on file yet — add them one by one, or import your existing license list as a CSV (columns: License Key, Product, Assigned To, IP Address, Logged User, Assigned On, Purchase Date, Expiry Date, Notes).
         </div>
     }
     <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
+        <form method="post" action="/Endpoints/RepairData" onsubmit="return confirm('This clears any corrupted fields (showing as [object Object]) back to blank — the original text in those fields cannot be recovered. Continue?')" class="d-inline">
+            <button class="btn btn-outline-danger btn-sm px-3" type="submit" title="Fix fields showing [object Object]"><i class="bi bi-tools"></i> Repair Data</button>
+        </form>
         <button class="btn btn-outline-dark btn-sm px-3" onclick="new bootstrap.Modal(document.getElementById('licImportModal')).show()"><i class="bi bi-upload"></i> Import CSV</button>
-        <a href="/Endpoints/ExportLicenses" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Excel Report</a>
-        <button class="btn btn-primary btn-sm px-3" onclick="openLicModal(-1)"><i class="bi bi-plus-circle"></i> Add Software / License</button>
+        <a href="/Endpoints/ExportLicenses" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Export CSV</a>
+        <button class="btn btn-outline-dark btn-sm px-3" onclick="autoMap()"><i class="bi bi-magic"></i> Auto-Map</button>
+        <button class="btn btn-primary btn-sm px-3" onclick="openLicModal(-1)"><i class="bi bi-plus-circle"></i> Add License</button>
     </div>
 
     <div class="row g-2 mb-3" id="licSummary">
-        <div class="col-3"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4" id="licTotal">0</div><div class="small text-muted">Total Records</div></div></div>
-        <div class="col-3"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success" id="licActive">0</div><div class="small text-muted">Active</div></div></div>
-        <div class="col-3"><div class="card border-0 bg-warning-subtle text-center py-2"><div class="fw-bold fs-4 text-warning" id="licDueSoon">0</div><div class="small text-muted">Renewal ≤ 30 Days</div></div></div>
-        <div class="col-3"><div class="card border-0 bg-danger-subtle text-center py-2"><div class="fw-bold fs-4 text-danger" id="licExpired">0</div><div class="small text-muted">Expired</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4" id="licTotal">0</div><div class="small text-muted">Total Licenses</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success" id="licUsed">0</div><div class="small text-muted">Used</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-info-subtle text-center py-2"><div class="fw-bold fs-4 text-info" id="licFree">0</div><div class="small text-muted">Free</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-warning-subtle text-center py-2"><div class="fw-bold fs-4 text-warning" id="licExpiring">0</div><div class="small text-muted">Expiring Soon</div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead style="background:#1e3a5f;color:white">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Status</th>
+                        <th>License Key</th>
+                        <th>Product</th>
+                        <th>Assigned To</th>
+                        <th>IP Address</th>
+                        <th>Logged User</th>
+                        <th>Assigned On</th>
+                        <th>Purchase</th>
+                        <th>Expiry</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="licTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ TAB 4: IT SOFTWARE REGISTER (new, separate from Quick Heal License Manager) ══════════════ -->
+<div class="tab-pane fade" id="tab-swreg">
+
+    @if (!softwareRegister.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No software/license records on file yet — add them one by one, or import your list as a CSV. Use <a href="/Endpoints/ExportSoftwareRegister">Excel Report</a> first to see the exact column format.
+        </div>
+    }
+    <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
+        <button class="btn btn-outline-dark btn-sm px-3" onclick="new bootstrap.Modal(document.getElementById('swregImportModal')).show()"><i class="bi bi-upload"></i> Import CSV</button>
+        <a href="/Endpoints/ExportSoftwareRegister" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Excel Report</a>
+        <button class="btn btn-primary btn-sm px-3" onclick="openSwRegModal(-1)"><i class="bi bi-plus-circle"></i> Add Software / License</button>
+    </div>
+
+    <div class="row g-2 mb-3" id="swregSummary">
+        <div class="col-3"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4" id="swregTotal">0</div><div class="small text-muted">Total Records</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success" id="swregActive">0</div><div class="small text-muted">Active</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-warning-subtle text-center py-2"><div class="fw-bold fs-4 text-warning" id="swregDueSoon">0</div><div class="small text-muted">Renewal ≤ 30 Days</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-danger-subtle text-center py-2"><div class="fw-bold fs-4 text-danger" id="swregExpired">0</div><div class="small text-muted">Expired</div></div></div>
     </div>
 
     <div class="card border-0 shadow-sm">
@@ -181,7 +233,7 @@
                         <th>Actions</th>
                     </tr>
                 </thead>
-                <tbody id="licTableBody"></tbody>
+                <tbody id="swregTableBody"></tbody>
             </table>
         </div>
     </div>
@@ -247,7 +299,29 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-muted">Columns: Record ID, Software / Application, Category, Deployment, Purpose / Module, Vendor, Business Owner, IT Owner, Department, License Type, Purchased Licenses, Assigned Licenses, Version / Plan, Start Date, Renewal / Support Due, Annual Support Cost (INR), Payment Frequency, Auto-Renew, Criticality, Data Sensitivity, SSO / MFA, Contract / PO No., Invoice No., Status, Risk / Issue, Action Required, Remarks. Matches existing rows by Record ID (updates them); blank/new Record IDs are added. Use <a href="/Endpoints/ExportLicenses">Export</a> to see the exact format.</p>
+                    <p class="small text-muted">Columns: License Key, Product, Assigned To (hostname), IP Address, Logged User, Assigned On, Purchase Date, Expiry Date, Notes. Matches existing rows by License Key (updates them); new keys are added. Use <a href="/Endpoints/ExportLicenses">Export CSV</a> to see the exact format.</p>
+                    <input type="file" name="csvFile" accept=".csv" class="form-control" required/>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Import Software Register CSV Modal ═══ -->
+<div class="modal fade" id="swregImportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="/Endpoints/ImportSoftwareRegisterCsv" enctype="multipart/form-data">
+                <div class="modal-header" style="background:#1e3a5f;color:white">
+                    <h5 class="modal-title">Import IT Software Register (CSV)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Columns: Record ID, Software / Application, Category, Deployment, Purpose / Module, Vendor, Business Owner, IT Owner, Department, License Type, Purchased Licenses, Assigned Licenses, Version / Plan, Start Date, Renewal / Support Due, Annual Support Cost (INR), Payment Frequency, Auto-Renew, Criticality, Data Sensitivity, SSO / MFA, Contract / PO No., Invoice No., Status, Risk / Issue, Action Required, Remarks. Matches existing rows by Record ID (updates them); blank/new Record IDs are added. Use <a href="/Endpoints/ExportSoftwareRegister">Excel Report</a> to see the exact format.</p>
                     <input type="file" name="csvFile" accept=".csv" class="form-control" required/>
                 </div>
                 <div class="modal-footer">
@@ -320,97 +394,30 @@
     </div>
 </div>
 
-<!-- ═══ Add/Edit Software / License Modal (IT Software Register) ═══ -->
+<!-- ═══ Add/Edit License Modal ═══ -->
 <div class="modal fade" id="licModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header" style="background:#1e3a5f;color:white">
-                <h5 class="modal-title" id="licModalTitle">Add Software / License</h5>
+                <h5 class="modal-title" id="licModalTitle">Add License</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="licIdx" value="-1"/>
                 <div class="row g-3">
-                    <div class="col-md-4"><label class="form-label fw-bold small">Record ID</label><input type="text" id="licRecordId" class="form-control" placeholder="auto if blank"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Software / Application</label><input type="text" id="licSoftware" class="form-control"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Category</label>
-                        <select id="licCategory" class="form-select">
-                            @foreach(var c in new[]{"ERP","Finance & Accounting","HRMS","POS","Design","Security","Productivity","Cloud / Hosting","Other"})
-                            {<option>@c</option>}
+                    <div class="col-md-6"><label class="form-label fw-bold small">License Key</label><input type="text" id="licKey" class="form-control"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Product</label><input type="text" id="licProduct" class="form-control" value="Quick Heal Total Security"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Assign To (PC)</label>
+                        <select id="licAssignTo" class="form-select" onchange="onLicAssignChange()">
+                            <option value="">-- Unassigned --</option>
                         </select>
                     </div>
-
-                    <div class="col-md-4"><label class="form-label fw-bold small">Deployment</label>
-                        <select id="licDeployment" class="form-select">
-                            @foreach(var c in new[]{"Cloud","Desktop","On-premise","Hybrid"})
-                            {<option>@c</option>}
-                        </select>
-                    </div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Purpose / Module</label><input type="text" id="licPurpose" class="form-control"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Vendor</label><input type="text" id="licVendor" class="form-control"/></div>
-
-                    <div class="col-md-4"><label class="form-label fw-bold small">Business Owner</label><input type="text" id="licBusinessOwner" class="form-control"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">IT Owner</label><input type="text" id="licItOwner" class="form-control" value="Sandeep Kumar Singh Kushwaha"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Department</label>
-                        <select id="licDepartment" class="form-select">
-                            @foreach(var c in new[]{"Accounts & Finance","Retail","E-commerce","Production","Warehouse","HR","Marketing","Management","IT"})
-                            {<option>@c</option>}
-                        </select>
-                    </div>
-
-                    <div class="col-md-4"><label class="form-label fw-bold small">License Type</label>
-                        <select id="licLicenseType" class="form-select">
-                            @foreach(var c in new[]{"Named User","Concurrent","Site License","Perpetual","Device","Enterprise","Other"})
-                            {<option>@c</option>}
-                        </select>
-                    </div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Purchased Licenses</label><input type="number" id="licPurchased" class="form-control" min="0"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Assigned Licenses</label><input type="number" id="licAssigned" class="form-control" min="0"/></div>
-
-                    <div class="col-md-4"><label class="form-label fw-bold small">Version / Plan</label><input type="text" id="licVersionPlan" class="form-control"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Start Date</label><input type="date" id="licStartDate" class="form-control"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Renewal / Support Due</label><input type="date" id="licRenewalDate" class="form-control"/></div>
-
-                    <div class="col-md-4"><label class="form-label fw-bold small">Annual Support Cost (INR)</label><input type="number" id="licAnnualCost" class="form-control" min="0"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Payment Frequency</label>
-                        <select id="licPaymentFrequency" class="form-select">
-                            @foreach(var c in new[]{"Monthly","Quarterly","Half-Yearly","Annual","One-time"})
-                            {<option>@c</option>}
-                        </select>
-                    </div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Auto-Renew</label>
-                        <select id="licAutoRenew" class="form-select"><option>Yes</option><option>No</option></select>
-                    </div>
-
-                    <div class="col-md-4"><label class="form-label fw-bold small">Criticality</label>
-                        <select id="licCriticality" class="form-select">
-                            @foreach(var c in new[]{"Critical","High","Medium","Low"})
-                            {<option>@c</option>}
-                        </select>
-                    </div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Data Sensitivity</label>
-                        <select id="licDataSensitivity" class="form-select">
-                            @foreach(var c in new[]{"Public","Internal","Confidential","Restricted"})
-                            {<option>@c</option>}
-                        </select>
-                    </div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">SSO / MFA</label>
-                        <select id="licSsoMfa" class="form-select"><option>Yes</option><option>No</option></select>
-                    </div>
-
-                    <div class="col-md-4"><label class="form-label fw-bold small">Contract / PO No.</label><input type="text" id="licContractPo" class="form-control"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Invoice No.</label><input type="text" id="licInvoiceNo" class="form-control"/></div>
-                    <div class="col-md-4"><label class="form-label fw-bold small">Status</label>
-                        <select id="licStatus" class="form-select">
-                            @foreach(var c in new[]{"Active","Inactive","Under Review","Planned","Expired"})
-                            {<option>@c</option>}
-                        </select>
-                    </div>
-
-                    <div class="col-12"><label class="form-label fw-bold small">Risk / Issue</label><input type="text" id="licRiskIssue" class="form-control"/></div>
-                    <div class="col-12"><label class="form-label fw-bold small">Action Required</label><input type="text" id="licActionRequired" class="form-control"/></div>
-                    <div class="col-12"><label class="form-label fw-bold small">Remarks</label><textarea id="licRemarks" class="form-control" rows="2"></textarea></div>
-                    <div class="col-12 text-muted small"><i class="bi bi-info-circle"></i> Utilization %, Days to Renewal and Renewal Flag are calculated automatically — no need to enter them.</div>
+                    <div class="col-md-3"><label class="form-label fw-bold small">IP Address</label><input type="text" id="licIp" class="form-control" readonly/></div>
+                    <div class="col-md-3"><label class="form-label fw-bold small">Logged User</label><input type="text" id="licLoggedUser" class="form-control" readonly/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Assigned On</label><input type="date" id="licAssignedOn" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Purchase Date</label><input type="date" id="licPurchaseDate" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Expiry Date</label><input type="date" id="licExpiryDate" class="form-control"/></div>
+                    <div class="col-12"><label class="form-label fw-bold small">Notes</label><textarea id="licNotes" class="form-control" rows="2"></textarea></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -421,11 +428,113 @@
     </div>
 </div>
 
+<!-- ═══ Add/Edit Software / License Modal (IT Software Register) ═══ -->
+<div class="modal fade" id="swregModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#1e3a5f;color:white">
+                <h5 class="modal-title" id="swregModalTitle">Add Software / License</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="swregIdx" value="-1"/>
+                <div class="row g-3">
+                    <div class="col-md-4"><label class="form-label fw-bold small">Record ID</label><input type="text" id="swregRecordId" class="form-control" placeholder="auto if blank"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Software / Application</label><input type="text" id="swregSoftware" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Category</label>
+                        <select id="swregCategory" class="form-select">
+                            @foreach(var c in new[]{"ERP","Finance & Accounting","HRMS","POS","Design","Security","Productivity","Cloud / Hosting","Other"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Deployment</label>
+                        <select id="swregDeployment" class="form-select">
+                            @foreach(var c in new[]{"Cloud","Desktop","On-premise","Hybrid"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Purpose / Module</label><input type="text" id="swregPurpose" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Vendor</label><input type="text" id="swregVendor" class="form-control"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Business Owner</label><input type="text" id="swregBusinessOwner" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">IT Owner</label><input type="text" id="swregItOwner" class="form-control" value="Sandeep Kumar Singh Kushwaha"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Department</label>
+                        <select id="swregDepartment" class="form-select">
+                            @foreach(var c in new[]{"Accounts & Finance","Retail","E-commerce","Production","Warehouse","HR","Marketing","Management","IT"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">License Type</label>
+                        <select id="swregLicenseType" class="form-select">
+                            @foreach(var c in new[]{"Named User","Concurrent","Site License","Perpetual","Device","Enterprise","Other"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Purchased Licenses</label><input type="number" id="swregPurchased" class="form-control" min="0"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Assigned Licenses</label><input type="number" id="swregAssigned" class="form-control" min="0"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Version / Plan</label><input type="text" id="swregVersionPlan" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Start Date</label><input type="date" id="swregStartDate" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Renewal / Support Due</label><input type="date" id="swregRenewalDate" class="form-control"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Annual Support Cost (INR)</label><input type="number" id="swregAnnualCost" class="form-control" min="0"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Payment Frequency</label>
+                        <select id="swregPaymentFrequency" class="form-select">
+                            @foreach(var c in new[]{"Monthly","Quarterly","Half-Yearly","Annual","One-time"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Auto-Renew</label>
+                        <select id="swregAutoRenew" class="form-select"><option>Yes</option><option>No</option></select>
+                    </div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Criticality</label>
+                        <select id="swregCriticality" class="form-select">
+                            @foreach(var c in new[]{"Critical","High","Medium","Low"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Data Sensitivity</label>
+                        <select id="swregDataSensitivity" class="form-select">
+                            @foreach(var c in new[]{"Public","Internal","Confidential","Restricted"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">SSO / MFA</label>
+                        <select id="swregSsoMfa" class="form-select"><option>Yes</option><option>No</option></select>
+                    </div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Contract / PO No.</label><input type="text" id="swregContractPo" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Invoice No.</label><input type="text" id="swregInvoiceNo" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Status</label>
+                        <select id="swregStatus" class="form-select">
+                            @foreach(var c in new[]{"Active","Inactive","Under Review","Planned","Expired"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+
+                    <div class="col-12"><label class="form-label fw-bold small">Risk / Issue</label><input type="text" id="swregRiskIssue" class="form-control"/></div>
+                    <div class="col-12"><label class="form-label fw-bold small">Action Required</label><input type="text" id="swregActionRequired" class="form-control"/></div>
+                    <div class="col-12"><label class="form-label fw-bold small">Remarks</label><textarea id="swregRemarks" class="form-control" rows="2"></textarea></div>
+                    <div class="col-12 text-muted small"><i class="bi bi-info-circle"></i> Utilization %, Days to Renewal and Renewal Flag are calculated automatically — no need to enter them.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="saveSwReg()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
 const endpoints = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
 let pcs = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(pcInv));
 let licenses = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(licenses));
+let softwareRegister = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(softwareRegister));
 
 // ───────────── Uptime Monitor (existing) ─────────────
 async function checkOne(idx, url) {
@@ -491,7 +600,7 @@ function saveEndpoint() {
     }).then(() => location.reload());
 }
 
-window.addEventListener('DOMContentLoaded', () => { setTimeout(checkAll, 500); renderPc(); renderLic(); });
+window.addEventListener('DOMContentLoaded', () => { setTimeout(checkAll, 500); renderPc(); renderLic(); renderSwReg(); });
 
 // ───────────── PC Inventory & Antivirus ─────────────
 function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -624,8 +733,158 @@ function persistPc(cb) {
     }).then(() => cb && cb());
 }
 
-// ───────────── License Manager (IT Software Register) ─────────────
-function licDaysToRenewal(l) {
+// ───────────── License Manager ─────────────
+function computeLicStatus(l) {
+    if (l.expiryDate) {
+        const exp = new Date(l.expiryDate);
+        const today = new Date(); today.setHours(0,0,0,0);
+        if (!isNaN(exp) && exp < today) return 'Expired';
+    }
+    return l.hostname ? 'Assigned' : 'Unassigned';
+}
+
+function renderLic() {
+    const body = document.getElementById('licTableBody');
+    let rows = '';
+    let total = 0, used = 0, free = 0, expiring = 0;
+    const soon = new Date(); soon.setDate(soon.getDate() + 30);
+    licenses.forEach((l, i) => {
+        total++;
+        const status = computeLicStatus(l);
+        if (status === 'Assigned') used++;
+        else if (status === 'Unassigned') free++;
+        if (l.expiryDate) {
+            const exp = new Date(l.expiryDate);
+            if (!isNaN(exp) && exp <= soon && exp >= new Date()) expiring++;
+        }
+        let badge = status === 'Assigned' ? '<span class="badge bg-success">Assigned</span>'
+                  : status === 'Expired' ? '<span class="badge bg-danger">Expired</span>'
+                  : '<span class="badge bg-secondary">Unassigned</span>';
+        rows += `<tr>
+            <td class="ps-3">${i+1}</td>
+            <td>${badge}</td>
+            <td class="font-monospace small fw-bold">${esc(l.licenseKey)}</td>
+            <td class="small">${esc(l.product)}</td>
+            <td class="small">${esc(l.hostname)}</td>
+            <td class="font-monospace small">${esc(l.ip)}</td>
+            <td class="small">${esc(l.loggedUser)}</td>
+            <td class="small text-muted">${esc(l.assignedOn)}</td>
+            <td class="small text-muted">${esc(l.purchaseDate)}</td>
+            <td class="small text-muted">${esc(l.expiryDate)}</td>
+            <td>
+                <button class="btn btn-outline-warning btn-sm" onclick="openLicModal(${i})" title="Edit"><i class="bi bi-pencil"></i></button>
+                ${l.hostname ? `<button class="btn btn-outline-secondary btn-sm" onclick="unassignLic(${i})" title="Unassign"><i class="bi bi-x-circle"></i></button>` : ''}
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteLic(${i})" title="Delete"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    body.innerHTML = rows || '<tr><td colspan="11" class="text-center text-muted py-4">No licenses added yet</td></tr>';
+    document.getElementById('licTotal').textContent = total;
+    document.getElementById('licUsed').textContent = used;
+    document.getElementById('licFree').textContent = free;
+    document.getElementById('licExpiring').textContent = expiring;
+}
+
+function openLicModal(i) {
+    document.getElementById('licIdx').value = i;
+    const l = i >= 0 ? licenses[i] : {};
+    document.getElementById('licModalTitle').textContent = i >= 0 ? 'Edit License' : 'Add License';
+    document.getElementById('licKey').value = l.licenseKey || '';
+    document.getElementById('licProduct').value = l.product || 'Quick Heal Total Security';
+    const sel = document.getElementById('licAssignTo');
+    sel.innerHTML = '<option value="">-- Unassigned --</option>' + pcs.map(p => `<option value="${esc(p.hostname)}">${esc(p.hostname)}</option>`).join('');
+    sel.value = l.hostname || '';
+    document.getElementById('licIp').value = l.ip || '';
+    document.getElementById('licLoggedUser').value = l.loggedUser || '';
+    document.getElementById('licAssignedOn').value = l.assignedOn || '';
+    document.getElementById('licPurchaseDate').value = l.purchaseDate || '';
+    document.getElementById('licExpiryDate').value = l.expiryDate || '';
+    document.getElementById('licNotes').value = l.notes || '';
+    new bootstrap.Modal(document.getElementById('licModal')).show();
+}
+
+function onLicAssignChange() {
+    const hostname = document.getElementById('licAssignTo').value;
+    const pc = pcs.find(p => p.hostname === hostname);
+    document.getElementById('licIp').value = pc ? (pc.ip || '') : '';
+    document.getElementById('licLoggedUser').value = pc ? (pc.user || '') : '';
+    if (hostname && !document.getElementById('licAssignedOn').value) {
+        document.getElementById('licAssignedOn').value = new Date().toISOString().slice(0,10);
+    }
+}
+
+function saveLic() {
+    const i = parseInt(document.getElementById('licIdx').value);
+    const key = document.getElementById('licKey').value.trim();
+    if (!key) return alert('License Key is required!');
+    const hostname = document.getElementById('licAssignTo').value;
+    const rec = {
+        licenseKey: key,
+        product: document.getElementById('licProduct').value.trim(),
+        hostname,
+        ip: document.getElementById('licIp').value.trim(),
+        loggedUser: document.getElementById('licLoggedUser').value.trim(),
+        assignedOn: document.getElementById('licAssignedOn').value,
+        purchaseDate: document.getElementById('licPurchaseDate').value,
+        expiryDate: document.getElementById('licExpiryDate').value,
+        notes: document.getElementById('licNotes').value.trim()
+    };
+    if (i >= 0) licenses[i] = rec; else licenses.push(rec);
+    // reflect the license key onto the assigned PC record
+    pcs.forEach(p => { if (p.licenseKey === key && p.hostname !== hostname) p.licenseKey = ''; });
+    if (hostname) {
+        const pc = pcs.find(p => p.hostname === hostname);
+        if (pc) pc.licenseKey = key;
+    }
+    persistLic(() => persistPc(() => {
+        renderLic(); renderPc();
+        bootstrap.Modal.getInstance(document.getElementById('licModal')).hide();
+    }));
+}
+
+function unassignLic(i) {
+    if (!confirm('Unassign this license?')) return;
+    const key = licenses[i].licenseKey;
+    licenses[i].hostname = ''; licenses[i].ip = ''; licenses[i].loggedUser = ''; licenses[i].assignedOn = '';
+    const pc = pcs.find(p => p.licenseKey === key);
+    if (pc) pc.licenseKey = '';
+    persistLic(() => persistPc(() => { renderLic(); renderPc(); }));
+}
+
+function deleteLic(i) {
+    if (!confirm('Delete this license?')) return;
+    const key = licenses[i].licenseKey;
+    licenses.splice(i, 1);
+    const pc = pcs.find(p => p.licenseKey === key);
+    if (pc) pc.licenseKey = '';
+    persistLic(() => persistPc(() => { renderLic(); renderPc(); }));
+}
+
+function persistLic(cb) {
+    fetch('/Endpoints/SaveLicenses', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(licenses)
+    }).then(() => cb && cb());
+}
+
+function autoMap() {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const assignedHostnames = new Set(licenses.filter(l => l.hostname).map(l => l.hostname));
+    const freeLicenses = licenses.filter(l => !l.hostname && !(l.expiryDate && new Date(l.expiryDate) < today));
+    const needyPcs = pcs.filter(p => !p.licenseKey && p.qhService !== 'Running' && !assignedHostnames.has(p.hostname));
+    let mapped = 0;
+    for (let k = 0; k < Math.min(freeLicenses.length, needyPcs.length); k++) {
+        const lic = freeLicenses[k], pc = needyPcs[k];
+        lic.hostname = pc.hostname; lic.ip = pc.ip; lic.loggedUser = pc.user;
+        lic.assignedOn = new Date().toISOString().slice(0,10);
+        pc.licenseKey = lic.licenseKey;
+        mapped++;
+    }
+    if (mapped === 0) { alert('No free licenses / needy PCs to auto-map.'); return; }
+    persistLic(() => persistPc(() => { renderLic(); renderPc(); alert(mapped + ' license(s) auto-mapped.'); }));
+}
+
+// ───────────── IT Software Register (separate from Quick Heal License Manager above) ─────────────
+function swregDaysToRenewal(l) {
     if (!l.renewalDate) return '';
     const rd = new Date(l.renewalDate);
     if (isNaN(rd)) return '';
@@ -633,10 +892,10 @@ function licDaysToRenewal(l) {
     return Math.round((rd - today) / 86400000);
 }
 
-function licRenewalFlag(l) {
+function swregRenewalFlag(l) {
     if (!l.renewalDate) return '';
     if ((l.status || '') !== 'Active') return 'Inactive';
-    const days = licDaysToRenewal(l);
+    const days = swregDaysToRenewal(l);
     if (days === '') return '';
     if (days < 0) return 'Expired';
     if (days <= 30) return 'Due within 30 days';
@@ -645,33 +904,33 @@ function licRenewalFlag(l) {
     return 'Later';
 }
 
-function licUtilization(l) {
+function swregUtilization(l) {
     const p = parseFloat(l.purchasedLicenses) || 0;
     const a = parseFloat(l.assignedLicenses) || 0;
     if (!p) return '';
     return (Math.round((a / p) * 1000) / 10) + '%';
 }
 
-function nextRecordId() {
+function nextSwRegRecordId() {
     let max = 0;
-    licenses.forEach(l => {
+    softwareRegister.forEach(l => {
         const m = /^SW-(\d+)$/.exec(l.recordId || '');
         if (m) max = Math.max(max, parseInt(m[1]));
     });
     return 'SW-' + String(max + 1).padStart(3, '0');
 }
 
-function renderLic() {
-    const body = document.getElementById('licTableBody');
+function renderSwReg() {
+    const body = document.getElementById('swregTableBody');
     let rows = '';
     let total = 0, active = 0, dueSoon = 0, expired = 0;
-    licenses.forEach((l, i) => {
+    softwareRegister.forEach((l, i) => {
         total++;
         if ((l.status || '') === 'Active') active++;
-        const flag = licRenewalFlag(l);
+        const flag = swregRenewalFlag(l);
         if (flag === 'Due within 30 days') dueSoon++;
         if (flag === 'Expired') expired++;
-        const days = licDaysToRenewal(l);
+        const days = swregDaysToRenewal(l);
         let flagBadge = '';
         if (flag === 'Expired') flagBadge = `<span class="badge bg-danger">${flag}</span>`;
         else if (flag === 'Due within 30 days') flagBadge = `<span class="badge bg-warning text-dark">${flag}</span>`;
@@ -695,7 +954,7 @@ function renderLic() {
             <td class="small">${esc(l.licenseType)}</td>
             <td class="small text-center">${esc(l.purchasedLicenses)}</td>
             <td class="small text-center">${esc(l.assignedLicenses)}</td>
-            <td class="small text-center text-muted">${licUtilization(l)}</td>
+            <td class="small text-center text-muted">${swregUtilization(l)}</td>
             <td class="small">${esc(l.versionPlan)}</td>
             <td class="small text-muted">${esc(l.startDate)}</td>
             <td class="small text-muted">${esc(l.renewalDate)}</td>
@@ -714,103 +973,103 @@ function renderLic() {
             <td class="small">${esc(l.actionRequired)}</td>
             <td class="small text-muted">${esc(l.remarks)}</td>
             <td>
-                <button class="btn btn-outline-warning btn-sm" onclick="openLicModal(${i})" title="Edit"><i class="bi bi-pencil"></i></button>
-                <button class="btn btn-outline-danger btn-sm" onclick="deleteLic(${i})" title="Delete"><i class="bi bi-trash"></i></button>
+                <button class="btn btn-outline-warning btn-sm" onclick="openSwRegModal(${i})" title="Edit"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteSwReg(${i})" title="Delete"><i class="bi bi-trash"></i></button>
             </td>
         </tr>`;
     });
     body.innerHTML = rows || '<tr><td colspan="32" class="text-center text-muted py-4">No software/license records added yet</td></tr>';
-    document.getElementById('licTotal').textContent = total;
-    document.getElementById('licActive').textContent = active;
-    document.getElementById('licDueSoon').textContent = dueSoon;
-    document.getElementById('licExpired').textContent = expired;
+    document.getElementById('swregTotal').textContent = total;
+    document.getElementById('swregActive').textContent = active;
+    document.getElementById('swregDueSoon').textContent = dueSoon;
+    document.getElementById('swregExpired').textContent = expired;
 }
 
-function openLicModal(i) {
-    document.getElementById('licIdx').value = i;
-    const l = i >= 0 ? licenses[i] : {};
-    document.getElementById('licModalTitle').textContent = i >= 0 ? 'Edit Software / License' : 'Add Software / License';
-    document.getElementById('licRecordId').value = l.recordId || '';
-    document.getElementById('licSoftware').value = l.software || '';
-    document.getElementById('licCategory').value = l.category || 'ERP';
-    document.getElementById('licDeployment').value = l.deployment || 'Cloud';
-    document.getElementById('licPurpose').value = l.purpose || '';
-    document.getElementById('licVendor').value = l.vendor || '';
-    document.getElementById('licBusinessOwner').value = l.businessOwner || '';
-    document.getElementById('licItOwner').value = l.itOwner || 'Sandeep Kumar Singh Kushwaha';
-    document.getElementById('licDepartment').value = l.department || 'IT';
-    document.getElementById('licLicenseType').value = l.licenseType || 'Named User';
-    document.getElementById('licPurchased').value = l.purchasedLicenses || '';
-    document.getElementById('licAssigned').value = l.assignedLicenses || '';
-    document.getElementById('licVersionPlan').value = l.versionPlan || '';
-    document.getElementById('licStartDate').value = l.startDate || '';
-    document.getElementById('licRenewalDate').value = l.renewalDate || '';
-    document.getElementById('licAnnualCost').value = l.annualCost || '';
-    document.getElementById('licPaymentFrequency').value = l.paymentFrequency || 'Annual';
-    document.getElementById('licAutoRenew').value = l.autoRenew || 'No';
-    document.getElementById('licCriticality').value = l.criticality || 'Medium';
-    document.getElementById('licDataSensitivity').value = l.dataSensitivity || 'Internal';
-    document.getElementById('licSsoMfa').value = l.ssoMfa || 'No';
-    document.getElementById('licContractPo').value = l.contractPo || '';
-    document.getElementById('licInvoiceNo').value = l.invoiceNo || '';
-    document.getElementById('licStatus').value = l.status || 'Active';
-    document.getElementById('licRiskIssue').value = l.riskIssue || '';
-    document.getElementById('licActionRequired').value = l.actionRequired || '';
-    document.getElementById('licRemarks').value = l.remarks || '';
-    new bootstrap.Modal(document.getElementById('licModal')).show();
+function openSwRegModal(i) {
+    document.getElementById('swregIdx').value = i;
+    const l = i >= 0 ? softwareRegister[i] : {};
+    document.getElementById('swregModalTitle').textContent = i >= 0 ? 'Edit Software / License' : 'Add Software / License';
+    document.getElementById('swregRecordId').value = l.recordId || '';
+    document.getElementById('swregSoftware').value = l.software || '';
+    document.getElementById('swregCategory').value = l.category || 'ERP';
+    document.getElementById('swregDeployment').value = l.deployment || 'Cloud';
+    document.getElementById('swregPurpose').value = l.purpose || '';
+    document.getElementById('swregVendor').value = l.vendor || '';
+    document.getElementById('swregBusinessOwner').value = l.businessOwner || '';
+    document.getElementById('swregItOwner').value = l.itOwner || 'Sandeep Kumar Singh Kushwaha';
+    document.getElementById('swregDepartment').value = l.department || 'IT';
+    document.getElementById('swregLicenseType').value = l.licenseType || 'Named User';
+    document.getElementById('swregPurchased').value = l.purchasedLicenses || '';
+    document.getElementById('swregAssigned').value = l.assignedLicenses || '';
+    document.getElementById('swregVersionPlan').value = l.versionPlan || '';
+    document.getElementById('swregStartDate').value = l.startDate || '';
+    document.getElementById('swregRenewalDate').value = l.renewalDate || '';
+    document.getElementById('swregAnnualCost').value = l.annualCost || '';
+    document.getElementById('swregPaymentFrequency').value = l.paymentFrequency || 'Annual';
+    document.getElementById('swregAutoRenew').value = l.autoRenew || 'No';
+    document.getElementById('swregCriticality').value = l.criticality || 'Medium';
+    document.getElementById('swregDataSensitivity').value = l.dataSensitivity || 'Internal';
+    document.getElementById('swregSsoMfa').value = l.ssoMfa || 'No';
+    document.getElementById('swregContractPo').value = l.contractPo || '';
+    document.getElementById('swregInvoiceNo').value = l.invoiceNo || '';
+    document.getElementById('swregStatus').value = l.status || 'Active';
+    document.getElementById('swregRiskIssue').value = l.riskIssue || '';
+    document.getElementById('swregActionRequired').value = l.actionRequired || '';
+    document.getElementById('swregRemarks').value = l.remarks || '';
+    new bootstrap.Modal(document.getElementById('swregModal')).show();
 }
 
-function saveLic() {
-    const i = parseInt(document.getElementById('licIdx').value);
-    let recordId = document.getElementById('licRecordId').value.trim();
-    const software = document.getElementById('licSoftware').value.trim();
+function saveSwReg() {
+    const i = parseInt(document.getElementById('swregIdx').value);
+    let recordId = document.getElementById('swregRecordId').value.trim();
+    const software = document.getElementById('swregSoftware').value.trim();
     if (!software) return alert('Software / Application name is required!');
-    if (!recordId) recordId = nextRecordId();
+    if (!recordId) recordId = nextSwRegRecordId();
     const rec = {
         recordId,
         software,
-        category: document.getElementById('licCategory').value,
-        deployment: document.getElementById('licDeployment').value,
-        purpose: document.getElementById('licPurpose').value.trim(),
-        vendor: document.getElementById('licVendor').value.trim(),
-        businessOwner: document.getElementById('licBusinessOwner').value.trim(),
-        itOwner: document.getElementById('licItOwner').value.trim(),
-        department: document.getElementById('licDepartment').value,
-        licenseType: document.getElementById('licLicenseType').value,
-        purchasedLicenses: document.getElementById('licPurchased').value,
-        assignedLicenses: document.getElementById('licAssigned').value,
-        versionPlan: document.getElementById('licVersionPlan').value.trim(),
-        startDate: document.getElementById('licStartDate').value,
-        renewalDate: document.getElementById('licRenewalDate').value,
-        annualCost: document.getElementById('licAnnualCost').value,
-        paymentFrequency: document.getElementById('licPaymentFrequency').value,
-        autoRenew: document.getElementById('licAutoRenew').value,
-        criticality: document.getElementById('licCriticality').value,
-        dataSensitivity: document.getElementById('licDataSensitivity').value,
-        ssoMfa: document.getElementById('licSsoMfa').value,
-        contractPo: document.getElementById('licContractPo').value.trim(),
-        invoiceNo: document.getElementById('licInvoiceNo').value.trim(),
-        status: document.getElementById('licStatus').value,
-        riskIssue: document.getElementById('licRiskIssue').value.trim(),
-        actionRequired: document.getElementById('licActionRequired').value.trim(),
-        remarks: document.getElementById('licRemarks').value.trim(),
+        category: document.getElementById('swregCategory').value,
+        deployment: document.getElementById('swregDeployment').value,
+        purpose: document.getElementById('swregPurpose').value.trim(),
+        vendor: document.getElementById('swregVendor').value.trim(),
+        businessOwner: document.getElementById('swregBusinessOwner').value.trim(),
+        itOwner: document.getElementById('swregItOwner').value.trim(),
+        department: document.getElementById('swregDepartment').value,
+        licenseType: document.getElementById('swregLicenseType').value,
+        purchasedLicenses: document.getElementById('swregPurchased').value,
+        assignedLicenses: document.getElementById('swregAssigned').value,
+        versionPlan: document.getElementById('swregVersionPlan').value.trim(),
+        startDate: document.getElementById('swregStartDate').value,
+        renewalDate: document.getElementById('swregRenewalDate').value,
+        annualCost: document.getElementById('swregAnnualCost').value,
+        paymentFrequency: document.getElementById('swregPaymentFrequency').value,
+        autoRenew: document.getElementById('swregAutoRenew').value,
+        criticality: document.getElementById('swregCriticality').value,
+        dataSensitivity: document.getElementById('swregDataSensitivity').value,
+        ssoMfa: document.getElementById('swregSsoMfa').value,
+        contractPo: document.getElementById('swregContractPo').value.trim(),
+        invoiceNo: document.getElementById('swregInvoiceNo').value.trim(),
+        status: document.getElementById('swregStatus').value,
+        riskIssue: document.getElementById('swregRiskIssue').value.trim(),
+        actionRequired: document.getElementById('swregActionRequired').value.trim(),
+        remarks: document.getElementById('swregRemarks').value.trim(),
     };
-    if (i >= 0) licenses[i] = rec; else licenses.push(rec);
-    persistLic(() => {
-        renderLic();
-        bootstrap.Modal.getInstance(document.getElementById('licModal')).hide();
+    if (i >= 0) softwareRegister[i] = rec; else softwareRegister.push(rec);
+    persistSwReg(() => {
+        renderSwReg();
+        bootstrap.Modal.getInstance(document.getElementById('swregModal')).hide();
     });
 }
 
-function deleteLic(i) {
+function deleteSwReg(i) {
     if (!confirm('Delete this record?')) return;
-    licenses.splice(i, 1);
-    persistLic(renderLic);
+    softwareRegister.splice(i, 1);
+    persistSwReg(renderSwReg);
 }
 
-function persistLic(cb) {
-    fetch('/Endpoints/SaveLicenses', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(licenses)
+function persistSwReg(cb) {
+    fetch('/Endpoints/SaveSoftwareRegister', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(softwareRegister)
     }).then(() => cb && cb());
 }
 </script>

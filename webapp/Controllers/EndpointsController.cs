@@ -17,7 +17,8 @@ public class EndpointsController : Controller
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var endpoints = _db.KGetObj<List<Dictionary<string,object?>>>("endpoints") ?? DefaultEndpoints();
         ViewBag.PcInventory = _db.KGetObj<List<Dictionary<string,object?>>>("pc_inventory") ?? new();
-        ViewBag.Licenses = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
+        ViewBag.Licenses = _db.KGetObj<List<Dictionary<string,object?>>>("qh_licenses") ?? new();
+        ViewBag.SoftwareRegister = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
         return View(endpoints);
     }
 
@@ -40,7 +41,15 @@ public class EndpointsController : Controller
     [HttpPost]
     public IActionResult SaveLicenses([FromBody] List<Dictionary<string,object?>> licenses)
     {
-        _db.KSet("software_register", licenses);
+        _db.KSet("qh_licenses", licenses);
+        return Json(new { ok = true });
+    }
+
+    // ── IT Software Register (separate from Quick Heal licenses above) ──
+    [HttpPost]
+    public IActionResult SaveSoftwareRegister([FromBody] List<Dictionary<string,object?>> softwareRegister)
+    {
+        _db.KSet("software_register", softwareRegister);
         return Json(new { ok = true });
     }
 
@@ -170,11 +179,51 @@ public class EndpointsController : Controller
         return RedirectToAction("Index");
     }
 
-    // Bulk CSV import — same column headers as ExportLicenses (Utilization %, Days to
-    // Renewal and Renewal Flag are ignored — they're auto-computed). Matches by Record ID;
-    // a blank/unmatched Record ID is added as a new row with a freshly generated one.
+    // Bulk CSV import — same column headers as ExportLicenses (Status column is ignored, it's auto-computed). Matches by License Key.
     [HttpPost("/Endpoints/ImportLicensesCsv")]
     public async Task<IActionResult> ImportLicensesCsv(IFormFile csvFile)
+    {
+        if (csvFile == null || csvFile.Length == 0) { TempData["Error"] = "Choose a CSV file first."; return RedirectToAction("Index"); }
+        var lics = _db.KGetObj<List<Dictionary<string,object?>>>("qh_licenses") ?? new();
+        int added = 0, updated = 0, skipped = 0;
+        using var reader = new StreamReader(csvFile.OpenReadStream());
+        string? headerLine = await reader.ReadLineAsync();
+        if (headerLine == null) { TempData["Error"] = "CSV file is empty."; return RedirectToAction("Index"); }
+        var headers = ParseCsvLine(headerLine).Select(h => h.Trim().ToLower()).ToList();
+        string? line;
+        while ((line = await reader.ReadLineAsync()) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var cols = ParseCsvLine(line);
+            var row = new Dictionary<string,string>();
+            for (int i = 0; i < headers.Count && i < cols.Count; i++) row[headers[i]] = cols[i];
+            string key = row.GetValueOrDefault("license key") ?? "";
+            if (string.IsNullOrWhiteSpace(key)) { skipped++; continue; }
+            var existing = lics.FirstOrDefault(l => string.Equals(l.GetValueOrDefault("licenseKey")?.ToString(), key, StringComparison.OrdinalIgnoreCase));
+            var rec = existing ?? new Dictionary<string,object?>();
+            void SetIf(string csvKey, string dataKey) { if (row.TryGetValue(csvKey, out var v) && !string.IsNullOrWhiteSpace(v)) rec[dataKey] = v; }
+            rec["licenseKey"] = key;
+            SetIf("product", "product");
+            SetIf("assigned to", "hostname");
+            SetIf("ip address", "ip");
+            SetIf("logged user", "loggedUser");
+            SetIf("assigned on", "assignedOn");
+            SetIf("purchase date", "purchaseDate");
+            SetIf("expiry date", "expiryDate");
+            SetIf("notes", "notes");
+            if (existing == null) { lics.Add(rec); added++; } else updated++;
+        }
+        _db.KSet("qh_licenses", lics);
+        TempData["Success"] = $"License import complete: {added} added, {updated} updated, {skipped} skipped.";
+        return RedirectToAction("Index");
+    }
+
+    // Bulk CSV import for the IT Software Register — same column headers as
+    // ExportSoftwareRegister (Utilization %, Days to Renewal and Renewal Flag are
+    // ignored — they're auto-computed). Matches by Record ID; a blank/unmatched
+    // Record ID is added as a new row with a freshly generated one.
+    [HttpPost("/Endpoints/ImportSoftwareRegisterCsv")]
+    public async Task<IActionResult> ImportSoftwareRegisterCsv(IFormFile csvFile)
     {
         if (csvFile == null || csvFile.Length == 0) { TempData["Error"] = "Choose a CSV file first."; return RedirectToAction("Index"); }
         var lics = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
@@ -201,7 +250,7 @@ public class EndpointsController : Controller
             var rec = existing ?? new Dictionary<string,object?>();
             void SetIf(string csvKey, string dataKey) { if (row.TryGetValue(csvKey, out var v) && !string.IsNullOrWhiteSpace(v)) rec[dataKey] = v; }
 
-            rec["recordId"] = string.IsNullOrWhiteSpace(recordId) ? NextRecordId(lics) : recordId;
+            rec["recordId"] = string.IsNullOrWhiteSpace(recordId) ? NextSoftwareRegisterId(lics) : recordId;
             rec["software"] = software;
             SetIf("category", "category");
             SetIf("deployment", "deployment");
@@ -235,7 +284,7 @@ public class EndpointsController : Controller
         return RedirectToAction("Index");
     }
 
-    static string NextRecordId(List<Dictionary<string,object?>> lics)
+    static string NextSoftwareRegisterId(List<Dictionary<string,object?>> lics)
     {
         int max = 0;
         foreach (var l in lics)
@@ -298,12 +347,42 @@ public class EndpointsController : Controller
         return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"AMPM_PCInventory_{DateTime.Now:yyyyMMdd}.csv");
     }
 
+    [HttpGet("/Endpoints/ExportLicenses")]
+    public IActionResult ExportLicenses()
+    {
+        var lics = _db.KGetObj<List<Dictionary<string,object?>>>("qh_licenses") ?? new();
+        var csv = new System.Text.StringBuilder();
+        csv.AppendLine("Status,License Key,Product,Assigned To,IP Address,Logged User,Assigned On,Purchase Date,Expiry Date,Notes");
+        foreach (var l in lics)
+            csv.AppendLine(string.Join(",",
+                CsvE(ComputeLicStatus(l)),
+                CsvE(l.GetValueOrDefault("licenseKey")?.ToString()),
+                CsvE(l.GetValueOrDefault("product")?.ToString()),
+                CsvE(l.GetValueOrDefault("hostname")?.ToString()),
+                CsvE(l.GetValueOrDefault("ip")?.ToString()),
+                CsvE(l.GetValueOrDefault("loggedUser")?.ToString()),
+                CsvE(l.GetValueOrDefault("assignedOn")?.ToString()),
+                CsvE(l.GetValueOrDefault("purchaseDate")?.ToString()),
+                CsvE(l.GetValueOrDefault("expiryDate")?.ToString()),
+                CsvE(l.GetValueOrDefault("notes")?.ToString())
+            ));
+        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"AMPM_QHLicenses_{DateTime.Now:yyyyMMdd}.csv");
+    }
+
+    static string ComputeLicStatus(Dictionary<string,object?> l)
+    {
+        var hostname = l.GetValueOrDefault("hostname")?.ToString();
+        if (DateTime.TryParse(l.GetValueOrDefault("expiryDate")?.ToString(), out var exp) && exp.Date < DateTime.Today)
+            return "Expired";
+        return string.IsNullOrEmpty(hostname) ? "Unassigned" : "Assigned";
+    }
+
     // Styled "Excel" report (HTML table served as .xls — Excel opens it fine) matching
     // the IT Software Register layout: every register column, plus the same
     // computed Utilization % / Days to Renewal / Renewal Flag shown on-screen,
     // plus a Dashboard-style summary block at the bottom.
-    [HttpGet("/Endpoints/ExportLicenses")]
-    public IActionResult ExportLicenses()
+    [HttpGet("/Endpoints/ExportSoftwareRegister")]
+    public IActionResult ExportSoftwareRegister()
     {
         var lics = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
         string S(Dictionary<string,object?> l, string k) => l.GetValueOrDefault(k)?.ToString() ?? "";
@@ -457,6 +536,7 @@ table.sum td.k{font-weight:bold;background:#F1F5F9;}
     public IActionResult RepairData()
     {
         int fixedCount = 0;
+        fixedCount += RepairCorruptedStrings("qh_licenses");
         fixedCount += RepairCorruptedStrings("software_register");
         fixedCount += RepairCorruptedStrings("pc_inventory");
         fixedCount += RepairCorruptedStrings("endpoints");
