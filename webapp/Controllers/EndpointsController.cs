@@ -17,7 +17,7 @@ public class EndpointsController : Controller
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var endpoints = _db.KGetObj<List<Dictionary<string,object?>>>("endpoints") ?? DefaultEndpoints();
         ViewBag.PcInventory = _db.KGetObj<List<Dictionary<string,object?>>>("pc_inventory") ?? new();
-        ViewBag.Licenses = _db.KGetObj<List<Dictionary<string,object?>>>("qh_licenses") ?? new();
+        ViewBag.Licenses = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
         return View(endpoints);
     }
 
@@ -40,7 +40,7 @@ public class EndpointsController : Controller
     [HttpPost]
     public IActionResult SaveLicenses([FromBody] List<Dictionary<string,object?>> licenses)
     {
-        _db.KSet("qh_licenses", licenses);
+        _db.KSet("software_register", licenses);
         return Json(new { ok = true });
     }
 
@@ -170,12 +170,14 @@ public class EndpointsController : Controller
         return RedirectToAction("Index");
     }
 
-    // Bulk CSV import — same column headers as ExportLicenses (Status column is ignored, it's auto-computed). Matches by License Key.
+    // Bulk CSV import — same column headers as ExportLicenses (Utilization %, Days to
+    // Renewal and Renewal Flag are ignored — they're auto-computed). Matches by Record ID;
+    // a blank/unmatched Record ID is added as a new row with a freshly generated one.
     [HttpPost("/Endpoints/ImportLicensesCsv")]
     public async Task<IActionResult> ImportLicensesCsv(IFormFile csvFile)
     {
         if (csvFile == null || csvFile.Length == 0) { TempData["Error"] = "Choose a CSV file first."; return RedirectToAction("Index"); }
-        var lics = _db.KGetObj<List<Dictionary<string,object?>>>("qh_licenses") ?? new();
+        var lics = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
         int added = 0, updated = 0, skipped = 0;
         using var reader = new StreamReader(csvFile.OpenReadStream());
         string? headerLine = await reader.ReadLineAsync();
@@ -188,25 +190,60 @@ public class EndpointsController : Controller
             var cols = ParseCsvLine(line);
             var row = new Dictionary<string,string>();
             for (int i = 0; i < headers.Count && i < cols.Count; i++) row[headers[i]] = cols[i];
-            string key = row.GetValueOrDefault("license key") ?? "";
-            if (string.IsNullOrWhiteSpace(key)) { skipped++; continue; }
-            var existing = lics.FirstOrDefault(l => string.Equals(l.GetValueOrDefault("licenseKey")?.ToString(), key, StringComparison.OrdinalIgnoreCase));
+
+            string recordId = row.GetValueOrDefault("record id") ?? "";
+            string software = row.GetValueOrDefault("software / application") ?? row.GetValueOrDefault("software") ?? "";
+            if (string.IsNullOrWhiteSpace(software)) { skipped++; continue; }
+
+            var existing = !string.IsNullOrWhiteSpace(recordId)
+                ? lics.FirstOrDefault(l => string.Equals(l.GetValueOrDefault("recordId")?.ToString(), recordId, StringComparison.OrdinalIgnoreCase))
+                : null;
             var rec = existing ?? new Dictionary<string,object?>();
             void SetIf(string csvKey, string dataKey) { if (row.TryGetValue(csvKey, out var v) && !string.IsNullOrWhiteSpace(v)) rec[dataKey] = v; }
-            rec["licenseKey"] = key;
-            SetIf("product", "product");
-            SetIf("assigned to", "hostname");
-            SetIf("ip address", "ip");
-            SetIf("logged user", "loggedUser");
-            SetIf("assigned on", "assignedOn");
-            SetIf("purchase date", "purchaseDate");
-            SetIf("expiry date", "expiryDate");
-            SetIf("notes", "notes");
+
+            rec["recordId"] = string.IsNullOrWhiteSpace(recordId) ? NextRecordId(lics) : recordId;
+            rec["software"] = software;
+            SetIf("category", "category");
+            SetIf("deployment", "deployment");
+            SetIf("purpose / module", "purpose");
+            SetIf("vendor", "vendor");
+            SetIf("business owner", "businessOwner");
+            SetIf("it owner", "itOwner");
+            SetIf("department", "department");
+            SetIf("license type", "licenseType");
+            SetIf("purchased licenses", "purchasedLicenses");
+            SetIf("assigned licenses", "assignedLicenses");
+            SetIf("version / plan", "versionPlan");
+            SetIf("start date", "startDate");
+            SetIf("renewal / support due", "renewalDate");
+            SetIf("annual support cost (inr)", "annualCost");
+            SetIf("payment frequency", "paymentFrequency");
+            SetIf("auto-renew", "autoRenew");
+            SetIf("criticality", "criticality");
+            SetIf("data sensitivity", "dataSensitivity");
+            SetIf("sso / mfa", "ssoMfa");
+            SetIf("contract / po no.", "contractPo");
+            SetIf("invoice no.", "invoiceNo");
+            SetIf("status", "status");
+            SetIf("risk / issue", "riskIssue");
+            SetIf("action required", "actionRequired");
+            SetIf("remarks", "remarks");
             if (existing == null) { lics.Add(rec); added++; } else updated++;
         }
-        _db.KSet("qh_licenses", lics);
-        TempData["Success"] = $"License import complete: {added} added, {updated} updated, {skipped} skipped.";
+        _db.KSet("software_register", lics);
+        TempData["Success"] = $"Import complete: {added} added, {updated} updated, {skipped} skipped.";
         return RedirectToAction("Index");
+    }
+
+    static string NextRecordId(List<Dictionary<string,object?>> lics)
+    {
+        int max = 0;
+        foreach (var l in lics)
+        {
+            var id = l.GetValueOrDefault("recordId")?.ToString() ?? "";
+            if (id.StartsWith("SW-") && int.TryParse(id.Substring(3), out var n)) max = Math.Max(max, n);
+        }
+        return $"SW-{(max + 1):D3}";
     }
 
     static List<string> ParseCsvLine(string line)
@@ -261,34 +298,137 @@ public class EndpointsController : Controller
         return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"AMPM_PCInventory_{DateTime.Now:yyyyMMdd}.csv");
     }
 
+    // Styled "Excel" report (HTML table served as .xls — Excel opens it fine) matching
+    // the IT Software Register layout: every register column, plus the same
+    // computed Utilization % / Days to Renewal / Renewal Flag shown on-screen,
+    // plus a Dashboard-style summary block at the bottom.
     [HttpGet("/Endpoints/ExportLicenses")]
     public IActionResult ExportLicenses()
     {
-        var lics = _db.KGetObj<List<Dictionary<string,object?>>>("qh_licenses") ?? new();
-        var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Status,License Key,Product,Assigned To,IP Address,Logged User,Assigned On,Purchase Date,Expiry Date,Notes");
-        foreach (var l in lics)
-            csv.AppendLine(string.Join(",",
-                CsvE(ComputeLicStatus(l)),
-                CsvE(l.GetValueOrDefault("licenseKey")?.ToString()),
-                CsvE(l.GetValueOrDefault("product")?.ToString()),
-                CsvE(l.GetValueOrDefault("hostname")?.ToString()),
-                CsvE(l.GetValueOrDefault("ip")?.ToString()),
-                CsvE(l.GetValueOrDefault("loggedUser")?.ToString()),
-                CsvE(l.GetValueOrDefault("assignedOn")?.ToString()),
-                CsvE(l.GetValueOrDefault("purchaseDate")?.ToString()),
-                CsvE(l.GetValueOrDefault("expiryDate")?.ToString()),
-                CsvE(l.GetValueOrDefault("notes")?.ToString())
-            ));
-        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"AMPM_QHLicenses_{DateTime.Now:yyyyMMdd}.csv");
-    }
+        var lics = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
+        string S(Dictionary<string,object?> l, string k) => l.GetValueOrDefault(k)?.ToString() ?? "";
+        static string E(string? s) => System.Net.WebUtility.HtmlEncode(s ?? "");
 
-    static string ComputeLicStatus(Dictionary<string,object?> l)
-    {
-        var hostname = l.GetValueOrDefault("hostname")?.ToString();
-        if (DateTime.TryParse(l.GetValueOrDefault("expiryDate")?.ToString(), out var exp) && exp.Date < DateTime.Today)
-            return "Expired";
-        return string.IsNullOrEmpty(hostname) ? "Unassigned" : "Assigned";
+        int? DaysToRenewal(Dictionary<string,object?> l)
+        {
+            if (!DateTime.TryParse(S(l, "renewalDate"), out var rd)) return null;
+            return (int)(rd.Date - DateTime.Today).TotalDays;
+        }
+        string RenewalFlag(Dictionary<string,object?> l)
+        {
+            if (string.IsNullOrWhiteSpace(S(l, "renewalDate"))) return "";
+            if (S(l, "status") != "Active") return "Inactive";
+            var days = DaysToRenewal(l);
+            if (days == null) return "";
+            if (days < 0) return "Expired";
+            if (days <= 30) return "Due within 30 days";
+            if (days <= 60) return "Due in 31-60 days";
+            if (days <= 90) return "Due in 61-90 days";
+            return "Later";
+        }
+        string Utilization(Dictionary<string,object?> l)
+        {
+            double.TryParse(S(l, "purchasedLicenses"), out var p);
+            double.TryParse(S(l, "assignedLicenses"), out var a);
+            if (p <= 0) return "";
+            return Math.Round(a / p * 100, 1) + "%";
+        }
+
+        int total = lics.Count;
+        int active = lics.Count(l => S(l, "status") == "Active");
+        int dueSoon = lics.Count(l => RenewalFlag(l) == "Due within 30 days");
+        int due60 = lics.Count(l => RenewalFlag(l) == "Due in 31-60 days");
+        int due90 = lics.Count(l => RenewalFlag(l) == "Due in 61-90 days");
+        int expired = lics.Count(l => RenewalFlag(l) == "Expired");
+        int autoRenew = lics.Count(l => S(l, "autoRenew") == "Yes");
+        double totalAnnualCost = lics.Sum(l => { double.TryParse(S(l, "annualCost"), out var c); return c; });
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append(@"<html><head><meta charset='UTF-8'><style>
+body{font-family:Calibri,Arial,sans-serif;}
+.hdr{background:linear-gradient(135deg,#1e3a5f,#0A192F);color:#fff;padding:14px 18px;}
+.hdr .co{font-size:18px;font-weight:800;}
+.hdr .sub{font-size:12px;color:#93C5FD;margin-top:2px;}
+.meta{font-size:11px;color:#475569;padding:8px 18px;background:#F1F5F9;}
+table.reg{border-collapse:collapse;width:100%;margin-top:6px;font-size:10.5px;}
+table.reg th{background:#1e3a5f;color:#fff;padding:5px 6px;text-align:left;white-space:nowrap;}
+table.reg td{padding:4px 6px;border-bottom:1px solid #E2E8F0;white-space:nowrap;}
+table.reg tr:nth-child(even) td{background:#F8FAFC;}
+.status-active{color:#059669;font-weight:bold;}
+.status-expired{color:#DC2626;font-weight:bold;}
+.status-other{color:#64748B;}
+.flag-expired{background:#FEE2E2;color:#991B1B;font-weight:bold;}
+.flag-due30{background:#FEF3C7;color:#92400E;font-weight:bold;}
+.flag-due60,.flag-due90{background:#DBEAFE;color:#1E40AF;}
+table.sum{border-collapse:collapse;margin-top:18px;font-size:12px;}
+table.sum td{padding:8px 16px;border:1px solid #E2E8F0;}
+table.sum td.k{font-weight:bold;background:#F1F5F9;}
+</style></head><body>
+<div class='hdr'><div class='co'>AMPM FASHIONS PVT. LTD.</div><div class='sub'>IT Software Register &mdash; Licenses, Subscriptions &amp; Renewals</div></div>
+<div class='meta'>Generated: ").Append(DateTime.Now.ToString("dd MMM yyyy HH:mm")).Append(" &nbsp;|&nbsp; Prepared By: Sandeep Kumar Singh Kushwaha &nbsp;|&nbsp; Total Records: ").Append(total).Append(@"</div>
+<table class='reg'><thead><tr>
+<th>Record ID</th><th>Software / Application</th><th>Category</th><th>Deployment</th><th>Purpose / Module</th><th>Vendor</th>
+<th>Business Owner</th><th>IT Owner</th><th>Department</th><th>License Type</th><th>Purchased</th><th>Assigned</th><th>Utilization %</th>
+<th>Version / Plan</th><th>Start Date</th><th>Renewal / Support Due</th><th>Annual Cost (INR)</th><th>Payment Frequency</th><th>Auto-Renew</th>
+<th>Criticality</th><th>Data Sensitivity</th><th>SSO / MFA</th><th>Contract / PO No.</th><th>Invoice No.</th><th>Status</th>
+<th>Days to Renewal</th><th>Renewal Flag</th><th>Risk / Issue</th><th>Action Required</th><th>Remarks</th>
+</tr></thead><tbody>");
+
+        foreach (var l in lics)
+        {
+            var flag = RenewalFlag(l);
+            var days = DaysToRenewal(l);
+            var statusClass = S(l, "status") == "Active" ? "status-active" : S(l, "status") == "Expired" ? "status-expired" : "status-other";
+            var flagClass = flag == "Expired" ? "flag-expired" : flag == "Due within 30 days" ? "flag-due30" : (flag == "Due in 31-60 days" || flag == "Due in 61-90 days") ? "flag-due60" : "";
+            double.TryParse(S(l, "annualCost"), out var cost);
+            sb.Append("<tr>")
+              .Append($"<td>{E(S(l,"recordId"))}</td>")
+              .Append($"<td><b>{E(S(l,"software"))}</b></td>")
+              .Append($"<td>{E(S(l,"category"))}</td>")
+              .Append($"<td>{E(S(l,"deployment"))}</td>")
+              .Append($"<td>{E(S(l,"purpose"))}</td>")
+              .Append($"<td>{E(S(l,"vendor"))}</td>")
+              .Append($"<td>{E(S(l,"businessOwner"))}</td>")
+              .Append($"<td>{E(S(l,"itOwner"))}</td>")
+              .Append($"<td>{E(S(l,"department"))}</td>")
+              .Append($"<td>{E(S(l,"licenseType"))}</td>")
+              .Append($"<td>{E(S(l,"purchasedLicenses"))}</td>")
+              .Append($"<td>{E(S(l,"assignedLicenses"))}</td>")
+              .Append($"<td>{Utilization(l)}</td>")
+              .Append($"<td>{E(S(l,"versionPlan"))}</td>")
+              .Append($"<td>{E(S(l,"startDate"))}</td>")
+              .Append($"<td>{E(S(l,"renewalDate"))}</td>")
+              .Append($"<td>{(cost > 0 ? cost.ToString("N0") : "")}</td>")
+              .Append($"<td>{E(S(l,"paymentFrequency"))}</td>")
+              .Append($"<td>{E(S(l,"autoRenew"))}</td>")
+              .Append($"<td>{E(S(l,"criticality"))}</td>")
+              .Append($"<td>{E(S(l,"dataSensitivity"))}</td>")
+              .Append($"<td>{E(S(l,"ssoMfa"))}</td>")
+              .Append($"<td>{E(S(l,"contractPo"))}</td>")
+              .Append($"<td>{E(S(l,"invoiceNo"))}</td>")
+              .Append($"<td class='{statusClass}'>{E(S(l,"status"))}</td>")
+              .Append($"<td>{(days?.ToString() ?? "")}</td>")
+              .Append($"<td class='{flagClass}'>{E(flag)}</td>")
+              .Append($"<td>{E(S(l,"riskIssue"))}</td>")
+              .Append($"<td>{E(S(l,"actionRequired"))}</td>")
+              .Append($"<td>{E(S(l,"remarks"))}</td>")
+              .Append("</tr>");
+        }
+
+        sb.Append(@"</tbody></table>
+<table class='sum'>
+<tr><td class='k'>Total Software / License Records</td><td>").Append(total).Append(@"</td>
+    <td class='k'>Active</td><td>").Append(active).Append(@"</td></tr>
+<tr><td class='k'>Renewals Due within 30 Days</td><td>").Append(dueSoon).Append(@"</td>
+    <td class='k'>Renewals Due in 31-60 Days</td><td>").Append(due60).Append(@"</td></tr>
+<tr><td class='k'>Renewals Due in 61-90 Days</td><td>").Append(due90).Append(@"</td>
+    <td class='k'>Expired</td><td>").Append(expired).Append(@"</td></tr>
+<tr><td class='k'>Auto-Renew Enabled</td><td>").Append(autoRenew).Append(@"</td>
+    <td class='k'>Total Annual Cost (INR)</td><td>").Append(totalAnnualCost.ToString("N0")).Append(@"</td></tr>
+</table>
+</body></html>");
+
+        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_IT_Software_Register_{DateTime.Now:yyyyMMdd}.xls");
     }
 
     static string CsvE(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";
@@ -317,7 +457,7 @@ public class EndpointsController : Controller
     public IActionResult RepairData()
     {
         int fixedCount = 0;
-        fixedCount += RepairCorruptedStrings("qh_licenses");
+        fixedCount += RepairCorruptedStrings("software_register");
         fixedCount += RepairCorruptedStrings("pc_inventory");
         fixedCount += RepairCorruptedStrings("endpoints");
         TempData["Success"] = fixedCount > 0
