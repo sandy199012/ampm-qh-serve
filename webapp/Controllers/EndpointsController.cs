@@ -22,6 +22,8 @@ public class EndpointsController : Controller
         ViewBag.PcInventory = _db.KGetObj<List<Dictionary<string,object?>>>("pc_inventory") ?? new();
         ViewBag.Licenses = _db.KGetObj<List<Dictionary<string,object?>>>("qh_licenses") ?? new();
         ViewBag.SoftwareRegister = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
+        ViewBag.OnlineSubscriptions = _db.KGetObj<List<Dictionary<string,object?>>>("online_subscriptions") ?? new();
+        ViewBag.ITSpendLog = _db.KGetObj<List<Dictionary<string,object?>>>("it_spend_log") ?? new();
         return View(endpoints);
     }
 
@@ -53,6 +55,22 @@ public class EndpointsController : Controller
     public IActionResult SaveSoftwareRegister([FromBody] List<Dictionary<string,object?>> softwareRegister)
     {
         _db.KSet("software_register", softwareRegister);
+        return Json(new { ok = true });
+    }
+
+    // ── Online Subscriptions (separate tab/KV store) ──
+    [HttpPost]
+    public IActionResult SaveOnlineSubscriptions([FromBody] List<Dictionary<string,object?>> onlineSubscriptions)
+    {
+        _db.KSet("online_subscriptions", onlineSubscriptions);
+        return Json(new { ok = true });
+    }
+
+    // ── IT Spend Log (separate tab/KV store) ──
+    [HttpPost]
+    public IActionResult SaveITSpendLog([FromBody] List<Dictionary<string,object?>> itSpendLog)
+    {
+        _db.KSet("it_spend_log", itSpendLog);
         return Json(new { ok = true });
     }
 
@@ -298,6 +316,154 @@ public class EndpointsController : Controller
         return $"SW-{(max + 1):D3}";
     }
 
+    // Bulk CSV import for Online Subscriptions — same columns as the Online
+    // Subscriptions sheet in ExportITReport (computed columns like Utilization %,
+    // Billing Amount INR, Annualized Cost INR, Days to Renewal, Renewal Flag are
+    // ignored — they're auto-computed). Matches by Subscription ID; a blank/unmatched
+    // Subscription ID is added as a new row with a freshly generated one.
+    [HttpPost("/Endpoints/ImportOnlineSubscriptionsCsv")]
+    public async Task<IActionResult> ImportOnlineSubscriptionsCsv(IFormFile csvFile)
+    {
+        if (csvFile == null || csvFile.Length == 0) { TempData["Error"] = "Choose a CSV file first."; return RedirectToAction("Index"); }
+        var subs = _db.KGetObj<List<Dictionary<string,object?>>>("online_subscriptions") ?? new();
+        int added = 0, updated = 0, skipped = 0;
+        using var reader = new StreamReader(csvFile.OpenReadStream());
+        string? headerLine = await reader.ReadLineAsync();
+        if (headerLine == null) { TempData["Error"] = "CSV file is empty."; return RedirectToAction("Index"); }
+        var headers = ParseCsvLine(headerLine).Select(h => h.Trim().ToLower()).ToList();
+        string? line;
+        while ((line = await reader.ReadLineAsync()) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var cols = ParseCsvLine(line);
+            var row = new Dictionary<string,string>();
+            for (int i = 0; i < headers.Count && i < cols.Count; i++) row[headers[i]] = cols[i];
+
+            string subId = row.GetValueOrDefault("subscription id") ?? "";
+            string tool = row.GetValueOrDefault("tool / platform") ?? row.GetValueOrDefault("tool/platform") ?? "";
+            if (string.IsNullOrWhiteSpace(tool)) { skipped++; continue; }
+
+            var existing = !string.IsNullOrWhiteSpace(subId)
+                ? subs.FirstOrDefault(l => string.Equals(l.GetValueOrDefault("subscriptionId")?.ToString(), subId, StringComparison.OrdinalIgnoreCase))
+                : null;
+            var rec = existing ?? new Dictionary<string,object?>();
+            void SetIf(string csvKey, string dataKey) { if (row.TryGetValue(csvKey, out var v) && !string.IsNullOrWhiteSpace(v)) rec[dataKey] = v; }
+
+            rec["subscriptionId"] = string.IsNullOrWhiteSpace(subId) ? NextOnlineSubId(subs) : subId;
+            rec["toolPlatform"] = tool;
+            SetIf("subscription type", "subscriptionType");
+            SetIf("use case", "useCase");
+            SetIf("vendor", "vendor");
+            SetIf("website", "website");
+            SetIf("business owner", "businessOwner");
+            SetIf("admin account/email", "adminAccount");
+            SetIf("department", "department");
+            SetIf("plan", "plan");
+            SetIf("seats", "seats");
+            SetIf("active users", "activeUsers");
+            SetIf("billing currency", "billingCurrency");
+            SetIf("billing amount", "billingAmount");
+            SetIf("fx rate to inr", "fxRate");
+            SetIf("billing frequency", "billingFrequency");
+            SetIf("start date", "startDate");
+            SetIf("renewal date", "renewalDate");
+            SetIf("auto-renew", "autoRenew");
+            SetIf("payment mode", "paymentMode");
+            SetIf("card/bank last 4", "cardLast4");
+            SetIf("gst/tax credit", "gstTaxCredit");
+            SetIf("data shared", "dataShared");
+            SetIf("ai data retention/training", "aiDataRetention");
+            SetIf("security review", "securityReview");
+            SetIf("criticality", "criticality");
+            SetIf("status", "status");
+            SetIf("duplicate/overlap", "duplicateOverlap");
+            SetIf("cost saving action", "costSavingAction");
+            SetIf("remarks", "remarks");
+            if (existing == null) { subs.Add(rec); added++; } else updated++;
+        }
+        _db.KSet("online_subscriptions", subs);
+        TempData["Success"] = $"Import complete: {added} added, {updated} updated, {skipped} skipped.";
+        return RedirectToAction("Index");
+    }
+
+    static string NextOnlineSubId(List<Dictionary<string,object?>> subs)
+    {
+        int max = 0;
+        foreach (var l in subs)
+        {
+            var id = l.GetValueOrDefault("subscriptionId")?.ToString() ?? "";
+            if (id.StartsWith("OS-") && int.TryParse(id.Substring(3), out var n)) max = Math.Max(max, n);
+        }
+        return $"OS-{(max + 1):D3}";
+    }
+
+    // Bulk CSV import for the IT Spend Log. This is a transactional log (not a
+    // register), so every row is always appended as a new entry — there's no
+    // upsert/matching by ID, unlike the other imports above.
+    [HttpPost("/Endpoints/ImportITSpendLogCsv")]
+    public async Task<IActionResult> ImportITSpendLogCsv(IFormFile csvFile)
+    {
+        if (csvFile == null || csvFile.Length == 0) { TempData["Error"] = "Choose a CSV file first."; return RedirectToAction("Index"); }
+        var log = _db.KGetObj<List<Dictionary<string,object?>>>("it_spend_log") ?? new();
+        int added = 0, skipped = 0;
+        using var reader = new StreamReader(csvFile.OpenReadStream());
+        string? headerLine = await reader.ReadLineAsync();
+        if (headerLine == null) { TempData["Error"] = "CSV file is empty."; return RedirectToAction("Index"); }
+        var headers = ParseCsvLine(headerLine).Select(h => h.Trim().ToLower()).ToList();
+        string? line;
+        while ((line = await reader.ReadLineAsync()) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            var cols = ParseCsvLine(line);
+            var row = new Dictionary<string,string>();
+            for (int i = 0; i < headers.Count && i < cols.Count; i++) row[headers[i]] = cols[i];
+
+            string vendor = row.GetValueOrDefault("vendor") ?? "";
+            string tool = row.GetValueOrDefault("tool / software") ?? row.GetValueOrDefault("tool/software") ?? "";
+            if (string.IsNullOrWhiteSpace(vendor) && string.IsNullOrWhiteSpace(tool)) { skipped++; continue; }
+
+            var rec = new Dictionary<string,object?>();
+            void SetIf(string csvKey, string dataKey) { if (row.TryGetValue(csvKey, out var v) && !string.IsNullOrWhiteSpace(v)) rec[dataKey] = v; }
+
+            var expenseId = row.GetValueOrDefault("expense id") ?? "";
+            rec["expenseId"] = string.IsNullOrWhiteSpace(expenseId) ? NextExpenseId(log) : expenseId;
+            SetIf("expense date", "expenseDate");
+            rec["vendor"] = vendor;
+            rec["toolSoftware"] = tool;
+            SetIf("subscription type", "subscriptionType");
+            SetIf("cost category", "costCategory");
+            SetIf("department", "department");
+            SetIf("invoice no.", "invoiceNo");
+            SetIf("po/contract no.", "poContractNo");
+            SetIf("base amount (inr)", "baseAmount");
+            SetIf("gst (inr)", "gst");
+            SetIf("tds (inr)", "tds");
+            SetIf("payment date", "paymentDate");
+            SetIf("payment status", "paymentStatus");
+            SetIf("payment mode", "paymentMode");
+            SetIf("budget amount (inr)", "budgetAmount");
+            SetIf("capex/opex", "capexOpex");
+            SetIf("cost center", "costCenter");
+            SetIf("remarks", "remarks");
+            log.Add(rec);
+            added++;
+        }
+        _db.KSet("it_spend_log", log);
+        TempData["Success"] = $"Import complete: {added} added, {skipped} skipped.";
+        return RedirectToAction("Index");
+    }
+
+    static string NextExpenseId(List<Dictionary<string,object?>> log)
+    {
+        int max = 0;
+        foreach (var l in log)
+        {
+            var id = l.GetValueOrDefault("expenseId")?.ToString() ?? "";
+            if (id.StartsWith("EXP-") && int.TryParse(id.Substring(4), out var n)) max = Math.Max(max, n);
+        }
+        return $"EXP-{(max + 1):D4}";
+    }
+
     static List<string> ParseCsvLine(string line)
     {
         var result = new List<string>();
@@ -382,18 +548,23 @@ public class EndpointsController : Controller
 
     // Real .xlsx report generated from Sandy's own AMPM_IT_Reporting_Template.xlsx
     // (embedded into the app at build time — see the csproj). We surgically set only
-    // the data cells of the "Software Register" sheet using the raw Open XML SDK —
-    // NOT a higher-level library like ClosedXML, because those tend to fully
-    // re-parse/re-serialize every part of the workbook (styles, conditional
-    // formatting, etc.) on save, and this template's conditional-formatting rules
-    // (e.g. highlighting "Due within 30 days") aren't round-trippable by ClosedXML's
-    // formula parser. Writing cells directly leaves every other sheet, formula,
-    // style, column width, dropdown and conditional format byte-for-byte untouched —
-    // the Dashboard's totals/renewal counts recalculate on their own from the data.
-    [HttpGet("/Endpoints/ExportSoftwareRegister")]
-    public IActionResult ExportSoftwareRegister()
+    // the data cells of each sheet using the raw Open XML SDK — NOT a higher-level
+    // library like ClosedXML, because those tend to fully re-parse/re-serialize
+    // every part of the workbook (styles, conditional formatting, etc.) on save,
+    // and this template's conditional-formatting rules (e.g. highlighting "Due
+    // within 30 days") aren't round-trippable by ClosedXML's formula parser.
+    // Writing cells directly leaves every other sheet, formula, style, column
+    // width, dropdown and conditional format byte-for-byte untouched — the
+    // Dashboard's totals/renewal counts recalculate on their own from the data.
+    // This single export fills all three data sheets — Software Register, Online
+    // Subscriptions, IT Spend Log — from their own tabs in the app, in one
+    // combined download, sharing the same SharedStringTable across the workbook.
+    [HttpGet("/Endpoints/ExportITReport")]
+    public IActionResult ExportITReport()
     {
-        var lics = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
+        var swReg = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
+        var onlineSubs = _db.KGetObj<List<Dictionary<string,object?>>>("online_subscriptions") ?? new();
+        var spendLog = _db.KGetObj<List<Dictionary<string,object?>>>("it_spend_log") ?? new();
         string S(Dictionary<string,object?> l, string k) => l.GetValueOrDefault(k)?.ToString() ?? "";
 
         var asm = typeof(EndpointsController).Assembly;
@@ -410,9 +581,6 @@ public class EndpointsController : Controller
         using (var doc = SpreadsheetDocument.Open(ms, true))
         {
             var wbPart = doc.WorkbookPart!;
-            var sheet = wbPart.Workbook.Descendants<Sheet>().First(s => s.Name == "Software Register");
-            var wsPart = (WorksheetPart)wbPart.GetPartById(sheet.Id!.Value!);
-            var sheetData = wsPart.Worksheet.GetFirstChild<SheetData>()!;
             var sstPart = wbPart.SharedStringTablePart ?? wbPart.AddNewPart<SharedStringTablePart>();
             sstPart.SharedStringTable ??= new SharedStringTable();
 
@@ -449,7 +617,7 @@ public class EndpointsController : Controller
                 return n;
             }
 
-            Row GetOrCreateRow(uint rowIndex)
+            Row GetOrCreateRow(SheetData sheetData, uint rowIndex)
             {
                 var row = sheetData.Elements<Row>().FirstOrDefault(r => r.RowIndex is not null && r.RowIndex.Value == rowIndex);
                 if (row != null) return row;
@@ -476,62 +644,153 @@ public class EndpointsController : Controller
                 return cell;
             }
 
-            void SetText(uint rowIndex, int colIndex, string value)
+            void SetText(SheetData sheetData, uint rowIndex, int colIndex, string value)
             {
                 if (string.IsNullOrEmpty(value)) return;
-                var cell = GetOrCreateCell(GetOrCreateRow(rowIndex), colIndex, rowIndex);
+                var cell = GetOrCreateCell(GetOrCreateRow(sheetData, rowIndex), colIndex, rowIndex);
                 cell.CellValue = new CellValue(SharedStringIndex(value).ToString());
                 cell.DataType = new EnumValue<CellValues>(CellValues.SharedString);
             }
 
-            void SetNumber(uint rowIndex, int colIndex, double value)
+            void SetNumber(SheetData sheetData, uint rowIndex, int colIndex, double value)
             {
-                var cell = GetOrCreateCell(GetOrCreateRow(rowIndex), colIndex, rowIndex);
+                var cell = GetOrCreateCell(GetOrCreateRow(sheetData, rowIndex), colIndex, rowIndex);
                 cell.CellValue = new CellValue(value.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 cell.DataType = null;
             }
 
-            void SetDate(uint rowIndex, int colIndex, DateTime value) => SetNumber(rowIndex, colIndex, value.ToOADate());
+            void SetDate(SheetData sheetData, uint rowIndex, int colIndex, DateTime value) => SetNumber(sheetData, rowIndex, colIndex, value.ToOADate());
 
-            // The template's SoftwareRegisterTable and its per-row formulas
-            // (Utilization %, Days to Renewal, Renewal Flag) run from row 7 to row 206 —
-            // we only ever write into the data columns of that same range.
-            const uint firstRow = 7, lastRow = 206;
-            uint row = firstRow;
-            foreach (var l in lics)
+            SheetData GetSheetData(string sheetName)
             {
-                if (row > lastRow) break; // template's pre-built rows are full
+                var sheet = wbPart.Workbook.Descendants<Sheet>().First(s => s.Name == sheetName);
+                var wsPart = (WorksheetPart)wbPart.GetPartById(sheet.Id!.Value!);
+                return wsPart.Worksheet.GetFirstChild<SheetData>()!;
+            }
 
-                SetText(row, 1, S(l, "recordId"));           // A Record ID
-                SetText(row, 2, S(l, "software"));           // B Software / Application
-                SetText(row, 3, S(l, "category"));           // C Category
-                SetText(row, 4, S(l, "deployment"));         // D Deployment
-                SetText(row, 5, S(l, "purpose"));            // E Purpose / Module
-                SetText(row, 6, S(l, "vendor"));             // F Vendor
-                SetText(row, 7, S(l, "businessOwner"));      // G Business Owner
-                SetText(row, 8, S(l, "itOwner"));            // H IT Owner
-                SetText(row, 9, S(l, "department"));         // I Department
-                SetText(row, 10, S(l, "licenseType"));       // J License Type
-                if (double.TryParse(S(l, "purchasedLicenses"), out var purchased)) SetNumber(row, 11, purchased); // K
-                if (double.TryParse(S(l, "assignedLicenses"), out var assigned)) SetNumber(row, 12, assigned);    // L
-                // column 13 (M) = Utilization % — template formula, left untouched
-                SetText(row, 14, S(l, "versionPlan"));       // N Version / Plan
-                if (DateTime.TryParse(S(l, "startDate"), out var startDate)) SetDate(row, 15, startDate);         // O
-                if (DateTime.TryParse(S(l, "renewalDate"), out var renewalDate)) SetDate(row, 16, renewalDate);   // P
-                if (double.TryParse(S(l, "annualCost"), out var annualCost)) SetNumber(row, 17, annualCost);      // Q
-                SetText(row, 18, S(l, "paymentFrequency"));  // R Payment Frequency
-                SetText(row, 19, S(l, "autoRenew"));         // S Auto-Renew
-                SetText(row, 20, S(l, "criticality"));       // T Criticality
-                SetText(row, 21, S(l, "dataSensitivity"));   // U Data Sensitivity
-                SetText(row, 22, S(l, "ssoMfa"));            // V SSO / MFA
-                SetText(row, 23, S(l, "contractPo"));        // W Contract / PO No.
-                SetText(row, 24, S(l, "invoiceNo"));         // X Invoice No.
-                SetText(row, 25, S(l, "status"));            // Y Status
-                // columns 26 (Z) / 27 (AA) = Days to Renewal / Renewal Flag — template formulas, left untouched
-                SetText(row, 28, S(l, "riskIssue"));         // AB Risk / Issue
-                SetText(row, 29, S(l, "actionRequired"));    // AC Action Required
-                SetText(row, 30, S(l, "remarks"));           // AD Remarks
-                row++;
+            // ── Software Register (SoftwareRegisterTable, A6:AD206, data rows 7-206) ──
+            {
+                var sheetData = GetSheetData("Software Register");
+                const uint firstRow = 7, lastRow = 206;
+                uint row = firstRow;
+                foreach (var l in swReg)
+                {
+                    if (row > lastRow) break; // template's pre-built rows are full
+
+                    SetText(sheetData, row, 1, S(l, "recordId"));           // A Record ID
+                    SetText(sheetData, row, 2, S(l, "software"));           // B Software / Application
+                    SetText(sheetData, row, 3, S(l, "category"));           // C Category
+                    SetText(sheetData, row, 4, S(l, "deployment"));         // D Deployment
+                    SetText(sheetData, row, 5, S(l, "purpose"));            // E Purpose / Module
+                    SetText(sheetData, row, 6, S(l, "vendor"));             // F Vendor
+                    SetText(sheetData, row, 7, S(l, "businessOwner"));      // G Business Owner
+                    SetText(sheetData, row, 8, S(l, "itOwner"));            // H IT Owner
+                    SetText(sheetData, row, 9, S(l, "department"));         // I Department
+                    SetText(sheetData, row, 10, S(l, "licenseType"));       // J License Type
+                    if (double.TryParse(S(l, "purchasedLicenses"), out var purchased)) SetNumber(sheetData, row, 11, purchased); // K
+                    if (double.TryParse(S(l, "assignedLicenses"), out var assigned)) SetNumber(sheetData, row, 12, assigned);    // L
+                    // column 13 (M) = Utilization % — template formula, left untouched
+                    SetText(sheetData, row, 14, S(l, "versionPlan"));       // N Version / Plan
+                    if (DateTime.TryParse(S(l, "startDate"), out var startDate)) SetDate(sheetData, row, 15, startDate);         // O
+                    if (DateTime.TryParse(S(l, "renewalDate"), out var renewalDate)) SetDate(sheetData, row, 16, renewalDate);   // P
+                    if (double.TryParse(S(l, "annualCost"), out var annualCost)) SetNumber(sheetData, row, 17, annualCost);      // Q
+                    SetText(sheetData, row, 18, S(l, "paymentFrequency"));  // R Payment Frequency
+                    SetText(sheetData, row, 19, S(l, "autoRenew"));         // S Auto-Renew
+                    SetText(sheetData, row, 20, S(l, "criticality"));       // T Criticality
+                    SetText(sheetData, row, 21, S(l, "dataSensitivity"));   // U Data Sensitivity
+                    SetText(sheetData, row, 22, S(l, "ssoMfa"));            // V SSO / MFA
+                    SetText(sheetData, row, 23, S(l, "contractPo"));        // W Contract / PO No.
+                    SetText(sheetData, row, 24, S(l, "invoiceNo"));         // X Invoice No.
+                    SetText(sheetData, row, 25, S(l, "status"));            // Y Status
+                    // columns 26 (Z) / 27 (AA) = Days to Renewal / Renewal Flag — template formulas, left untouched
+                    SetText(sheetData, row, 28, S(l, "riskIssue"));         // AB Risk / Issue
+                    SetText(sheetData, row, 29, S(l, "actionRequired"));    // AC Action Required
+                    SetText(sheetData, row, 30, S(l, "remarks"));           // AD Remarks
+                    row++;
+                }
+            }
+
+            // ── Online Subscriptions (OnlineSubscriptionsTable, A6:AI206, data rows 7-206) ──
+            {
+                var sheetData = GetSheetData("Online Subscriptions");
+                const uint firstRow = 7, lastRow = 206;
+                uint row = firstRow;
+                foreach (var l in onlineSubs)
+                {
+                    if (row > lastRow) break;
+
+                    SetText(sheetData, row, 1, S(l, "subscriptionId"));      // A Subscription ID
+                    SetText(sheetData, row, 2, S(l, "toolPlatform"));        // B Tool/Platform
+                    SetText(sheetData, row, 3, S(l, "subscriptionType"));    // C Subscription Type
+                    SetText(sheetData, row, 4, S(l, "useCase"));             // D Use Case
+                    SetText(sheetData, row, 5, S(l, "vendor"));              // E Vendor
+                    SetText(sheetData, row, 6, S(l, "website"));             // F Website
+                    SetText(sheetData, row, 7, S(l, "businessOwner"));       // G Business Owner
+                    SetText(sheetData, row, 8, S(l, "adminAccount"));        // H Admin Account/Email
+                    SetText(sheetData, row, 9, S(l, "department"));          // I Department
+                    SetText(sheetData, row, 10, S(l, "plan"));               // J Plan
+                    if (double.TryParse(S(l, "seats"), out var seats)) SetNumber(sheetData, row, 11, seats);             // K
+                    if (double.TryParse(S(l, "activeUsers"), out var activeUsers)) SetNumber(sheetData, row, 12, activeUsers); // L
+                    // column 13 (M) = Utilization % — template formula, left untouched
+                    SetText(sheetData, row, 14, S(l, "billingCurrency"));    // N Billing Currency
+                    if (double.TryParse(S(l, "billingAmount"), out var billingAmount)) SetNumber(sheetData, row, 15, billingAmount); // O
+                    if (double.TryParse(S(l, "fxRate"), out var fxRate)) SetNumber(sheetData, row, 16, fxRate);          // P
+                    // column 17 (Q) = Billing Amount INR — template formula, left untouched
+                    SetText(sheetData, row, 18, S(l, "billingFrequency"));   // R Billing Frequency
+                    // column 19 (S) = Annualized Cost INR — template formula, left untouched
+                    if (DateTime.TryParse(S(l, "startDate"), out var startDate)) SetDate(sheetData, row, 20, startDate);       // T
+                    if (DateTime.TryParse(S(l, "renewalDate"), out var renewalDate)) SetDate(sheetData, row, 21, renewalDate); // U
+                    SetText(sheetData, row, 22, S(l, "autoRenew"));          // V Auto-Renew
+                    SetText(sheetData, row, 23, S(l, "paymentMode"));        // W Payment Mode
+                    SetText(sheetData, row, 24, S(l, "cardLast4"));          // X Card/Bank Last 4
+                    SetText(sheetData, row, 25, S(l, "gstTaxCredit"));       // Y GST/Tax Credit
+                    SetText(sheetData, row, 26, S(l, "dataShared"));         // Z Data Shared
+                    SetText(sheetData, row, 27, S(l, "aiDataRetention"));    // AA AI Data Retention/Training
+                    SetText(sheetData, row, 28, S(l, "securityReview"));     // AB Security Review
+                    SetText(sheetData, row, 29, S(l, "criticality"));        // AC Criticality
+                    SetText(sheetData, row, 30, S(l, "status"));             // AD Status
+                    // columns 31 (AE) / 32 (AF) = Days to Renewal / Renewal Flag — template formulas, left untouched
+                    SetText(sheetData, row, 33, S(l, "duplicateOverlap"));   // AG Duplicate/Overlap
+                    SetText(sheetData, row, 34, S(l, "costSavingAction"));   // AH Cost Saving Action
+                    SetText(sheetData, row, 35, S(l, "remarks"));            // AI Remarks
+                    row++;
+                }
+            }
+
+            // ── IT Spend Log (ITSpendLogTable, A6:W306, data rows 7-306) ──
+            {
+                var sheetData = GetSheetData("IT Spend Log");
+                const uint firstRow = 7, lastRow = 306;
+                uint row = firstRow;
+                foreach (var l in spendLog)
+                {
+                    if (row > lastRow) break;
+
+                    if (DateTime.TryParse(S(l, "expenseDate"), out var expenseDate)) SetDate(sheetData, row, 1, expenseDate); // A
+                    // column 2 (B) = Reporting Month — template formula, left untouched
+                    SetText(sheetData, row, 3, S(l, "expenseId"));           // C Expense ID
+                    SetText(sheetData, row, 4, S(l, "vendor"));              // D Vendor
+                    SetText(sheetData, row, 5, S(l, "toolSoftware"));        // E Tool/Software
+                    SetText(sheetData, row, 6, S(l, "subscriptionType"));    // F Subscription Type
+                    SetText(sheetData, row, 7, S(l, "costCategory"));        // G Cost Category
+                    SetText(sheetData, row, 8, S(l, "department"));          // H Department
+                    SetText(sheetData, row, 9, S(l, "invoiceNo"));           // I Invoice No.
+                    SetText(sheetData, row, 10, S(l, "poContractNo"));       // J PO/Contract No.
+                    if (double.TryParse(S(l, "baseAmount"), out var baseAmount)) SetNumber(sheetData, row, 11, baseAmount); // K
+                    if (double.TryParse(S(l, "gst"), out var gst)) SetNumber(sheetData, row, 12, gst);                      // L
+                    // column 13 (M) = Gross Amount — template formula, left untouched
+                    if (double.TryParse(S(l, "tds"), out var tds)) SetNumber(sheetData, row, 14, tds);                      // N
+                    // column 15 (O) = Net Paid/Payable — template formula, left untouched
+                    if (DateTime.TryParse(S(l, "paymentDate"), out var paymentDate)) SetDate(sheetData, row, 16, paymentDate); // P
+                    SetText(sheetData, row, 17, S(l, "paymentStatus"));      // Q Payment Status
+                    SetText(sheetData, row, 18, S(l, "paymentMode"));        // R Payment Mode
+                    if (double.TryParse(S(l, "budgetAmount"), out var budgetAmount)) SetNumber(sheetData, row, 19, budgetAmount); // S
+                    // column 20 (T) = Variance to Budget — template formula, left untouched
+                    SetText(sheetData, row, 21, S(l, "capexOpex"));          // U Capex/Opex
+                    SetText(sheetData, row, 22, S(l, "costCenter"));         // V Cost Center
+                    SetText(sheetData, row, 23, S(l, "remarks"));            // W Remarks
+                    row++;
+                }
             }
 
             doc.Save();
@@ -539,7 +798,7 @@ public class EndpointsController : Controller
 
         return File(ms.ToArray(),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            $"AMPM_IT_Software_Register_{DateTime.Now:yyyyMMdd}.xlsx");
+            $"AMPM_IT_Report_{DateTime.Now:yyyyMMdd}.xlsx");
     }
 
     static string CsvE(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";
@@ -570,6 +829,8 @@ public class EndpointsController : Controller
         int fixedCount = 0;
         fixedCount += RepairCorruptedStrings("qh_licenses");
         fixedCount += RepairCorruptedStrings("software_register");
+        fixedCount += RepairCorruptedStrings("online_subscriptions");
+        fixedCount += RepairCorruptedStrings("it_spend_log");
         fixedCount += RepairCorruptedStrings("pc_inventory");
         fixedCount += RepairCorruptedStrings("endpoints");
         TempData["Success"] = fixedCount > 0

@@ -4,6 +4,8 @@
     var pcInv = (List<Dictionary<string,object?>>)ViewBag.PcInventory;
     var licenses = (List<Dictionary<string,object?>>)ViewBag.Licenses;
     var softwareRegister = (List<Dictionary<string,object?>>)ViewBag.SoftwareRegister;
+    var onlineSubs = (List<Dictionary<string,object?>>)ViewBag.OnlineSubscriptions;
+    var itSpendLog = (List<Dictionary<string,object?>>)ViewBag.ITSpendLog;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -15,6 +17,8 @@
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pc" type="button">💻 PC Inventory &amp; Antivirus</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-lic" type="button">🔑 License Manager</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-swreg" type="button">🗂️ IT Software Register</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-onlinesub" type="button">💳 Online Subscriptions</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-spendlog" type="button">💰 IT Spend Log</button></li>
 </ul>
 
 <div class="tab-content">
@@ -178,12 +182,12 @@
     @if (!softwareRegister.Any())
     {
         <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> No software/license records on file yet — add them one by one, or import your list as a CSV. Use <a href="/Endpoints/ExportSoftwareRegister">Excel Report</a> first to see the exact column format.
+            <i class="bi bi-info-circle"></i> No software/license records on file yet — add them one by one, or import your list as a CSV. Use <a href="/Endpoints/ExportITReport">Excel Report</a> first to see the exact column format.
         </div>
     }
     <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
         <button class="btn btn-outline-dark btn-sm px-3" onclick="new bootstrap.Modal(document.getElementById('swregImportModal')).show()"><i class="bi bi-upload"></i> Import CSV</button>
-        <a href="/Endpoints/ExportSoftwareRegister" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Excel Report</a>
+        <a href="/Endpoints/ExportITReport" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Excel Report</a>
         <button class="btn btn-primary btn-sm px-3" onclick="openSwRegModal(-1)"><i class="bi bi-plus-circle"></i> Add Software / License</button>
     </div>
 
@@ -234,6 +238,138 @@
                     </tr>
                 </thead>
                 <tbody id="swregTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ TAB 5: ONLINE SUBSCRIPTIONS (new, separate KV store) ══════════════ -->
+<div class="tab-pane fade" id="tab-onlinesub">
+
+    @if (!onlineSubs.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No online subscription records on file yet — add them one by one, or import your list as a CSV. Use <a href="/Endpoints/ExportITReport">Excel Report</a> first to see the exact column format.
+        </div>
+    }
+    <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
+        <button class="btn btn-outline-dark btn-sm px-3" onclick="new bootstrap.Modal(document.getElementById('onlineSubImportModal')).show()"><i class="bi bi-upload"></i> Import CSV</button>
+        <a href="/Endpoints/ExportITReport" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Excel Report</a>
+        <button class="btn btn-primary btn-sm px-3" onclick="openOnlineSubModal(-1)"><i class="bi bi-plus-circle"></i> Add Subscription</button>
+    </div>
+
+    <div class="row g-2 mb-3" id="onlineSubSummary">
+        <div class="col-3"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4" id="onlineSubTotal">0</div><div class="small text-muted">Total Subscriptions</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success" id="onlineSubActive">0</div><div class="small text-muted">Active</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-warning-subtle text-center py-2"><div class="fw-bold fs-4 text-warning" id="onlineSubDueSoon">0</div><div class="small text-muted">Renewal ≤ 30 Days</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-danger-subtle text-center py-2"><div class="fw-bold fs-4 text-danger" id="onlineSubExpired">0</div><div class="small text-muted">Expired</div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle" style="font-size:12px">
+                <thead style="background:#1e3a5f;color:white">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Subscription ID</th>
+                        <th>Tool / Platform</th>
+                        <th>Subscription Type</th>
+                        <th>Use Case</th>
+                        <th>Vendor</th>
+                        <th>Website</th>
+                        <th>Business Owner</th>
+                        <th>Admin Account / Email</th>
+                        <th>Department</th>
+                        <th>Plan</th>
+                        <th>Seats</th>
+                        <th>Active Users</th>
+                        <th>Utilization %</th>
+                        <th>Billing Currency</th>
+                        <th>Billing Amount</th>
+                        <th>FX Rate to INR</th>
+                        <th>Billing Amount (INR)</th>
+                        <th>Billing Frequency</th>
+                        <th>Annualized Cost (INR)</th>
+                        <th>Start Date</th>
+                        <th>Renewal Date</th>
+                        <th>Auto-Renew</th>
+                        <th>Payment Mode</th>
+                        <th>Card/Bank Last 4</th>
+                        <th>GST / Tax Credit</th>
+                        <th>Data Shared</th>
+                        <th>AI Data Retention/Training</th>
+                        <th>Security Review</th>
+                        <th>Criticality</th>
+                        <th>Status</th>
+                        <th>Days to Renewal</th>
+                        <th>Renewal Flag</th>
+                        <th>Duplicate / Overlap</th>
+                        <th>Cost Saving Action</th>
+                        <th>Remarks</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="onlineSubTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ TAB 6: IT SPEND LOG (new, separate KV store, append-only transaction log) ══════════════ -->
+<div class="tab-pane fade" id="tab-spendlog">
+
+    @if (!itSpendLog.Any())
+    {
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> No spend log entries on file yet — add them one by one, or import your list as a CSV. Use <a href="/Endpoints/ExportITReport">Excel Report</a> first to see the exact column format.
+        </div>
+    }
+    <div class="d-flex justify-content-end align-items-center mb-3 gap-2">
+        <button class="btn btn-outline-dark btn-sm px-3" onclick="new bootstrap.Modal(document.getElementById('spendLogImportModal')).show()"><i class="bi bi-upload"></i> Import CSV</button>
+        <a href="/Endpoints/ExportITReport" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-download"></i> Excel Report</a>
+        <button class="btn btn-primary btn-sm px-3" onclick="openSpendLogModal(-1)"><i class="bi bi-plus-circle"></i> Add Expense</button>
+    </div>
+
+    <div class="row g-2 mb-3" id="spendLogSummary">
+        <div class="col-3"><div class="card border-0 bg-light text-center py-2"><div class="fw-bold fs-4" id="spendLogTotal">0</div><div class="small text-muted">Total Entries</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-info-subtle text-center py-2"><div class="fw-bold fs-4 text-info" id="spendLogBaseTotal">0</div><div class="small text-muted">Total Base Amount (INR)</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-warning-subtle text-center py-2"><div class="fw-bold fs-4 text-warning" id="spendLogPending">0</div><div class="small text-muted">Pending/Overdue Payments</div></div></div>
+        <div class="col-3"><div class="card border-0 bg-danger-subtle text-center py-2"><div class="fw-bold fs-4 text-danger" id="spendLogOverBudget">0</div><div class="small text-muted">Over Budget</div></div></div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle" style="font-size:12px">
+                <thead style="background:#1e3a5f;color:white">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Expense Date</th>
+                        <th>Reporting Month</th>
+                        <th>Expense ID</th>
+                        <th>Vendor</th>
+                        <th>Tool / Software</th>
+                        <th>Subscription Type</th>
+                        <th>Cost Category</th>
+                        <th>Department</th>
+                        <th>Invoice No.</th>
+                        <th>PO/Contract No.</th>
+                        <th>Base Amount (INR)</th>
+                        <th>GST (INR)</th>
+                        <th>Gross Amount</th>
+                        <th>TDS (INR)</th>
+                        <th>Net Paid/Payable</th>
+                        <th>Payment Date</th>
+                        <th>Payment Status</th>
+                        <th>Payment Mode</th>
+                        <th>Budget Amount (INR)</th>
+                        <th>Variance to Budget</th>
+                        <th>Capex/Opex</th>
+                        <th>Cost Center</th>
+                        <th>Remarks</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="spendLogTableBody"></tbody>
             </table>
         </div>
     </div>
@@ -321,7 +457,51 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="small text-muted">Columns: Record ID, Software / Application, Category, Deployment, Purpose / Module, Vendor, Business Owner, IT Owner, Department, License Type, Purchased Licenses, Assigned Licenses, Version / Plan, Start Date, Renewal / Support Due, Annual Support Cost (INR), Payment Frequency, Auto-Renew, Criticality, Data Sensitivity, SSO / MFA, Contract / PO No., Invoice No., Status, Risk / Issue, Action Required, Remarks. Matches existing rows by Record ID (updates them); blank/new Record IDs are added. Use <a href="/Endpoints/ExportSoftwareRegister">Excel Report</a> to see the exact format.</p>
+                    <p class="small text-muted">Columns: Record ID, Software / Application, Category, Deployment, Purpose / Module, Vendor, Business Owner, IT Owner, Department, License Type, Purchased Licenses, Assigned Licenses, Version / Plan, Start Date, Renewal / Support Due, Annual Support Cost (INR), Payment Frequency, Auto-Renew, Criticality, Data Sensitivity, SSO / MFA, Contract / PO No., Invoice No., Status, Risk / Issue, Action Required, Remarks. Matches existing rows by Record ID (updates them); blank/new Record IDs are added. Use <a href="/Endpoints/ExportITReport">Excel Report</a> to see the exact format.</p>
+                    <input type="file" name="csvFile" accept=".csv" class="form-control" required/>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Import Online Subscriptions CSV Modal ═══ -->
+<div class="modal fade" id="onlineSubImportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="/Endpoints/ImportOnlineSubscriptionsCsv" enctype="multipart/form-data">
+                <div class="modal-header" style="background:#1e3a5f;color:white">
+                    <h5 class="modal-title">Import Online Subscriptions (CSV)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Columns: Subscription ID, Tool/Platform, Subscription Type, Use Case, Vendor, Website, Business Owner, Admin Account/Email, Department, Plan, Seats, Active Users, Billing Currency, Billing Amount, FX Rate to INR, Billing Frequency, Start Date, Renewal Date, Auto-Renew, Payment Mode, Card/Bank Last 4, GST/Tax Credit, Data Shared, AI Data Retention/Training, Security Review, Criticality, Status, Duplicate/Overlap, Cost Saving Action, Remarks. Matches existing rows by Subscription ID (updates them); blank/new IDs are added. Use <a href="/Endpoints/ExportITReport">Excel Report</a> to see the exact format.</p>
+                    <input type="file" name="csvFile" accept=".csv" class="form-control" required/>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Import IT Spend Log CSV Modal ═══ -->
+<div class="modal fade" id="spendLogImportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="/Endpoints/ImportITSpendLogCsv" enctype="multipart/form-data">
+                <div class="modal-header" style="background:#1e3a5f;color:white">
+                    <h5 class="modal-title">Import IT Spend Log (CSV)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted">Columns: Expense Date, Expense ID, Vendor, Tool/Software, Subscription Type, Cost Category, Department, Invoice No., PO/Contract No., Base Amount (INR), GST (INR), TDS (INR), Payment Date, Payment Status, Payment Mode, Budget Amount (INR), Capex/Opex, Cost Center, Remarks. This is a transaction log — every row is appended as a new entry (no matching/updating existing rows). Use <a href="/Endpoints/ExportITReport">Excel Report</a> to see the exact format.</p>
                     <input type="file" name="csvFile" accept=".csv" class="form-control" required/>
                 </div>
                 <div class="modal-footer">
@@ -529,12 +709,183 @@
     </div>
 </div>
 
+<!-- ═══ Add/Edit Online Subscription Modal ═══ -->
+<div class="modal fade" id="onlineSubModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#1e3a5f;color:white">
+                <h5 class="modal-title" id="onlineSubModalTitle">Add Subscription</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="onlineSubIdx" value="-1"/>
+                <div class="row g-3">
+                    <div class="col-md-4"><label class="form-label fw-bold small">Subscription ID</label><input type="text" id="onlineSubId" class="form-control" placeholder="auto if blank"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Tool / Platform</label><input type="text" id="onlineSubTool" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Subscription Type</label>
+                        <select id="onlineSubType" class="form-select">
+                            @foreach(var c in new[]{"SaaS Tool","Cloud Hosting","API/Service","Streaming/Media","Domain/DNS","Other"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Use Case</label><input type="text" id="onlineSubUseCase" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Vendor</label><input type="text" id="onlineSubVendor" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Website</label><input type="text" id="onlineSubWebsite" class="form-control" placeholder="https://"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Business Owner</label><input type="text" id="onlineSubBusinessOwner" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Admin Account / Email</label><input type="text" id="onlineSubAdminAccount" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Department</label>
+                        <select id="onlineSubDepartment" class="form-select">
+                            @foreach(var c in new[]{"Accounts & Finance","Retail","E-commerce","Production","Warehouse","HR","Marketing","Management","IT"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Plan</label><input type="text" id="onlineSubPlan" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Seats</label><input type="number" id="onlineSubSeats" class="form-control" min="0"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Active Users</label><input type="number" id="onlineSubActiveUsers" class="form-control" min="0"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Billing Currency</label>
+                        <select id="onlineSubCurrency" class="form-select">
+                            @foreach(var c in new[]{"INR","USD","EUR","GBP","Other"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Billing Amount</label><input type="number" id="onlineSubBillingAmount" class="form-control" min="0" step="0.01"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">FX Rate to INR</label><input type="number" id="onlineSubFxRate" class="form-control" min="0" step="0.01" placeholder="1 for INR"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Billing Frequency</label>
+                        <select id="onlineSubFrequency" class="form-select">
+                            @foreach(var c in new[]{"Monthly","Quarterly","Half-Yearly","Annual","One-time"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Start Date</label><input type="date" id="onlineSubStartDate" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Renewal Date</label><input type="date" id="onlineSubRenewalDate" class="form-control"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Auto-Renew</label>
+                        <select id="onlineSubAutoRenew" class="form-select"><option>Yes</option><option>No</option></select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Payment Mode</label><input type="text" id="onlineSubPaymentMode" class="form-control" placeholder="Card / Net Banking / UPI"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Card/Bank Last 4</label><input type="text" id="onlineSubCardLast4" class="form-control" maxlength="4"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">GST / Tax Credit</label>
+                        <select id="onlineSubGstCredit" class="form-select"><option>Yes</option><option>No</option></select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Data Shared</label>
+                        <select id="onlineSubDataShared" class="form-select"><option>Yes</option><option>No</option></select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">AI Data Retention/Training</label>
+                        <select id="onlineSubAiRetention" class="form-select"><option>Yes</option><option>No</option><option>Unknown</option></select>
+                    </div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Security Review</label>
+                        <select id="onlineSubSecurityReview" class="form-select">
+                            @foreach(var c in new[]{"Done","Pending","Not Required"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Criticality</label>
+                        <select id="onlineSubCriticality" class="form-select">
+                            @foreach(var c in new[]{"Critical","High","Medium","Low"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Status</label>
+                        <select id="onlineSubStatus" class="form-select">
+                            @foreach(var c in new[]{"Active","Inactive","Under Review","Planned","Expired"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+
+                    <div class="col-12"><label class="form-label fw-bold small">Duplicate / Overlap</label><input type="text" id="onlineSubDuplicateOverlap" class="form-control"/></div>
+                    <div class="col-12"><label class="form-label fw-bold small">Cost Saving Action</label><input type="text" id="onlineSubCostSaving" class="form-control"/></div>
+                    <div class="col-12"><label class="form-label fw-bold small">Remarks</label><textarea id="onlineSubRemarks" class="form-control" rows="2"></textarea></div>
+                    <div class="col-12 text-muted small"><i class="bi bi-info-circle"></i> Utilization %, Billing Amount (INR), Annualized Cost (INR), Days to Renewal and Renewal Flag are calculated automatically — no need to enter them.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="saveOnlineSub()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Add/Edit IT Spend Log Modal ═══ -->
+<div class="modal fade" id="spendLogModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#1e3a5f;color:white">
+                <h5 class="modal-title" id="spendLogModalTitle">Add Expense</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="spendLogIdx" value="-1"/>
+                <div class="row g-3">
+                    <div class="col-md-4"><label class="form-label fw-bold small">Expense Date</label><input type="date" id="spendLogExpenseDate" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Expense ID</label><input type="text" id="spendLogExpenseId" class="form-control" placeholder="auto if blank"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Vendor</label><input type="text" id="spendLogVendor" class="form-control"/></div>
+
+                    <div class="col-md-6"><label class="form-label fw-bold small">Tool / Software</label><input type="text" id="spendLogTool" class="form-control"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Subscription Type</label><input type="text" id="spendLogSubType" class="form-control"/></div>
+
+                    <div class="col-md-6"><label class="form-label fw-bold small">Cost Category</label>
+                        <select id="spendLogCostCategory" class="form-select">
+                            @foreach(var c in new[]{"Software License","Cloud/Hosting","Hardware","AMC/Support","Telecom/Internet","Other"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Department</label>
+                        <select id="spendLogDepartment" class="form-select">
+                            @foreach(var c in new[]{"Accounts & Finance","Retail","E-commerce","Production","Warehouse","HR","Marketing","Management","IT"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+
+                    <div class="col-md-6"><label class="form-label fw-bold small">Invoice No.</label><input type="text" id="spendLogInvoiceNo" class="form-control"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">PO/Contract No.</label><input type="text" id="spendLogPoNo" class="form-control"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Base Amount (INR)</label><input type="number" id="spendLogBaseAmount" class="form-control" min="0" step="0.01"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">GST (INR)</label><input type="number" id="spendLogGst" class="form-control" min="0" step="0.01"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">TDS (INR)</label><input type="number" id="spendLogTds" class="form-control" min="0" step="0.01"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Payment Date</label><input type="date" id="spendLogPaymentDate" class="form-control"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Payment Status</label>
+                        <select id="spendLogPaymentStatus" class="form-select">
+                            @foreach(var c in new[]{"Paid","Pending","Overdue","Partially Paid"})
+                            {<option>@c</option>}
+                        </select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Payment Mode</label><input type="text" id="spendLogPaymentMode" class="form-control" placeholder="Bank Transfer / Card / UPI"/></div>
+
+                    <div class="col-md-4"><label class="form-label fw-bold small">Budget Amount (INR)</label><input type="number" id="spendLogBudgetAmount" class="form-control" min="0" step="0.01"/></div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Capex/Opex</label>
+                        <select id="spendLogCapexOpex" class="form-select"><option>Opex</option><option>Capex</option></select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label fw-bold small">Cost Center</label><input type="text" id="spendLogCostCenter" class="form-control"/></div>
+
+                    <div class="col-12"><label class="form-label fw-bold small">Remarks</label><textarea id="spendLogRemarks" class="form-control" rows="2"></textarea></div>
+                    <div class="col-12 text-muted small"><i class="bi bi-info-circle"></i> Reporting Month, Gross Amount, Net Paid/Payable and Variance to Budget are calculated automatically — no need to enter them.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="saveSpendLog()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
 const endpoints = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
 let pcs = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(pcInv));
 let licenses = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(licenses));
 let softwareRegister = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(softwareRegister));
+let onlineSubs = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(onlineSubs));
+let itSpendLog = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(itSpendLog));
 
 // ───────────── Uptime Monitor (existing) ─────────────
 async function checkOne(idx, url) {
@@ -600,7 +951,7 @@ function saveEndpoint() {
     }).then(() => location.reload());
 }
 
-window.addEventListener('DOMContentLoaded', () => { setTimeout(checkAll, 500); renderPc(); renderLic(); renderSwReg(); });
+window.addEventListener('DOMContentLoaded', () => { setTimeout(checkAll, 500); renderPc(); renderLic(); renderSwReg(); renderOnlineSub(); renderSpendLog(); });
 
 // ───────────── PC Inventory & Antivirus ─────────────
 function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -1070,6 +1421,386 @@ function deleteSwReg(i) {
 function persistSwReg(cb) {
     fetch('/Endpoints/SaveSoftwareRegister', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(softwareRegister)
+    }).then(() => cb && cb());
+}
+
+// ───────────── Online Subscriptions (separate from IT Software Register above) ─────────────
+function onlineSubDaysToRenewal(l) {
+    if (!l.renewalDate) return '';
+    const rd = new Date(l.renewalDate);
+    if (isNaN(rd)) return '';
+    const today = new Date(); today.setHours(0,0,0,0);
+    return Math.round((rd - today) / 86400000);
+}
+
+function onlineSubRenewalFlag(l) {
+    if (!l.renewalDate) return '';
+    if ((l.status || '') !== 'Active') return 'Inactive';
+    const days = onlineSubDaysToRenewal(l);
+    if (days === '') return '';
+    if (days < 0) return 'Expired';
+    if (days <= 30) return 'Due within 30 days';
+    if (days <= 60) return 'Due in 31-60 days';
+    if (days <= 90) return 'Due in 61-90 days';
+    return 'Later';
+}
+
+function onlineSubUtilization(l) {
+    const seats = parseFloat(l.seats) || 0;
+    const active = parseFloat(l.activeUsers) || 0;
+    if (!seats) return '';
+    return (Math.round((active / seats) * 1000) / 10) + '%';
+}
+
+function onlineSubBillingAmountInr(l) {
+    const amt = parseFloat(l.billingAmount) || 0;
+    const fx = parseFloat(l.fxRate) || 0;
+    if (!amt || !fx) return 0;
+    return amt * fx;
+}
+
+function onlineSubAnnualizedCostInr(l) {
+    const inr = onlineSubBillingAmountInr(l);
+    if (!inr) return 0;
+    const mult = { 'Monthly': 12, 'Quarterly': 4, 'Half-Yearly': 2, 'Annual': 1, 'One-time': 1 }[l.billingFrequency || ''] ?? 1;
+    return inr * mult;
+}
+
+function nextOnlineSubId() {
+    let max = 0;
+    onlineSubs.forEach(l => {
+        const m = /^OS-(\d+)$/.exec(l.subscriptionId || '');
+        if (m) max = Math.max(max, parseInt(m[1]));
+    });
+    return 'OS-' + String(max + 1).padStart(3, '0');
+}
+
+function renderOnlineSub() {
+    const body = document.getElementById('onlineSubTableBody');
+    let rows = '';
+    let total = 0, active = 0, dueSoon = 0, expired = 0;
+    onlineSubs.forEach((l, i) => {
+        total++;
+        if ((l.status || '') === 'Active') active++;
+        const flag = onlineSubRenewalFlag(l);
+        if (flag === 'Due within 30 days') dueSoon++;
+        if (flag === 'Expired') expired++;
+        const days = onlineSubDaysToRenewal(l);
+        let flagBadge = '';
+        if (flag === 'Expired') flagBadge = `<span class="badge bg-danger">${flag}</span>`;
+        else if (flag === 'Due within 30 days') flagBadge = `<span class="badge bg-warning text-dark">${flag}</span>`;
+        else if (flag === 'Due in 31-60 days' || flag === 'Due in 61-90 days') flagBadge = `<span class="badge bg-info text-dark">${flag}</span>`;
+        else if (flag === 'Inactive') flagBadge = `<span class="badge bg-secondary">${flag}</span>`;
+        else if (flag) flagBadge = `<span class="badge bg-light text-dark border">${flag}</span>`;
+        let statusBadge = l.status === 'Active' ? `<span class="badge bg-success">${esc(l.status)}</span>`
+                         : l.status === 'Expired' ? `<span class="badge bg-danger">${esc(l.status)}</span>`
+                         : `<span class="badge bg-secondary">${esc(l.status || '')}</span>`;
+        const billingInr = onlineSubBillingAmountInr(l);
+        const annualInr = onlineSubAnnualizedCostInr(l);
+        rows += `<tr>
+            <td class="ps-3">${i+1}</td>
+            <td class="small fw-bold">${esc(l.subscriptionId)}</td>
+            <td class="small fw-bold">${esc(l.toolPlatform)}</td>
+            <td class="small">${esc(l.subscriptionType)}</td>
+            <td class="small">${esc(l.useCase)}</td>
+            <td class="small">${esc(l.vendor)}</td>
+            <td class="small">${esc(l.website)}</td>
+            <td class="small">${esc(l.businessOwner)}</td>
+            <td class="small">${esc(l.adminAccount)}</td>
+            <td class="small">${esc(l.department)}</td>
+            <td class="small">${esc(l.plan)}</td>
+            <td class="small text-center">${esc(l.seats)}</td>
+            <td class="small text-center">${esc(l.activeUsers)}</td>
+            <td class="small text-center text-muted">${onlineSubUtilization(l)}</td>
+            <td class="small">${esc(l.billingCurrency)}</td>
+            <td class="small text-end">${l.billingAmount ? Number(l.billingAmount).toLocaleString('en-IN') : ''}</td>
+            <td class="small text-end">${esc(l.fxRate)}</td>
+            <td class="small text-end text-muted">${billingInr ? billingInr.toLocaleString('en-IN', {maximumFractionDigits:2}) : ''}</td>
+            <td class="small">${esc(l.billingFrequency)}</td>
+            <td class="small text-end text-muted">${annualInr ? annualInr.toLocaleString('en-IN', {maximumFractionDigits:2}) : ''}</td>
+            <td class="small text-muted">${esc(l.startDate)}</td>
+            <td class="small text-muted">${esc(l.renewalDate)}</td>
+            <td class="small">${esc(l.autoRenew)}</td>
+            <td class="small">${esc(l.paymentMode)}</td>
+            <td class="small">${esc(l.cardLast4)}</td>
+            <td class="small">${esc(l.gstTaxCredit)}</td>
+            <td class="small">${esc(l.dataShared)}</td>
+            <td class="small">${esc(l.aiDataRetention)}</td>
+            <td class="small">${esc(l.securityReview)}</td>
+            <td class="small">${esc(l.criticality)}</td>
+            <td>${statusBadge}</td>
+            <td class="small text-center text-muted">${days}</td>
+            <td>${flagBadge}</td>
+            <td class="small">${esc(l.duplicateOverlap)}</td>
+            <td class="small">${esc(l.costSavingAction)}</td>
+            <td class="small text-muted">${esc(l.remarks)}</td>
+            <td>
+                <button class="btn btn-outline-warning btn-sm" onclick="openOnlineSubModal(${i})" title="Edit"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteOnlineSub(${i})" title="Delete"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    body.innerHTML = rows || '<tr><td colspan="37" class="text-center text-muted py-4">No subscription records added yet</td></tr>';
+    document.getElementById('onlineSubTotal').textContent = total;
+    document.getElementById('onlineSubActive').textContent = active;
+    document.getElementById('onlineSubDueSoon').textContent = dueSoon;
+    document.getElementById('onlineSubExpired').textContent = expired;
+}
+
+function openOnlineSubModal(i) {
+    document.getElementById('onlineSubIdx').value = i;
+    const l = i >= 0 ? onlineSubs[i] : {};
+    document.getElementById('onlineSubModalTitle').textContent = i >= 0 ? 'Edit Subscription' : 'Add Subscription';
+    document.getElementById('onlineSubId').value = l.subscriptionId || '';
+    document.getElementById('onlineSubTool').value = l.toolPlatform || '';
+    document.getElementById('onlineSubType').value = l.subscriptionType || 'SaaS Tool';
+    document.getElementById('onlineSubUseCase').value = l.useCase || '';
+    document.getElementById('onlineSubVendor').value = l.vendor || '';
+    document.getElementById('onlineSubWebsite').value = l.website || '';
+    document.getElementById('onlineSubBusinessOwner').value = l.businessOwner || '';
+    document.getElementById('onlineSubAdminAccount').value = l.adminAccount || '';
+    document.getElementById('onlineSubDepartment').value = l.department || 'IT';
+    document.getElementById('onlineSubPlan').value = l.plan || '';
+    document.getElementById('onlineSubSeats').value = l.seats || '';
+    document.getElementById('onlineSubActiveUsers').value = l.activeUsers || '';
+    document.getElementById('onlineSubCurrency').value = l.billingCurrency || 'INR';
+    document.getElementById('onlineSubBillingAmount').value = l.billingAmount || '';
+    document.getElementById('onlineSubFxRate').value = l.fxRate || '';
+    document.getElementById('onlineSubFrequency').value = l.billingFrequency || 'Annual';
+    document.getElementById('onlineSubStartDate').value = l.startDate || '';
+    document.getElementById('onlineSubRenewalDate').value = l.renewalDate || '';
+    document.getElementById('onlineSubAutoRenew').value = l.autoRenew || 'No';
+    document.getElementById('onlineSubPaymentMode').value = l.paymentMode || '';
+    document.getElementById('onlineSubCardLast4').value = l.cardLast4 || '';
+    document.getElementById('onlineSubGstCredit').value = l.gstTaxCredit || 'No';
+    document.getElementById('onlineSubDataShared').value = l.dataShared || 'No';
+    document.getElementById('onlineSubAiRetention').value = l.aiDataRetention || 'Unknown';
+    document.getElementById('onlineSubSecurityReview').value = l.securityReview || 'Pending';
+    document.getElementById('onlineSubCriticality').value = l.criticality || 'Medium';
+    document.getElementById('onlineSubStatus').value = l.status || 'Active';
+    document.getElementById('onlineSubDuplicateOverlap').value = l.duplicateOverlap || '';
+    document.getElementById('onlineSubCostSaving').value = l.costSavingAction || '';
+    document.getElementById('onlineSubRemarks').value = l.remarks || '';
+    new bootstrap.Modal(document.getElementById('onlineSubModal')).show();
+}
+
+function saveOnlineSub() {
+    const i = parseInt(document.getElementById('onlineSubIdx').value);
+    let subscriptionId = document.getElementById('onlineSubId').value.trim();
+    const toolPlatform = document.getElementById('onlineSubTool').value.trim();
+    if (!toolPlatform) return alert('Tool / Platform name is required!');
+    if (!subscriptionId) subscriptionId = nextOnlineSubId();
+    const rec = {
+        subscriptionId,
+        toolPlatform,
+        subscriptionType: document.getElementById('onlineSubType').value,
+        useCase: document.getElementById('onlineSubUseCase').value.trim(),
+        vendor: document.getElementById('onlineSubVendor').value.trim(),
+        website: document.getElementById('onlineSubWebsite').value.trim(),
+        businessOwner: document.getElementById('onlineSubBusinessOwner').value.trim(),
+        adminAccount: document.getElementById('onlineSubAdminAccount').value.trim(),
+        department: document.getElementById('onlineSubDepartment').value,
+        plan: document.getElementById('onlineSubPlan').value.trim(),
+        seats: document.getElementById('onlineSubSeats').value,
+        activeUsers: document.getElementById('onlineSubActiveUsers').value,
+        billingCurrency: document.getElementById('onlineSubCurrency').value,
+        billingAmount: document.getElementById('onlineSubBillingAmount').value,
+        fxRate: document.getElementById('onlineSubFxRate').value,
+        billingFrequency: document.getElementById('onlineSubFrequency').value,
+        startDate: document.getElementById('onlineSubStartDate').value,
+        renewalDate: document.getElementById('onlineSubRenewalDate').value,
+        autoRenew: document.getElementById('onlineSubAutoRenew').value,
+        paymentMode: document.getElementById('onlineSubPaymentMode').value.trim(),
+        cardLast4: document.getElementById('onlineSubCardLast4').value.trim(),
+        gstTaxCredit: document.getElementById('onlineSubGstCredit').value,
+        dataShared: document.getElementById('onlineSubDataShared').value,
+        aiDataRetention: document.getElementById('onlineSubAiRetention').value,
+        securityReview: document.getElementById('onlineSubSecurityReview').value,
+        criticality: document.getElementById('onlineSubCriticality').value,
+        status: document.getElementById('onlineSubStatus').value,
+        duplicateOverlap: document.getElementById('onlineSubDuplicateOverlap').value.trim(),
+        costSavingAction: document.getElementById('onlineSubCostSaving').value.trim(),
+        remarks: document.getElementById('onlineSubRemarks').value.trim(),
+    };
+    if (i >= 0) onlineSubs[i] = rec; else onlineSubs.push(rec);
+    persistOnlineSub(() => {
+        renderOnlineSub();
+        bootstrap.Modal.getInstance(document.getElementById('onlineSubModal')).hide();
+    });
+}
+
+function deleteOnlineSub(i) {
+    if (!confirm('Delete this subscription record?')) return;
+    onlineSubs.splice(i, 1);
+    persistOnlineSub(renderOnlineSub);
+}
+
+function persistOnlineSub(cb) {
+    fetch('/Endpoints/SaveOnlineSubscriptions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(onlineSubs)
+    }).then(() => cb && cb());
+}
+
+// ───────────── IT Spend Log (separate from the tabs above — an append-style transaction log) ─────────────
+function spendLogReportingMonth(l) {
+    if (!l.expenseDate) return '';
+    const d = new Date(l.expenseDate);
+    if (isNaN(d)) return '';
+    return d.toLocaleString('en-IN', { month: 'short', year: 'numeric' });
+}
+
+function spendLogGrossAmount(l) {
+    const base = parseFloat(l.baseAmount) || 0;
+    const gst = parseFloat(l.gst) || 0;
+    return base + gst;
+}
+
+function spendLogNetPaid(l) {
+    const gross = spendLogGrossAmount(l);
+    const tds = parseFloat(l.tds) || 0;
+    return gross - tds;
+}
+
+function spendLogVarianceToBudget(l) {
+    if (l.budgetAmount === undefined || l.budgetAmount === '' || l.budgetAmount === null) return '';
+    const base = parseFloat(l.baseAmount) || 0;
+    const budget = parseFloat(l.budgetAmount) || 0;
+    return base - budget;
+}
+
+function nextExpenseId() {
+    let max = 0;
+    itSpendLog.forEach(l => {
+        const m = /^EXP-(\d+)$/.exec(l.expenseId || '');
+        if (m) max = Math.max(max, parseInt(m[1]));
+    });
+    return 'EXP-' + String(max + 1).padStart(4, '0');
+}
+
+function renderSpendLog() {
+    const body = document.getElementById('spendLogTableBody');
+    let rows = '';
+    let total = 0, baseTotal = 0, pending = 0, overBudget = 0;
+    itSpendLog.forEach((l, i) => {
+        total++;
+        baseTotal += parseFloat(l.baseAmount) || 0;
+        if (l.paymentStatus === 'Pending' || l.paymentStatus === 'Overdue') pending++;
+        const variance = spendLogVarianceToBudget(l);
+        if (variance !== '' && variance > 0) overBudget++;
+        let statusBadge = l.paymentStatus === 'Paid' ? `<span class="badge bg-success">${esc(l.paymentStatus)}</span>`
+                         : l.paymentStatus === 'Overdue' ? `<span class="badge bg-danger">${esc(l.paymentStatus)}</span>`
+                         : l.paymentStatus === 'Partially Paid' ? `<span class="badge bg-info text-dark">${esc(l.paymentStatus)}</span>`
+                         : `<span class="badge bg-warning text-dark">${esc(l.paymentStatus || '')}</span>`;
+        const gross = spendLogGrossAmount(l);
+        const net = spendLogNetPaid(l);
+        rows += `<tr>
+            <td class="ps-3">${i+1}</td>
+            <td class="small text-muted">${esc(l.expenseDate)}</td>
+            <td class="small text-muted">${spendLogReportingMonth(l)}</td>
+            <td class="small fw-bold">${esc(l.expenseId)}</td>
+            <td class="small">${esc(l.vendor)}</td>
+            <td class="small">${esc(l.toolSoftware)}</td>
+            <td class="small">${esc(l.subscriptionType)}</td>
+            <td class="small">${esc(l.costCategory)}</td>
+            <td class="small">${esc(l.department)}</td>
+            <td class="small">${esc(l.invoiceNo)}</td>
+            <td class="small">${esc(l.poContractNo)}</td>
+            <td class="small text-end">${l.baseAmount ? Number(l.baseAmount).toLocaleString('en-IN') : ''}</td>
+            <td class="small text-end">${l.gst ? Number(l.gst).toLocaleString('en-IN') : ''}</td>
+            <td class="small text-end text-muted">${gross ? gross.toLocaleString('en-IN', {maximumFractionDigits:2}) : ''}</td>
+            <td class="small text-end">${l.tds ? Number(l.tds).toLocaleString('en-IN') : ''}</td>
+            <td class="small text-end text-muted">${net ? net.toLocaleString('en-IN', {maximumFractionDigits:2}) : ''}</td>
+            <td class="small text-muted">${esc(l.paymentDate)}</td>
+            <td>${statusBadge}</td>
+            <td class="small">${esc(l.paymentMode)}</td>
+            <td class="small text-end">${l.budgetAmount ? Number(l.budgetAmount).toLocaleString('en-IN') : ''}</td>
+            <td class="small text-end ${variance > 0 ? 'text-danger' : 'text-success'}">${variance !== '' ? variance.toLocaleString('en-IN', {maximumFractionDigits:2}) : ''}</td>
+            <td class="small">${esc(l.capexOpex)}</td>
+            <td class="small">${esc(l.costCenter)}</td>
+            <td class="small text-muted">${esc(l.remarks)}</td>
+            <td>
+                <button class="btn btn-outline-warning btn-sm" onclick="openSpendLogModal(${i})" title="Edit"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-outline-danger btn-sm" onclick="deleteSpendLog(${i})" title="Delete"><i class="bi bi-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    body.innerHTML = rows || '<tr><td colspan="25" class="text-center text-muted py-4">No spend log entries added yet</td></tr>';
+    document.getElementById('spendLogTotal').textContent = total;
+    document.getElementById('spendLogBaseTotal').textContent = baseTotal.toLocaleString('en-IN', {maximumFractionDigits:0});
+    document.getElementById('spendLogPending').textContent = pending;
+    document.getElementById('spendLogOverBudget').textContent = overBudget;
+}
+
+function openSpendLogModal(i) {
+    document.getElementById('spendLogIdx').value = i;
+    const l = i >= 0 ? itSpendLog[i] : {};
+    document.getElementById('spendLogModalTitle').textContent = i >= 0 ? 'Edit Expense' : 'Add Expense';
+    document.getElementById('spendLogExpenseDate').value = l.expenseDate || '';
+    document.getElementById('spendLogExpenseId').value = l.expenseId || '';
+    document.getElementById('spendLogVendor').value = l.vendor || '';
+    document.getElementById('spendLogTool').value = l.toolSoftware || '';
+    document.getElementById('spendLogSubType').value = l.subscriptionType || '';
+    document.getElementById('spendLogCostCategory').value = l.costCategory || 'Software License';
+    document.getElementById('spendLogDepartment').value = l.department || 'IT';
+    document.getElementById('spendLogInvoiceNo').value = l.invoiceNo || '';
+    document.getElementById('spendLogPoNo').value = l.poContractNo || '';
+    document.getElementById('spendLogBaseAmount').value = l.baseAmount || '';
+    document.getElementById('spendLogGst').value = l.gst || '';
+    document.getElementById('spendLogTds').value = l.tds || '';
+    document.getElementById('spendLogPaymentDate').value = l.paymentDate || '';
+    document.getElementById('spendLogPaymentStatus').value = l.paymentStatus || 'Pending';
+    document.getElementById('spendLogPaymentMode').value = l.paymentMode || '';
+    document.getElementById('spendLogBudgetAmount').value = l.budgetAmount || '';
+    document.getElementById('spendLogCapexOpex').value = l.capexOpex || 'Opex';
+    document.getElementById('spendLogCostCenter').value = l.costCenter || '';
+    document.getElementById('spendLogRemarks').value = l.remarks || '';
+    new bootstrap.Modal(document.getElementById('spendLogModal')).show();
+}
+
+function saveSpendLog() {
+    const i = parseInt(document.getElementById('spendLogIdx').value);
+    let expenseId = document.getElementById('spendLogExpenseId').value.trim();
+    const vendor = document.getElementById('spendLogVendor').value.trim();
+    const tool = document.getElementById('spendLogTool').value.trim();
+    if (!vendor && !tool) return alert('Vendor or Tool / Software is required!');
+    if (!expenseId) expenseId = nextExpenseId();
+    const rec = {
+        expenseId,
+        expenseDate: document.getElementById('spendLogExpenseDate').value,
+        vendor,
+        toolSoftware: tool,
+        subscriptionType: document.getElementById('spendLogSubType').value.trim(),
+        costCategory: document.getElementById('spendLogCostCategory').value,
+        department: document.getElementById('spendLogDepartment').value,
+        invoiceNo: document.getElementById('spendLogInvoiceNo').value.trim(),
+        poContractNo: document.getElementById('spendLogPoNo').value.trim(),
+        baseAmount: document.getElementById('spendLogBaseAmount').value,
+        gst: document.getElementById('spendLogGst').value,
+        tds: document.getElementById('spendLogTds').value,
+        paymentDate: document.getElementById('spendLogPaymentDate').value,
+        paymentStatus: document.getElementById('spendLogPaymentStatus').value,
+        paymentMode: document.getElementById('spendLogPaymentMode').value.trim(),
+        budgetAmount: document.getElementById('spendLogBudgetAmount').value,
+        capexOpex: document.getElementById('spendLogCapexOpex').value,
+        costCenter: document.getElementById('spendLogCostCenter').value.trim(),
+        remarks: document.getElementById('spendLogRemarks').value.trim(),
+    };
+    if (i >= 0) itSpendLog[i] = rec; else itSpendLog.push(rec);
+    persistSpendLog(() => {
+        renderSpendLog();
+        bootstrap.Modal.getInstance(document.getElementById('spendLogModal')).hide();
+    });
+}
+
+function deleteSpendLog(i) {
+    if (!confirm('Delete this expense entry?')) return;
+    itSpendLog.splice(i, 1);
+    persistSpendLog(renderSpendLog);
+}
+
+function persistSpendLog(cb) {
+    fetch('/Endpoints/SaveITSpendLog', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(itSpendLog)
     }).then(() => cb && cb());
 }
 </script>
