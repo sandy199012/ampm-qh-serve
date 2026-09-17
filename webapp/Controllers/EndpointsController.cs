@@ -3,6 +3,7 @@ using AMPMWeb.Data;
 using AMPMWeb.Services;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using ClosedXML.Excel;
 
 namespace AMPMWeb.Controllers;
 
@@ -377,137 +378,74 @@ public class EndpointsController : Controller
         return string.IsNullOrEmpty(hostname) ? "Unassigned" : "Assigned";
     }
 
-    // Styled "Excel" report (HTML table served as .xls — Excel opens it fine) matching
-    // the IT Software Register layout: every register column, plus the same
-    // computed Utilization % / Days to Renewal / Renewal Flag shown on-screen,
-    // plus a Dashboard-style summary block at the bottom.
+    // Real .xlsx report generated from Sandy's own AMPM_IT_Reporting_Template.xlsx
+    // (embedded into the app at build time — see the csproj). We only fill in the
+    // data cells of the "Software Register" sheet; every sheet (Dashboard, Software
+    // Register, Online Subscriptions, IT Spend Log, Lists), formula, style, column
+    // width and dropdown stays exactly as in the original workbook — the Dashboard's
+    // totals/renewal counts recalculate on their own from the data we write in.
     [HttpGet("/Endpoints/ExportSoftwareRegister")]
     public IActionResult ExportSoftwareRegister()
     {
         var lics = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
         string S(Dictionary<string,object?> l, string k) => l.GetValueOrDefault(k)?.ToString() ?? "";
-        static string E(string? s) => System.Net.WebUtility.HtmlEncode(s ?? "");
 
-        int? DaysToRenewal(Dictionary<string,object?> l)
-        {
-            if (!DateTime.TryParse(S(l, "renewalDate"), out var rd)) return null;
-            return (int)(rd.Date - DateTime.Today).TotalDays;
-        }
-        string RenewalFlag(Dictionary<string,object?> l)
-        {
-            if (string.IsNullOrWhiteSpace(S(l, "renewalDate"))) return "";
-            if (S(l, "status") != "Active") return "Inactive";
-            var days = DaysToRenewal(l);
-            if (days == null) return "";
-            if (days < 0) return "Expired";
-            if (days <= 30) return "Due within 30 days";
-            if (days <= 60) return "Due in 31-60 days";
-            if (days <= 90) return "Due in 61-90 days";
-            return "Later";
-        }
-        string Utilization(Dictionary<string,object?> l)
-        {
-            double.TryParse(S(l, "purchasedLicenses"), out var p);
-            double.TryParse(S(l, "assignedLicenses"), out var a);
-            if (p <= 0) return "";
-            return Math.Round(a / p * 100, 1) + "%";
-        }
+        var asm = typeof(EndpointsController).Assembly;
+        var resourceName = asm.GetManifestResourceNames()
+            .FirstOrDefault(n => n.EndsWith("AMPM_IT_Reporting_Template.xlsx", StringComparison.OrdinalIgnoreCase));
+        if (resourceName == null)
+            return StatusCode(500, "Report template is missing from the app build.");
 
-        int total = lics.Count;
-        int active = lics.Count(l => S(l, "status") == "Active");
-        int dueSoon = lics.Count(l => RenewalFlag(l) == "Due within 30 days");
-        int due60 = lics.Count(l => RenewalFlag(l) == "Due in 31-60 days");
-        int due90 = lics.Count(l => RenewalFlag(l) == "Due in 61-90 days");
-        int expired = lics.Count(l => RenewalFlag(l) == "Expired");
-        int autoRenew = lics.Count(l => S(l, "autoRenew") == "Yes");
-        double totalAnnualCost = lics.Sum(l => { double.TryParse(S(l, "annualCost"), out var c); return c; });
+        using var templateStream = asm.GetManifestResourceStream(resourceName)!;
+        using var wb = new XLWorkbook(templateStream);
+        var ws = wb.Worksheet("Software Register");
 
-        var sb = new System.Text.StringBuilder();
-        sb.Append(@"<html><head><meta charset='UTF-8'><style>
-body{font-family:Calibri,Arial,sans-serif;}
-.hdr{background:linear-gradient(135deg,#1e3a5f,#0A192F);color:#fff;padding:14px 18px;}
-.hdr .co{font-size:18px;font-weight:800;}
-.hdr .sub{font-size:12px;color:#93C5FD;margin-top:2px;}
-.meta{font-size:11px;color:#475569;padding:8px 18px;background:#F1F5F9;}
-table.reg{border-collapse:collapse;width:100%;margin-top:6px;font-size:10.5px;}
-table.reg th{background:#1e3a5f;color:#fff;padding:5px 6px;text-align:left;white-space:nowrap;}
-table.reg td{padding:4px 6px;border-bottom:1px solid #E2E8F0;white-space:nowrap;}
-table.reg tr:nth-child(even) td{background:#F8FAFC;}
-.status-active{color:#059669;font-weight:bold;}
-.status-expired{color:#DC2626;font-weight:bold;}
-.status-other{color:#64748B;}
-.flag-expired{background:#FEE2E2;color:#991B1B;font-weight:bold;}
-.flag-due30{background:#FEF3C7;color:#92400E;font-weight:bold;}
-.flag-due60,.flag-due90{background:#DBEAFE;color:#1E40AF;}
-table.sum{border-collapse:collapse;margin-top:18px;font-size:12px;}
-table.sum td{padding:8px 16px;border:1px solid #E2E8F0;}
-table.sum td.k{font-weight:bold;background:#F1F5F9;}
-</style></head><body>
-<div class='hdr'><div class='co'>AMPM FASHIONS PVT. LTD.</div><div class='sub'>IT Software Register &mdash; Licenses, Subscriptions &amp; Renewals</div></div>
-<div class='meta'>Generated: ").Append(DateTime.Now.ToString("dd MMM yyyy HH:mm")).Append(" &nbsp;|&nbsp; Prepared By: Sandeep Kumar Singh Kushwaha &nbsp;|&nbsp; Total Records: ").Append(total).Append(@"</div>
-<table class='reg'><thead><tr>
-<th>Record ID</th><th>Software / Application</th><th>Category</th><th>Deployment</th><th>Purpose / Module</th><th>Vendor</th>
-<th>Business Owner</th><th>IT Owner</th><th>Department</th><th>License Type</th><th>Purchased</th><th>Assigned</th><th>Utilization %</th>
-<th>Version / Plan</th><th>Start Date</th><th>Renewal / Support Due</th><th>Annual Cost (INR)</th><th>Payment Frequency</th><th>Auto-Renew</th>
-<th>Criticality</th><th>Data Sensitivity</th><th>SSO / MFA</th><th>Contract / PO No.</th><th>Invoice No.</th><th>Status</th>
-<th>Days to Renewal</th><th>Renewal Flag</th><th>Risk / Issue</th><th>Action Required</th><th>Remarks</th>
-</tr></thead><tbody>");
-
+        // The template's SoftwareRegisterTable and its per-row formulas
+        // (Utilization %, Days to Renewal, Renewal Flag) run from row 7 to row 206 —
+        // we only ever write into the data columns of that same range.
+        const int firstRow = 7, lastRow = 206;
+        int row = firstRow;
         foreach (var l in lics)
         {
-            var flag = RenewalFlag(l);
-            var days = DaysToRenewal(l);
-            var statusClass = S(l, "status") == "Active" ? "status-active" : S(l, "status") == "Expired" ? "status-expired" : "status-other";
-            var flagClass = flag == "Expired" ? "flag-expired" : flag == "Due within 30 days" ? "flag-due30" : (flag == "Due in 31-60 days" || flag == "Due in 61-90 days") ? "flag-due60" : "";
-            double.TryParse(S(l, "annualCost"), out var cost);
-            sb.Append("<tr>")
-              .Append($"<td>{E(S(l,"recordId"))}</td>")
-              .Append($"<td><b>{E(S(l,"software"))}</b></td>")
-              .Append($"<td>{E(S(l,"category"))}</td>")
-              .Append($"<td>{E(S(l,"deployment"))}</td>")
-              .Append($"<td>{E(S(l,"purpose"))}</td>")
-              .Append($"<td>{E(S(l,"vendor"))}</td>")
-              .Append($"<td>{E(S(l,"businessOwner"))}</td>")
-              .Append($"<td>{E(S(l,"itOwner"))}</td>")
-              .Append($"<td>{E(S(l,"department"))}</td>")
-              .Append($"<td>{E(S(l,"licenseType"))}</td>")
-              .Append($"<td>{E(S(l,"purchasedLicenses"))}</td>")
-              .Append($"<td>{E(S(l,"assignedLicenses"))}</td>")
-              .Append($"<td>{Utilization(l)}</td>")
-              .Append($"<td>{E(S(l,"versionPlan"))}</td>")
-              .Append($"<td>{E(S(l,"startDate"))}</td>")
-              .Append($"<td>{E(S(l,"renewalDate"))}</td>")
-              .Append($"<td>{(cost > 0 ? cost.ToString("N0") : "")}</td>")
-              .Append($"<td>{E(S(l,"paymentFrequency"))}</td>")
-              .Append($"<td>{E(S(l,"autoRenew"))}</td>")
-              .Append($"<td>{E(S(l,"criticality"))}</td>")
-              .Append($"<td>{E(S(l,"dataSensitivity"))}</td>")
-              .Append($"<td>{E(S(l,"ssoMfa"))}</td>")
-              .Append($"<td>{E(S(l,"contractPo"))}</td>")
-              .Append($"<td>{E(S(l,"invoiceNo"))}</td>")
-              .Append($"<td class='{statusClass}'>{E(S(l,"status"))}</td>")
-              .Append($"<td>{(days?.ToString() ?? "")}</td>")
-              .Append($"<td class='{flagClass}'>{E(flag)}</td>")
-              .Append($"<td>{E(S(l,"riskIssue"))}</td>")
-              .Append($"<td>{E(S(l,"actionRequired"))}</td>")
-              .Append($"<td>{E(S(l,"remarks"))}</td>")
-              .Append("</tr>");
+            if (row > lastRow) break; // template's pre-built rows are full
+
+            ws.Cell(row, 1).Value = S(l, "recordId");            // A Record ID
+            ws.Cell(row, 2).Value = S(l, "software");            // B Software / Application
+            ws.Cell(row, 3).Value = S(l, "category");            // C Category
+            ws.Cell(row, 4).Value = S(l, "deployment");          // D Deployment
+            ws.Cell(row, 5).Value = S(l, "purpose");             // E Purpose / Module
+            ws.Cell(row, 6).Value = S(l, "vendor");              // F Vendor
+            ws.Cell(row, 7).Value = S(l, "businessOwner");       // G Business Owner
+            ws.Cell(row, 8).Value = S(l, "itOwner");             // H IT Owner
+            ws.Cell(row, 9).Value = S(l, "department");          // I Department
+            ws.Cell(row, 10).Value = S(l, "licenseType");        // J License Type
+            if (double.TryParse(S(l, "purchasedLicenses"), out var purchased)) ws.Cell(row, 11).Value = purchased; // K
+            if (double.TryParse(S(l, "assignedLicenses"), out var assigned)) ws.Cell(row, 12).Value = assigned;    // L
+            // column 13 (M) = Utilization % — template formula, left untouched
+            ws.Cell(row, 14).Value = S(l, "versionPlan");        // N Version / Plan
+            if (DateTime.TryParse(S(l, "startDate"), out var startDate)) ws.Cell(row, 15).Value = startDate;       // O
+            if (DateTime.TryParse(S(l, "renewalDate"), out var renewalDate)) ws.Cell(row, 16).Value = renewalDate; // P
+            if (double.TryParse(S(l, "annualCost"), out var annualCost)) ws.Cell(row, 17).Value = annualCost;      // Q
+            ws.Cell(row, 18).Value = S(l, "paymentFrequency");   // R Payment Frequency
+            ws.Cell(row, 19).Value = S(l, "autoRenew");          // S Auto-Renew
+            ws.Cell(row, 20).Value = S(l, "criticality");        // T Criticality
+            ws.Cell(row, 21).Value = S(l, "dataSensitivity");    // U Data Sensitivity
+            ws.Cell(row, 22).Value = S(l, "ssoMfa");             // V SSO / MFA
+            ws.Cell(row, 23).Value = S(l, "contractPo");         // W Contract / PO No.
+            ws.Cell(row, 24).Value = S(l, "invoiceNo");          // X Invoice No.
+            ws.Cell(row, 25).Value = S(l, "status");             // Y Status
+            // columns 26 (Z) / 27 (AA) = Days to Renewal / Renewal Flag — template formulas, left untouched
+            ws.Cell(row, 28).Value = S(l, "riskIssue");          // AB Risk / Issue
+            ws.Cell(row, 29).Value = S(l, "actionRequired");     // AC Action Required
+            ws.Cell(row, 30).Value = S(l, "remarks");            // AD Remarks
+            row++;
         }
 
-        sb.Append(@"</tbody></table>
-<table class='sum'>
-<tr><td class='k'>Total Software / License Records</td><td>").Append(total).Append(@"</td>
-    <td class='k'>Active</td><td>").Append(active).Append(@"</td></tr>
-<tr><td class='k'>Renewals Due within 30 Days</td><td>").Append(dueSoon).Append(@"</td>
-    <td class='k'>Renewals Due in 31-60 Days</td><td>").Append(due60).Append(@"</td></tr>
-<tr><td class='k'>Renewals Due in 61-90 Days</td><td>").Append(due90).Append(@"</td>
-    <td class='k'>Expired</td><td>").Append(expired).Append(@"</td></tr>
-<tr><td class='k'>Auto-Renew Enabled</td><td>").Append(autoRenew).Append(@"</td>
-    <td class='k'>Total Annual Cost (INR)</td><td>").Append(totalAnnualCost.ToString("N0")).Append(@"</td></tr>
-</table>
-</body></html>");
-
-        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_IT_Software_Register_{DateTime.Now:yyyyMMdd}.xls");
+        using var outStream = new MemoryStream();
+        wb.SaveAs(outStream);
+        return File(outStream.ToArray(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"AMPM_IT_Software_Register_{DateTime.Now:yyyyMMdd}.xlsx");
     }
 
     static string CsvE(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";

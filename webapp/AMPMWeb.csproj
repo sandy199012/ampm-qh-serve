@@ -11,5 +11,12 @@
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="8.0.0" />
     <PackageReference Include="MailKit" Version="4.8.0" />
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Sandy's original AMPM_IT_Reporting_Template.xlsx, embedded so the IT Software
+         Register export always starts from this exact workbook (sheets, formulas,
+         formatting) and just fills in the live data rows. -->
+    <EmbeddedResource Include="Templates\AMPM_IT_Reporting_Template.xlsx" />
   </ItemGroup>
 </Project>
