@@ -12,6 +12,21 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Select Employee <span class="text-muted">(optional — auto-fills the details below)</span></label>
+                    <select id="empPicker" class="form-select" onchange="fillFromEmployee()">
+                        <option value="">-- Select Employee --</option>
+                        @{ var employees = (List<Dictionary<string,object?>>)ViewBag.Employees; }
+                        @foreach (var e in employees)
+                        {
+                            var code = e.GetValueOrDefault("emp")?.ToString() ?? "";
+                            var nm   = e.GetValueOrDefault("name")?.ToString() ?? "";
+                            var dept = e.GetValueOrDefault("dept")?.ToString() ?? "";
+                            <option value="@code" data-name="@nm" data-dept="@dept">@nm (@code)@(string.IsNullOrEmpty(dept) ? "" : " — " + dept)</option>
+                        }
+                    </select>
+                    <div class="form-text">Picking a name fills in Username, Full Name, Department and Employee Code below — you still set the password yourself.</div>
+                </div>
+                <div class="col-md-4">
                     <label class="form-label fw-semibold small">Username</label>
                     <input type="text" name="username" class="form-control" required autofocus/>
                 </div>
@@ -53,3 +68,18 @@
     <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Create User</button>
     <a href="/Users/Index" class="btn btn-secondary">Cancel</a>
 </form>
+
+<script>
+function fillFromEmployee() {
+    const sel = document.getElementById('empPicker');
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+    document.querySelector('input[name="empId"]').value = opt.value;
+    document.querySelector('input[name="name"]').value = opt.dataset.name || '';
+    document.querySelector('input[name="department"]').value = opt.dataset.dept || '';
+    // Mobile logins use the Employee Code as the username — suggest it, but
+    // don't overwrite anything Sandy may have already typed in manually.
+    const userField = document.querySelector('input[name="username"]');
+    if (!userField.value.trim()) userField.value = opt.value;
+}
+</script>

@@ -14,6 +14,20 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-4">
+                    <label class="form-label fw-semibold small">Select Employee <span class="text-muted">(optional — auto-fills Name/Department/Employee Code below)</span></label>
+                    <select id="empPicker" class="form-select" onchange="fillFromEmployee()">
+                        <option value="">-- Select Employee --</option>
+                        @{ var employees = (List<Dictionary<string,object?>>)ViewBag.Employees; }
+                        @foreach (var e in employees)
+                        {
+                            var code = e.GetValueOrDefault("emp")?.ToString() ?? "";
+                            var nm   = e.GetValueOrDefault("name")?.ToString() ?? "";
+                            var dept = e.GetValueOrDefault("dept")?.ToString() ?? "";
+                            <option value="@code" data-name="@nm" data-dept="@dept" selected="@(code == Model.EmpId)">@nm (@code)@(string.IsNullOrEmpty(dept) ? "" : " — " + dept)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
                     <label class="form-label fw-semibold small">Username</label>
                     <input type="text" class="form-control" value="@Model.Username" disabled/>
                 </div>
@@ -72,3 +86,14 @@
     <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Save Changes</button>
     <a href="/Users/Index" class="btn btn-secondary">Cancel</a>
 </form>
+
+<script>
+function fillFromEmployee() {
+    const sel = document.getElementById('empPicker');
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+    document.querySelector('input[name="empId"]').value = opt.value;
+    document.querySelector('input[name="name"]').value = opt.dataset.name || '';
+    document.querySelector('input[name="department"]').value = opt.dataset.dept || '';
+}
+</script>

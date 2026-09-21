@@ -31,6 +31,9 @@ public class UsersController : Controller
         ViewBag.Modules = AuthService.Modules;
         ViewBag.ModuleLabels = AuthService.ModuleLabels;
         ViewBag.Perms = new Dictionary<string, ModulePermission>();
+        // Powers the "Select Employee" dropdown that auto-fills Employee Code /
+        // Name / Department, so Sandy only has to pick a name and set a password.
+        ViewBag.Employees = _db.GetEmployees().OrderBy(e => e.GetValueOrDefault("name")?.ToString()).ToList();
         return View();
     }
 
@@ -72,6 +75,7 @@ public class UsersController : Controller
         ViewBag.Modules = AuthService.Modules;
         ViewBag.ModuleLabels = AuthService.ModuleLabels;
         ViewBag.Perms = ParsePerms(row.Permissions);
+        ViewBag.Employees = _db.GetEmployees().OrderBy(e => e.GetValueOrDefault("name")?.ToString()).ToList();
         return View(row);
     }
 
