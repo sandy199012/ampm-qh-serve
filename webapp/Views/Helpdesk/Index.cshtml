@@ -3,6 +3,7 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><i class="bi bi-headset text-danger"></i> Helpdesk Tickets</h5>
+    <button id="soundAlertBtn" class="btn btn-sm px-3" onclick="toggleSoundAlerts()" title="Play a sound and show a browser notification whenever a new ticket is raised, while this page is open"></button>
     <a href="/Helpdesk/EmailSettings" class="btn btn-outline-secondary btn-sm px-3" title="Email Settings"><i class="bi bi-envelope-gear"></i></a>
     <a href="/Helpdesk/Export?status=@ViewBag.Status&priority=@ViewBag.Priority" class="btn btn-outline-success btn-sm px-3"><i class="bi bi-file-earmark-excel"></i> Excel Report</a>
     <a href="/Helpdesk/Create" class="btn btn-danger btn-sm px-3">
@@ -10,11 +11,16 @@
     </a>
 </div>
 
+<div id="newTicketAlerts"></div>
+
 @{
     var open     = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "Open");
     var inprog   = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "In Progress");
     var resolved = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "Resolved");
     var critical = Model.Count(t => t.GetValueOrDefault("priority")?.ToString() == "Critical");
+    // Baseline for the sound-alert poller below — the newest ticket ID already
+    // on this page, so it only alerts for tickets raised AFTER the page loaded.
+    var latestTicketId = Model.Any() ? Model.Max(t => t.GetValueOrDefault("ticketId")?.ToString() ?? "") : "";
 }
 <div class="row g-2 mb-3">
     <div class="col-6 col-md-3">
@@ -142,5 +148,88 @@ function updateStatus(id, status) {
         body: 'status=' + encodeURIComponent(status)
     }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
 }
+
+// ───────────── New-ticket sound + browser notification alert ─────────────
+// Polls every 20s for tickets raised after the newest one already on this
+// page, and — if the admin has turned alerts on — plays a short beep (via
+// the Web Audio API, so no audio file needs to ship with the app), shows a
+// desktop/browser Notification, and drops a dismissible banner above the
+// table. Browsers block audio/notifications without a real user click first,
+// which is exactly what the "Sound Alerts" button provides.
+function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+let lastSeenTicketId = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(latestTicketId));
+let soundAlertsOn = localStorage.getItem('helpdesk_sound_alerts') === 'on';
+let audioCtx = null;
+
+function updateAlertButton() {
+    const btn = document.getElementById('soundAlertBtn');
+    if (!btn) return;
+    btn.innerHTML = soundAlertsOn ? '<i class="bi bi-bell-fill"></i> Sound Alerts: ON' : '<i class="bi bi-bell-slash"></i> Sound Alerts: OFF';
+    btn.className = 'btn btn-sm px-3 ' + (soundAlertsOn ? 'btn-success' : 'btn-outline-secondary');
+}
+
+function toggleSoundAlerts() {
+    soundAlertsOn = !soundAlertsOn;
+    localStorage.setItem('helpdesk_sound_alerts', soundAlertsOn ? 'on' : 'off');
+    if (soundAlertsOn) {
+        // Unlock audio autoplay + ask for desktop notification permission —
+        // both need a real user click, which this button click provides.
+        try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+        if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+    }
+    updateAlertButton();
+}
+
+function playAlertBeep() {
+    if (!soundAlertsOn) return;
+    try {
+        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+        [0, 0.22].forEach(delay => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = 880;
+            gain.gain.setValueAtTime(0.0001, audioCtx.currentTime + delay);
+            gain.gain.exponentialRampToValueAtTime(0.3, audioCtx.currentTime + delay + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + delay + 0.18);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + delay);
+            osc.stop(audioCtx.currentTime + delay + 0.2);
+        });
+    } catch(e) {}
+}
+
+function showNewTicketBanner(t) {
+    const box = document.getElementById('newTicketAlerts');
+    if (!box) return;
+    const div = document.createElement('div');
+    div.className = 'alert alert-danger d-flex justify-content-between align-items-center shadow-sm mb-2';
+    div.innerHTML = `<div><i class="bi bi-bell-fill"></i> <strong>New ticket ${esc(t.ticketId)}</strong> — ${esc(t.title)}
+        <span class="text-muted">(${esc(t.empName)}, ${esc(t.empDept)} &middot; ${esc(t.priority)} priority)</span></div>
+        <div><a href="/Helpdesk/Details/${esc(t.ticketId)}" class="btn btn-sm btn-outline-dark me-2">View</a>
+        <button class="btn btn-sm btn-outline-secondary" onclick="this.closest('.alert').remove()">Dismiss</button></div>`;
+    box.prepend(div);
+    if (soundAlertsOn && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification('New Helpdesk Ticket — ' + t.ticketId, {
+            body: t.title + '\n' + t.empName + ' (' + t.empDept + ') · ' + t.priority + ' priority'
+        });
+    }
+}
+
+async function pollNewTickets() {
+    try {
+        const res = await fetch('/Helpdesk/PollNewTickets?after=' + encodeURIComponent(lastSeenTicketId));
+        const d = await res.json();
+        if (d.tickets && d.tickets.length) {
+            d.tickets.forEach(t => showNewTicketBanner(t));
+            playAlertBeep();
+        }
+        if (d.latestId) lastSeenTicketId = d.latestId;
+    } catch(e) {}
+}
+
+updateAlertButton();
+setInterval(pollNewTickets, 20000);
 </script>
 }

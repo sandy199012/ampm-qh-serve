@@ -297,6 +297,37 @@ public class HelpdeskController : Controller
         return Json(new { ok = true });
     }
 
+    // Lightweight polling endpoint behind the "sound alert" feature on the
+    // Helpdesk list page — JS calls this every ~20s with the last ticket ID
+    // it has already seen, and gets back any tickets raised since then so
+    // the page can pop a sound + banner without a full reload. Ticket IDs
+    // are "TKT-yyyyMMddHHmmss", so a plain string comparison is enough to
+    // tell "newer than" (fixed width, chronologically sortable as text).
+    [HttpGet]
+    public IActionResult PollNewTickets(string? after)
+    {
+        var tickets = _db.GetTickets();
+        var newer = string.IsNullOrEmpty(after)
+            ? new List<Dictionary<string,object?>>()
+            : tickets.Where(t => string.Compare(t.GetValueOrDefault("ticketId")?.ToString() ?? "", after, StringComparison.Ordinal) > 0)
+                     .OrderBy(t => t.GetValueOrDefault("ticketId")?.ToString())
+                     .ToList();
+        var latestId = tickets.Any() ? tickets.Max(t => t.GetValueOrDefault("ticketId")?.ToString() ?? "") : (after ?? "");
+        return Json(new
+        {
+            latestId,
+            tickets = newer.Select(t => new
+            {
+                ticketId = t.GetValueOrDefault("ticketId")?.ToString() ?? "",
+                title = t.GetValueOrDefault("title")?.ToString() ?? "",
+                empName = t.GetValueOrDefault("empName")?.ToString() ?? "",
+                empDept = t.GetValueOrDefault("empDept")?.ToString() ?? "",
+                priority = t.GetValueOrDefault("priority")?.ToString() ?? "Medium",
+                dateRaised = t.GetValueOrDefault("dateRaised")?.ToString() ?? "",
+            })
+        });
+    }
+
     // ── Colorful Excel Report (HTML table, opens directly in Excel) ─────────
     [HttpGet("/Helpdesk/Export")]
     public IActionResult Export(string? status, string? priority)
