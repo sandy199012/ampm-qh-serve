@@ -1,0 +1,210 @@
+@model List<Dictionary<string,object?>>
+@{
+    ViewData["Title"] = "My Helpdesk";
+    var user = (AMPMWeb.Services.UserSession)ViewBag.User;
+    bool noEmp = ViewBag.NoEmployeeLinked ?? false;
+    var open     = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "Open");
+    var inprog   = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "In Progress");
+    var resolved = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "Resolved");
+    var closed   = Model.Count(t => t.GetValueOrDefault("status")?.ToString() == "Closed");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0"><i class="bi bi-headset text-danger"></i> My Helpdesk</h5>
+    @if (!noEmp)
+    {
+        <button class="btn btn-danger btn-sm px-3" data-bs-toggle="modal" data-bs-target="#raiseTicketModal">
+            <i class="bi bi-plus-circle"></i> Raise New Ticket
+        </button>
+    }
+</div>
+
+@if (TempData["Success"] != null)
+{<div class="alert alert-success alert-dismissible fade show"><i class="bi bi-check-circle"></i> @TempData["Success"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>}
+@if (TempData["Error"] != null)
+{<div class="alert alert-danger alert-dismissible fade show"><i class="bi bi-exclamation-circle"></i> @TempData["Error"]<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>}
+
+@if (noEmp)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i>
+        Your login isn't linked to an Employee record yet, so you can't raise a ticket from here.
+        Please contact IT (<strong>Sandeep Kumar Singh Kushwaha</strong>) to get your account linked.
+    </div>
+}
+
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-danger-subtle text-center py-2">
+            <div class="fw-bold fs-4 text-danger">@open</div>
+            <div class="small text-muted">Open</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-primary-subtle text-center py-2">
+            <div class="fw-bold fs-4 text-primary">@inprog</div>
+            <div class="small text-muted">In Progress</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-success-subtle text-center py-2">
+            <div class="fw-bold fs-4 text-success">@resolved</div>
+            <div class="small text-muted">Resolved</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="card border-0 bg-secondary-subtle text-center py-2">
+            <div class="fw-bold fs-4 text-secondary">@closed</div>
+            <div class="small text-muted">Closed</div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead style="background:#0A192F;color:white">
+                <tr>
+                    <th class="ps-3">Ticket ID</th>
+                    <th>Date Raised</th>
+                    <th>Issue</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Any())
+            {
+                <tr><td colspan="6" class="text-center text-muted py-5">You haven't raised any tickets yet</td></tr>
+            }
+            @foreach (var t in Model)
+            {
+                var tid      = t.GetValueOrDefault("ticketId")?.ToString() ?? "";
+                var status   = t.GetValueOrDefault("status")?.ToString() ?? "Open";
+                var priority = t.GetValueOrDefault("priority")?.ToString() ?? "Medium";
+                var sBadge   = status == "Open" ? "danger" : status == "In Progress" ? "primary" : status == "Resolved" ? "success" : "secondary";
+                var pBadge   = priority == "Critical" ? "danger" : priority == "High" ? "warning" : priority == "Medium" ? "info" : "secondary";
+                <tr>
+                    <td class="ps-3 font-monospace fw-bold small text-primary">@tid</td>
+                    <td class="small text-muted">@t.GetValueOrDefault("dateRaised")</td>
+                    <td class="small text-truncate" style="max-width:220px">@t.GetValueOrDefault("title")</td>
+                    <td><span class="badge bg-@pBadge">@priority</span></td>
+                    <td><span class="badge bg-@sBadge">@status</span></td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="showTicket('@tid')">
+                            <i class="bi bi-eye"></i> View
+                        </button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Raise Ticket Modal -->
+<div class="modal fade" id="raiseTicketModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="post" action="/MyHelpdesk/Create">
+                <div class="modal-header">
+                    <h6 class="modal-title fw-bold"><i class="bi bi-plus-circle text-danger"></i> Raise New Helpdesk Ticket</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-light border small mb-3">
+                        <i class="bi bi-person-check"></i> Raising as <strong>@user.Name</strong> (@user.EmpId) — your employee details are filled in automatically.
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Issue Title *</label>
+                            <input type="text" name="title" class="form-control" required placeholder="Brief description of the issue"/>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Issue Type *</label>
+                            <select name="issueType" class="form-select" required>
+                                <option value="">Select Type</option>
+                                @foreach(var t in new[]{"Hardware - Laptop/Desktop","Hardware - Monitor","Hardware - Keyboard/Mouse","Hardware - Printer","Software - Installation","Software - Error","Network - Internet","Network - WiFi","Email - Outlook","Email - Access","Access - System Login","Access - Application","Other"})
+                                {<option>@t</option>}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Category</label>
+                            <select name="category" class="form-select">
+                                <option value="">Select Category</option>
+                                @foreach(var c in new[]{"Hardware","Software","Network","Email","Access","Other"})
+                                {<option>@c</option>}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold small">Priority *</label>
+                            <select name="priority" class="form-select" required>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                                <option value="High">High</option>
+                                <option value="Critical">Critical</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small">Description</label>
+                            <textarea name="description" class="form-control" rows="4" placeholder="Detailed description of the issue..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-check-circle"></i> Submit Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Ticket Details Modal -->
+<div class="modal fade" id="viewTicketModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold" id="vtTitle"></h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="vtBody"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+const myTickets = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
+function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function showTicket(id) {
+    const t = myTickets.find(x => (x.ticketId || '') === id);
+    if (!t) return;
+    document.getElementById('vtTitle').innerHTML = '<i class="bi bi-ticket-perforated text-danger"></i> ' + esc(t.ticketId) + ' — ' + esc(t.title);
+    const rows = [
+        ['Status', esc(t.status)],
+        ['Priority', esc(t.priority)],
+        ['Issue Type', esc(t.issueType)],
+        ['Category', esc(t.category)],
+        ['Date Raised', esc(t.dateRaised)],
+        ['Acknowledged', esc(t.dateAcknowledged) || '—'],
+        ['Resolved', esc(t.dateResolved) || '—'],
+        ['Closed', esc(t.dateClosed) || '—'],
+        ['Assigned To', esc(t.assignedTo) || '—'],
+    ];
+    let html = '<table class="table table-sm mb-3">';
+    rows.forEach(r => html += `<tr><td class="text-muted small" style="width:160px">${r[0]}</td><td>${r[1]}</td></tr>`);
+    html += '</table>';
+    html += '<div class="mb-2"><div class="small fw-bold text-muted">DESCRIPTION</div><div class="p-2 bg-light rounded small">' + (esc(t.description) || '—') + '</div></div>';
+    if (t.resolution) html += '<div class="mb-2"><div class="small fw-bold text-success">RESOLUTION</div><div class="p-2 bg-success-subtle rounded small">' + esc(t.resolution) + '</div></div>';
+    if (t.ackComment) html += '<div class="mb-2"><div class="small fw-bold text-primary">IT NOTE (ACKNOWLEDGED)</div><div class="p-2 bg-primary-subtle rounded small">' + esc(t.ackComment) + '</div></div>';
+    document.getElementById('vtBody').innerHTML = html;
+    new bootstrap.Modal(document.getElementById('viewTicketModal')).show();
+}
+</script>
+}

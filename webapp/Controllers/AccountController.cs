@@ -33,6 +33,9 @@ public class AccountController : Controller
         Response.Cookies.Append("ampm_name", user.Name, opts);
         Response.Cookies.Append("ampm_role", user.Role, opts);
 
+        // Admins/superadmins land on the full dashboard as before; everyone
+        // else goes straight to their own self-service Helpdesk portal.
+        if (!user.IsAdmin) return RedirectToAction("Index", "MyHelpdesk");
         return RedirectToAction("Index", "Home");
     }
 

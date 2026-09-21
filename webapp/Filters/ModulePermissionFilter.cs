@@ -19,8 +19,12 @@ public class ModulePermissionFilter : IActionFilter
     // Performance is exempt because it's a personal dashboard — every logged-in
     // user can see their own numbers there; the controller itself still restricts
     // viewing SOMEONE ELSE's numbers to admins/superadmins.
+    // MyHelpdesk is exempt for the same reason — it's the employee self-service
+    // portal (raise a ticket, see your own tickets' status); the controller itself
+    // scopes everything to the logged-in user's own EmpId, so no module-permission
+    // checkbox is needed to reach it.
     static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
-        { "Account", "Home", "Api", "Performance" };
+        { "Account", "Home", "Api", "Performance", "MyHelpdesk" };
 
     public void OnActionExecuting(ActionExecutingContext context)
     {

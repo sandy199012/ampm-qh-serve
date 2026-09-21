@@ -15,7 +15,15 @@ public class HomeController : Controller
     public IActionResult Index()
     {
         if (!_auth.IsLoggedIn(HttpContext)) return RedirectToAction("Login","Account");
-        ViewBag.User          = _auth.GetCurrentUser(HttpContext);
+        var user = _auth.GetCurrentUser(HttpContext);
+        if (user == null) return RedirectToAction("Login","Account");
+
+        // Non-admin accounts (role "user") never see the admin dashboard —
+        // they get the self-service "My Helpdesk" portal instead: their own
+        // tickets and the ability to raise a new one, nothing global.
+        if (!user.IsAdmin) return RedirectToAction("Index", "MyHelpdesk");
+
+        ViewBag.User          = user;
         ViewBag.Stats         = _db.GetStats();
         ViewBag.RecentTickets = _db.GetTickets().Take(8).ToList();
         ViewBag.LowStock      = _db.GetLowStockItems();

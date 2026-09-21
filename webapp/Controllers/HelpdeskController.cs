@@ -14,10 +14,21 @@ public class HelpdeskController : Controller
 
     public IActionResult Index(string? status, string? priority)
     {
-        ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        var user = _auth.GetCurrentUser(HttpContext);
+        ViewBag.User = user;
         var tickets = _db.GetTickets(status);
         if (!string.IsNullOrEmpty(priority))
             tickets = tickets.Where(t => t.GetValueOrDefault("priority")?.ToString() == priority).ToList();
+        // Defense in depth: this admin-facing ticket list only ever shows every
+        // ticket to admins/superadmins. A "user"-role account that was granted
+        // Helpdesk View permission (for some other reason) still only sees their
+        // own tickets here — the everyone-else view is admin-only. Regular
+        // employees should be using /MyHelpdesk instead.
+        if (user != null && !user.IsAdmin)
+        {
+            var empId = user.EmpId ?? "";
+            tickets = tickets.Where(t => (t.GetValueOrDefault("empId")?.ToString() ?? "") == empId).ToList();
+        }
         ViewBag.Status = status;
         ViewBag.Priority = priority;
         return View(tickets);
@@ -65,9 +76,18 @@ public class HelpdeskController : Controller
 
     public IActionResult Details(string id)
     {
-        ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        var user = _auth.GetCurrentUser(HttpContext);
+        ViewBag.User = user;
         var raw = _db.QueryFirst<string>("SELECT data FROM tickets WHERE ticket_id=@id", new { id });
         if (raw == null) return NotFound();
+        // Same defense-in-depth as Index(): a non-admin can only open a ticket
+        // that's their own, even if they somehow have Helpdesk View permission.
+        if (user != null && !user.IsAdmin)
+        {
+            var t0 = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
+            if ((t0.GetValueOrDefault("empId")?.ToString() ?? "") != (user.EmpId ?? ""))
+                return RedirectToAction("AccessDenied", "Home");
+        }
         var es = GetEmailSettingsObj();
         ViewBag.ItEmail = es.GetValueOrDefault("itEmail")?.ToString() ?? "itsupport@ampm.in";
         ViewBag.CcEmails = es.GetValueOrDefault("ccEmails")?.ToString() ?? "";
