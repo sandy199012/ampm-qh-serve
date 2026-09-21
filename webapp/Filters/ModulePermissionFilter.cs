@@ -16,15 +16,18 @@ public class ModulePermissionFilter : IActionFilter
 
     // Api is exempt because it's the mobile app's entry point — it has no login
     // cookie to check here, and instead verifies username+password on every call itself.
-    // Performance is exempt because it's a personal dashboard — every logged-in
-    // user can see their own numbers there; the controller itself still restricts
-    // viewing SOMEONE ELSE's numbers to admins/superadmins.
-    // MyHelpdesk is exempt for the same reason — it's the employee self-service
-    // portal (raise a ticket, see your own tickets' status); the controller itself
-    // scopes everything to the logged-in user's own EmpId, so no module-permission
-    // checkbox is needed to reach it.
+    // MyHelpdesk is exempt because it's the employee self-service portal (raise a
+    // ticket, see your own tickets' status); the controller itself scopes everything
+    // to the logged-in user's own EmpId, so no module-permission checkbox is needed
+    // to reach it.
+    // NOTE: Performance is intentionally NOT exempt — it's the IT team's own
+    // productivity dashboard (Daily To-Do / Weekly Goals / Helpdesk resolution
+    // stats), not something a general employee should see. It's also not one of
+    // AuthService.Modules, so no "user"-role account can ever be granted a
+    // per-module permission for it either — CanView("Performance") below is
+    // therefore admin/superadmin-only by construction.
     static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
-        { "Account", "Home", "Api", "Performance", "MyHelpdesk" };
+        { "Account", "Home", "Api", "MyHelpdesk" };
 
     public void OnActionExecuting(ActionExecutingContext context)
     {

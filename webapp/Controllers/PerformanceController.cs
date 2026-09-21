@@ -5,11 +5,14 @@ using Newtonsoft.Json;
 
 namespace AMPMWeb.Controllers;
 
-// Personal performance dashboard — pulls together a user's Daily To-Do
-// completion, Weekly Goals progress, and Helpdesk ticket resolution into
-// one view. Any logged-in user sees their own numbers by default;
-// admins/superadmins can switch to view anyone else's, same pattern as
-// the Todos page's "sandy / sandeep / All Employees" dropdown.
+// IT team's internal productivity dashboard — pulls together a user's Daily
+// To-Do completion, Weekly Goals progress, and Helpdesk ticket resolution
+// into one view. Admin/superadmin only (ModulePermissionFilter enforces
+// this — Performance is deliberately not in its exempt list, and it's not
+// one of AuthService.Modules either, so a "user"-role account can never be
+// granted access to it). Within that, an admin sees their own numbers by
+// default and can switch to view anyone else's, same pattern as the Todos
+// page's "sandy / sandeep / All Employees" dropdown.
 public class PerformanceStats
 {
     public int TodoTotal, TodoDone, TodoInProg, TodoPending, TodoVerified, TodoPct;
