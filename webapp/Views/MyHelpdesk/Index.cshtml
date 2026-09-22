@@ -134,19 +134,17 @@
                             <input type="text" name="title" class="form-control" required placeholder="Brief description of the issue"/>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold small">Category</label>
-                            <select name="category" class="form-select">
+                            <label class="form-label fw-semibold small">Category *</label>
+                            <select name="category" id="categorySelect" class="form-select" required onchange="fillIssueTypes()">
                                 <option value="">Select Category</option>
-                                @foreach(var c in new[]{"Hardware","Software","Network","Email","Access","Other"})
+                                @foreach(var c in new[]{"Hardware","Laptop / Desktop","Software","Operating System","Network / LAN","Wi-Fi","Internet","VPN / Remote Access","Email / Outlook","Microsoft 365","Active Directory / User Account","Access / Permission","Server","Backup / Recovery","Cyber Security","Antivirus / Endpoint Security","Firewall","Printer / Scanner","CCTV / Security Systems","Biometric / Attendance","ERP / Business Application","POS / Billing","Mobile / Tablet / iPad","Cloud Services","Software License / Compliance","IT Asset Management","New Employee IT Setup","Employee Exit / IT Deactivation","Website / Domain","Telecommunication","Audio / Video / Meeting Room","Power / Electrical IT Equipment","Data / File Management","Procurement / IT Purchase","Vendor / AMC","IT Request / General"})
                                 {<option>@c</option>}
                             </select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold small">Issue Type *</label>
-                            <select name="issueType" class="form-select" required>
-                                <option value="">Select Type</option>
-                                @foreach(var t in new[]{"Hardware - Laptop/Desktop","Hardware - Monitor","Hardware - Keyboard/Mouse","Hardware - Printer","Software - Installation","Software - Error","Network - Internet","Network - WiFi","Email - Outlook","Email - Access","Access - System Login","Access - Application","Other"})
-                                {<option>@t</option>}
+                            <select name="issueType" id="issueTypeSelect" class="form-select" required>
+                                <option value="">Select Category first</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -193,6 +191,61 @@
 <script>
 const myTickets = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
 function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// Sub-categories ("Issue Type") shown depend on the chosen Category — same
+// 36-category IT classification list used on the admin New Ticket form
+// (Controllers/HelpdeskController's Create view), kept in sync here.
+const categoryIssueMap = {
+    "Hardware": ["Laptop", "Desktop", "Monitor", "Keyboard", "Mouse", "Printer", "Scanner", "UPS", "UPS Battery", "HDD", "SSD", "RAM", "Motherboard", "SMPS", "Adapter/Charger", "Docking Station", "Webcam", "Speaker", "Headset", "Cable", "Pendrive"],
+    "Laptop / Desktop": ["System not starting", "Slow performance", "Hang", "Restart/Shutdown", "Blue Screen", "Overheating", "Battery issue", "Charging issue", "Display issue", "Keyboard issue", "Touchpad issue", "Camera/Mic issue", "Fan noise", "Physical damage"],
+    "Software": ["Software installation", "Uninstallation", "Software not opening", "Software crash", "Error message", "License issue", "Update/Upgrade", "Configuration", "Compatibility issue"],
+    "Operating System": ["Windows issue", "macOS issue", "Boot issue", "Login issue", "Windows activation", "OS installation", "Formatting", "Driver issue", "Windows Update", "System restore"],
+    "Network / LAN": ["LAN not working", "Network connectivity", "Slow network", "IP conflict", "IP configuration", "DNS issue", "DHCP issue", "LAN port issue", "Network cable issue"],
+    "Wi-Fi": ["Wi-Fi not connecting", "Slow Wi-Fi", "Wi-Fi authentication", "Weak signal", "Access Point issue", "Wi-Fi password", "Guest Wi-Fi"],
+    "Internet": ["Internet not working", "Slow internet", "ISP issue", "Broadband issue", "Internet disconnection", "Bandwidth issue", "Website inaccessible"],
+    "VPN / Remote Access": ["VPN not connecting", "VPN credentials", "VPN slow", "Remote Desktop issue", "Remote access permission", "WFH connectivity"],
+    "Email / Outlook": ["Email not sending", "Email not receiving", "Outlook not opening", "Password issue", "Mailbox full", "Email configuration", "Signature", "Spam/Junk", "Attachment issue", "Sync issue", "Shared mailbox"],
+    "Microsoft 365": ["Outlook", "Teams", "OneDrive", "SharePoint", "Word", "Excel", "PowerPoint", "Office activation", "License assignment", "MFA", "Account issue"],
+    "Active Directory / User Account": ["New user creation", "Password reset", "Account locked", "Account disabled", "AD group access", "OU assignment", "Login issue", "Domain issue", "Permission issue"],
+    "Access / Permission": ["Folder access", "Shared drive access", "Application access", "Server access", "Email access", "VPN access", "Website access", "Admin permission"],
+    "Server": ["Server down", "Server slow", "Disk space", "CPU/RAM issue", "Service stopped", "Windows Server", "File Server", "Application Server", "Database Server", "Backup issue"],
+    "Backup / Recovery": ["Backup failed", "Backup schedule", "Data restore", "File recovery", "Deleted file recovery", "Backup verification", "Disaster recovery"],
+    "Cyber Security": ["Virus", "Malware", "Ransomware", "Phishing", "Suspicious email", "Suspicious link", "Unauthorized software", "Password/security issue", "Data leakage", "Security alert"],
+    "Antivirus / Endpoint Security": ["Antivirus installation", "License issue", "Virus detection", "Scan issue", "Update issue", "Endpoint not reporting", "Policy issue"],
+    "Firewall": ["Internet blocking", "Application blocking", "Port issue", "Firewall rule", "URL blocking", "NAT issue", "VPN rule", "MAC binding"],
+    "Printer / Scanner": ["Printer not working", "Printing error", "Paper jam", "Toner issue", "Network printer", "Driver issue", "Scanner issue", "Print quality", "Printer configuration"],
+    "CCTV / Security Systems": ["Camera offline", "Camera not recording", "NVR/DVR issue", "Remote viewing", "Storage issue", "Camera installation", "Network camera issue"],
+    "Biometric / Attendance": ["Device offline", "Fingerprint issue", "Face recognition", "Attendance sync", "Employee registration", "Device configuration", "Mobile app issue"],
+    "ERP / Business Application": ["Login issue", "Application error", "Slow application", "Access permission", "Configuration", "Data issue", "Report issue", "Integration issue"],
+    "POS / Billing": ["POS login", "Billing issue", "Printer connection", "Barcode scanner", "Cash drawer", "Billing software", "Network issue", "Sync issue"],
+    "Mobile / Tablet / iPad": ["Device issue", "SIM issue", "Mobile data", "Wi-Fi", "App installation", "Email configuration", "MDM", "Screen/charging/battery"],
+    "Cloud Services": ["OneDrive", "SharePoint", "Google Drive", "AWS", "Azure", "Cloud access", "Storage", "Sync", "Permission"],
+    "Software License / Compliance": ["Adobe", "Corel", "Microsoft Office", "Antivirus", "License renewal", "New license", "License assignment", "Compliance audit"],
+    "IT Asset Management": ["New asset", "Asset allocation", "Asset transfer", "Asset return", "Asset replacement", "Asset audit", "Asset tagging", "Lost asset", "Damaged asset", "Scrap"],
+    "New Employee IT Setup": ["Laptop/Desktop", "Email ID", "AD account", "Software", "VPN", "Internet", "Access permission", "Printer", "Mobile/SIM", "IT induction"],
+    "Employee Exit / IT Deactivation": ["Asset recovery", "Email disable", "AD disable", "VPN disable", "Software license removal", "Data backup", "Access removal"],
+    "Website / Domain": ["Website down", "Domain issue", "DNS", "SSL certificate", "Hosting", "Website access", "Domain renewal"],
+    "Telecommunication": ["Landline", "Mobile SIM", "Intercom", "Calling issue", "Call quality", "SIM replacement", "Recharge/plan"],
+    "Audio / Video / Meeting Room": ["Projector", "TV", "HDMI", "Video conferencing", "Microphone", "Speaker", "Meeting room system", "Camera"],
+    "Power / Electrical IT Equipment": ["UPS", "Power backup", "Voltage issue", "Adapter", "Power cable", "Surge protection"],
+    "Data / File Management": ["File missing", "File deletion", "File permission", "Data transfer", "Data migration", "Duplicate data", "Storage issue"],
+    "Procurement / IT Purchase": ["Laptop purchase", "Desktop purchase", "Software purchase", "License renewal", "Printer purchase", "IT accessories", "Vendor quotation"],
+    "Vendor / AMC": ["Vendor support", "AMC service", "Warranty claim", "Repair", "Replacement", "Service delay", "Vendor quotation"],
+    "IT Request / General": ["New requirement", "IT consultation", "Configuration request", "Information request", "IT policy/SOP", "Other"]
+};
+
+function fillIssueTypes(preselect) {
+    const cat = document.getElementById('categorySelect').value;
+    const sel = document.getElementById('issueTypeSelect');
+    const items = categoryIssueMap[cat] || [];
+    if (!cat) {
+        sel.innerHTML = '<option value="">Select Category first</option>';
+        return;
+    }
+    let html = '<option value="">Select Type</option>';
+    items.forEach(i => { html += '<option' + (i === preselect ? ' selected' : '') + '>' + i + '</option>'; });
+    sel.innerHTML = html;
+}
 
 function showTicket(id) {
     const t = myTickets.find(x => (x.ticketId || '') === id);
