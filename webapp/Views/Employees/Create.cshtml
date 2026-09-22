@@ -31,7 +31,7 @@
                     <select name="dept" class="form-select">@foreach(var d in depts){<option>@d</option>}</select></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Designation</label><input type="text" name="designation" class="form-control"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Manager</label><input type="text" name="manager" class="form-control"/></div>
-                <div class="mb-3"><label class="form-label small fw-bold">Date of Joining</label><input type="date" name="doj" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Date of Joining</label><input type="date" name="doj" class="form-control" value="@IstTime.Now.ToString("yyyy-MM-dd")"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Category</label>
                     <select name="category" class="form-select"><option>Staff</option><option>Worker</option><option>Contractual</option><option>Probation</option><option>Intern</option></select></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Shift</label>

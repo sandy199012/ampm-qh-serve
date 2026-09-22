@@ -36,8 +36,8 @@ public class PerformanceController : Controller
         var row = _db.GetUserByUsername(viewUsername);
         string viewName = !string.IsNullOrWhiteSpace(row?.Name) ? row!.Name! : current.Name;
 
-        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : DateTime.Today.AddDays(-29);
-        DateTime toD = DateTime.TryParse(to, out var t) ? t.Date : DateTime.Today;
+        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : IstTime.Today.AddDays(-29);
+        DateTime toD = DateTime.TryParse(to, out var t) ? t.Date : IstTime.Today;
         if (toD < fromD) (fromD, toD) = (toD, fromD);
         return (viewUsername, viewName, canViewOthers, fromD, toD);
     }
@@ -146,7 +146,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 </style></head><body>
 <table style='border:1px solid #4F46E5'>
   <tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — EMPLOYEE PERFORMANCE REPORT</td></tr>
-  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {DateTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
+  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {IstTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
   <tr><td class='wki'><b>Employee:</b> {System.Net.WebUtility.HtmlEncode(viewName)} &nbsp;&nbsp; <b>Period:</b> {fromD:dd-MMM-yyyy} to {toD:dd-MMM-yyyy}</td></tr>
 </table>
 

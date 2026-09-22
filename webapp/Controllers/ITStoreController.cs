@@ -55,7 +55,7 @@ public class ITStoreController : Controller
             ["location"] = "IT Store",
         };
         _db.Execute("INSERT INTO it_stock_items (id,item_type,data,ts) VALUES (@id,@type,@data,@ts)",
-            new { id=item["id"], type=item["itemType"], data=JsonConvert.SerializeObject(item), ts=DateTime.Now.ToString("o") });
+            new { id=item["id"], type=item["itemType"], data=JsonConvert.SerializeObject(item), ts=IstTime.Now.ToString("o") });
         TempData["Success"] = $"Item '{item["name"]}' added!";
         return RedirectToAction("Index");
     }
@@ -94,9 +94,6 @@ public class ITStoreController : Controller
         if (raw == null) return NotFound();
         var item = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
         item["id"] = id;
-        // Employee master list — lets the Issue form auto-fill dept/designation/HOD
-        // instead of Sandy typing every employee's details by hand each time.
-        ViewBag.Employees = _db.GetEmployees();
         return View(item);
     }
 
@@ -132,11 +129,11 @@ public class ITStoreController : Controller
             ["purpose"]    = form["purpose"].ToString(),
             ["remarks"]    = form["remarks"].ToString(),
             ["status"]     = "Issued",
-            ["issueDate"]  = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+            ["issueDate"]  = IstTime.Now.ToString("yyyy-MM-dd HH:mm"),
             ["issuedBy"]   = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy",
         };
         _db.Execute("INSERT INTO it_stock_issues (id,issue_no,emp_id,emp_name,dept,item_id,status,data,ts) VALUES (@id2,@ino,@eid,@ename,@dept,@iid,'Issued',@data,@ts)",
-            new { id2=Guid.NewGuid().ToString("N")[..8], ino=issueNo, eid=empId, ename=empName, dept=form["dept"].ToString(), iid=id, data=JsonConvert.SerializeObject(issue), ts=DateTime.Now.ToString("o") });
+            new { id2=Guid.NewGuid().ToString("N")[..8], ino=issueNo, eid=empId, ename=empName, dept=form["dept"].ToString(), iid=id, data=JsonConvert.SerializeObject(issue), ts=IstTime.Now.ToString("o") });
         TempData["Success"] = $"Issued {qty} items! Issue No: {issueNo}";
         return RedirectToAction("Index");
     }
@@ -159,7 +156,7 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
 .green{{color:#059669;font-weight:bold}}.red{{color:#DC2626;font-weight:bold}}.amber{{color:#D97706;font-weight:bold}}
 </style></head><body>
 <table style='margin-bottom:12px'><tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — IT STORE STOCK REPORT</td></tr>
-<tr><td style='padding:5px;font-size:10px'>Generated: {DateTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
+<tr><td style='padding:5px;font-size:10px'>Generated: {IstTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
 <div class='h2'>STOCK INVENTORY</div>
 <table><thead><tr><th>#</th><th>Type</th><th>Item Name</th><th>Brand</th><th>Model</th><th>Total</th><th>Issued</th><th>Balance</th><th>Vendor</th><th>Cost</th></tr></thead><tbody>");
 
@@ -181,7 +178,7 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
             sb.Append($"<tr><td style='text-align:center'>{sno}</td><td style='font-family:monospace'>{iss.GetValueOrDefault("issueNo")}</td><td>{iss.GetValueOrDefault("issueDate")}</td><td><b>{iss.GetValueOrDefault("itemName")}</b></td><td>{iss.GetValueOrDefault("itemType")}</td><td style='text-align:center;font-weight:bold'>{iss.GetValueOrDefault("qty")}</td><td>{iss.GetValueOrDefault("dept")}</td><td>{iss.GetValueOrDefault("empName")}</td><td>{iss.GetValueOrDefault("purpose")}</td><td>{iss.GetValueOrDefault("issuedBy")}</td></tr>");
         }
         sb.Append("</tbody></table></body></html>");
-        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_ITStore_{DateTime.Now:yyyyMMdd}.xls");
+        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_ITStore_{IstTime.Now:yyyyMMdd}.xls");
     }
 
     [HttpPost]
@@ -194,7 +191,7 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
         string scanId = Guid.NewGuid().ToString("N")[..8];
         try {
             _db.Execute("INSERT INTO it_issue_scans (id,issue_id,file_name,file_data,content_type,uploaded_at,uploaded_by) VALUES (@id,@iid,@fn,@fd,@ct,@at,@by)",
-                new { id=scanId, iid=id, fn=scan.FileName, fd=base64, ct=scan.ContentType, at=DateTime.Now.ToString("o"), by=HttpContext.Request.Cookies["ampm_name"] ?? "Sandy" });
+                new { id=scanId, iid=id, fn=scan.FileName, fd=base64, ct=scan.ContentType, at=IstTime.Now.ToString("o"), by=HttpContext.Request.Cookies["ampm_name"] ?? "Sandy" });
         } catch { }
         return Json(new { ok=true, scanId, fileName=scan.FileName });
     }
@@ -335,7 +332,7 @@ table.kv td.v{color:#0F172A}
       <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>HOD Approval</div><div class='sig-pre'>").Append(S("empHod").ToUpper()).Append(@"</div></div>
     </div>
 
-    <div class='footer'>Printed: ").Append(DateTime.Now.ToString("dd MMM yyyy HH:mm")).Append(@" &nbsp;|&nbsp; AMPM Fashions Pvt. Ltd, B-144, Sector 10, Noida - 201301 &nbsp;|&nbsp; IT Department</div>
+    <div class='footer'>Printed: ").Append(IstTime.Now.ToString("dd MMM yyyy HH:mm")).Append(@" &nbsp;|&nbsp; AMPM Fashions Pvt. Ltd, B-144, Sector 10, Noida - 201301 &nbsp;|&nbsp; IT Department</div>
 
   </div>
 </div>

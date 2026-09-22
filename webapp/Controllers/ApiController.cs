@@ -131,7 +131,7 @@ public class ApiController : Controller
 
         var ticket = new Dictionary<string, object?>
         {
-            ["ticketId"] = "TKT-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
+            ["ticketId"] = "TKT-" + IstTime.Now.ToString("yyyyMMddHHmmss"),
             ["title"] = data.GetValueOrDefault("title")?.ToString() ?? "",
             ["description"] = data.GetValueOrDefault("description")?.ToString() ?? "",
             ["empId"] = empId,
@@ -146,7 +146,7 @@ public class ApiController : Controller
             ["category"] = data.GetValueOrDefault("category")?.ToString() ?? "",
             ["assignedTo"] = "",
             ["status"] = "Open",
-            ["dateRaised"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+            ["dateRaised"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm"),
             ["raisedBy"] = "Mobile App (" + user.Username + ")",
         };
         _db.SaveTicket(ticket);
@@ -174,14 +174,14 @@ public class ApiController : Controller
 
         var status = ticket.GetValueOrDefault("status")?.ToString() ?? "";
         if (status == "In Progress" && string.IsNullOrEmpty(ticket.GetValueOrDefault("dateAcknowledged")?.ToString()))
-            ticket["dateAcknowledged"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            ticket["dateAcknowledged"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
         if (status == "Resolved" || status == "Closed")
         {
-            ticket["dateResolved"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            ticket["dateResolved"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
             if (DateTime.TryParse(ticket.GetValueOrDefault("dateRaised")?.ToString(), out var dr))
-                ticket["resolutionHrs"] = Math.Round((DateTime.Now - dr).TotalHours, 2);
+                ticket["resolutionHrs"] = Math.Round((IstTime.Now - dr).TotalHours, 2);
         }
-        if (status == "Closed") ticket["dateClosed"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+        if (status == "Closed") ticket["dateClosed"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
 
         _db.SaveTicket(ticket);
         return Json(new { ok = true });

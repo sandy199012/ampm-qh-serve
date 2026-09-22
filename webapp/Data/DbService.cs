@@ -99,7 +99,7 @@ public class DbService
             cmd.Parameters.AddWithValue("@n", "Sandeep Kumar Singh Kushwaha");
             cmd.Parameters.AddWithValue("@r", "superadmin");
             cmd.Parameters.AddWithValue("@d", "IT");
-            cmd.Parameters.AddWithValue("@t", DateTime.Now.ToString("o"));
+            cmd.Parameters.AddWithValue("@t", IstTime.Now.ToString("o"));
             cmd.ExecuteNonQuery();
         }
         else
@@ -191,7 +191,7 @@ public class DbService
         ticket["ticketId"] = id;
         string json = JsonConvert.SerializeObject(ticket);
         Execute("INSERT INTO tickets VALUES(@id,@data,@status,@ts) ON CONFLICT(ticket_id) DO UPDATE SET data=@data,status=@status,ts=@ts",
-            new { id, data=json, status, ts=DateTime.Now.ToString("o") });
+            new { id, data=json, status, ts=IstTime.Now.ToString("o") });
     }
 
     // ── PO ────────────────────────────────────────────────────
@@ -279,7 +279,7 @@ public class DbService
         int stockCount = 0;
         try { stockCount = QueryFirst<int>("SELECT COUNT(*) FROM it_stock_items"); } catch {}
 
-        var today = DateTime.Today;
+        var today = IstTime.Today;
         int expiringLicenses = 0;
         try {
             expiringLicenses = GetLicenses().Count(l => {
@@ -398,7 +398,7 @@ public class DbService
         cmd.Parameters.AddWithValue("@p", permissionsJson);
         cmd.Parameters.AddWithValue("@e", (object?)empId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@m", mustChangePassword ? 1 : 0);
-        cmd.Parameters.AddWithValue("@t", DateTime.Now.ToString("o"));
+        cmd.Parameters.AddWithValue("@t", IstTime.Now.ToString("o"));
         return (int)cmd.ExecuteScalar()!;
     }
 
@@ -474,11 +474,11 @@ public class DbService
             ["status"] = status,
             ["note"] = note ?? "",
             ["updatedBy"] = updatedBy,
-            ["updatedAt"] = DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
+            ["updatedAt"] = IstTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
         };
         Execute("INSERT INTO checklist_log (id,item_id,check_date,data,ts) VALUES (@id,@itemId,@d,@data,@ts) " +
                 "ON CONFLICT(id) DO UPDATE SET data=@data, ts=@ts",
-            new { id, itemId, d = dateStr, data = JsonConvert.SerializeObject(data), ts = DateTime.Now.ToString("o") });
+            new { id, itemId, d = dateStr, data = JsonConvert.SerializeObject(data), ts = IstTime.Now.ToString("o") });
     }
 }
 

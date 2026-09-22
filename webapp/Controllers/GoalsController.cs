@@ -44,7 +44,7 @@ public class GoalsController : Controller
         if (raw == null) return NotFound();
         var g = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
         g["status"] = "Completed"; g["progress"] = 100;
-        g["completedOn"] = DateTime.Now.ToString("dd-MMM-yyyy");
+        g["completedOn"] = IstTime.Now.ToString("dd-MMM-yyyy");
         _db.Execute("UPDATE goals SET data=@d WHERE id=@id", new { d=JsonConvert.SerializeObject(g), id });
         return Json(new { ok=true });
     }
@@ -63,7 +63,7 @@ public class GoalsController : Controller
             .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList();
         int maxWk = allGoals.Any() ? allGoals.Max(g => int.TryParse(g.GetValueOrDefault("weekNo")?.ToString(), out var w) ? w : 0) : 1;
         // Week dates
-        var today = DateTime.Today;
+        var today = IstTime.Today;
         int diff = (7 + (int)today.DayOfWeek - (int)DayOfWeek.Monday) % 7;
         string wkStart = today.AddDays(-diff).ToString("dd-MMM-yyyy");
         string wkEnd   = today.AddDays(-diff+6).ToString("dd-MMM-yyyy");
@@ -90,7 +90,7 @@ public class GoalsController : Controller
             ["isPending"]   = false,
         };
         _db.Execute("INSERT INTO goals (id,week_no,data,ts) VALUES (@id,@wk,@data,@ts)",
-            new { id=goal["id"], wk=maxWk, data=JsonConvert.SerializeObject(goal), ts=DateTime.Now.ToString("o") });
+            new { id=goal["id"], wk=maxWk, data=JsonConvert.SerializeObject(goal), ts=IstTime.Now.ToString("o") });
         TempData["Success"] = "Goal added!";
         return RedirectToAction("Index");
     }
@@ -122,7 +122,7 @@ public class GoalsController : Controller
         g["approval"]   = form["approval"].ToString();
         int.TryParse(form["progress"].ToString(), out var prog);
         g["progress"]   = prog;
-        if (form["status"].ToString() == "Completed") { g["completedOn"] = DateTime.Now.ToString("dd-MMM-yyyy"); g["progress"] = 100; }
+        if (form["status"].ToString() == "Completed") { g["completedOn"] = IstTime.Now.ToString("dd-MMM-yyyy"); g["progress"] = 100; }
         _db.Execute("UPDATE goals SET data=@d WHERE id=@id", new { d=JsonConvert.SerializeObject(g), id });
         TempData["Success"] = "Goal updated!";
         return RedirectToAction("Index");
@@ -138,7 +138,7 @@ public class GoalsController : Controller
         if (!goals.Any()) return Json(new { ok=false, msg="No pending goals" });
 
         int nextWk = weekNo + 1;
-        var today = DateTime.Today;
+        var today = IstTime.Today;
         int diff = (7 + (int)today.DayOfWeek - (int)DayOfWeek.Monday) % 7;
         string wkStart = today.AddDays(-diff).ToString("dd-MMM-yyyy");
         string wkEnd   = today.AddDays(-diff+6).ToString("dd-MMM-yyyy");
@@ -158,7 +158,7 @@ public class GoalsController : Controller
                 ["remarks"]         = $"Carried from Week {weekNo}",
             };
             _db.Execute("INSERT INTO goals (id,week_no,data,ts) VALUES (@id,@wk,@data,@ts)",
-                new { id=ng["id"], wk=nextWk, data=JsonConvert.SerializeObject(ng), ts=DateTime.Now.ToString("o") });
+                new { id=ng["id"], wk=nextWk, data=JsonConvert.SerializeObject(ng), ts=IstTime.Now.ToString("o") });
         }
         return Json(new { ok=true, count=goals.Count, nextWeek=nextWk });
     }
@@ -203,7 +203,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 </style></head><body>
 <table style='margin-bottom:14px;border:1px solid #0A192F'>
   <tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — IT DEPARTMENT WEEKLY GOAL TRACKER</td></tr>
-  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {DateTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
+  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {IstTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
   <tr><td class='wki'><b>Week No.:</b> {curWk} &nbsp;&nbsp; <b>Week Start:</b> {wkStart} &nbsp;&nbsp; <b>Week End:</b> {wkEnd} &nbsp;&nbsp; <b>Prepared By:</b> Sandeep Kumar Singh Kushwaha — IT System Administrator</td></tr>
 </table>
 <table>
@@ -266,7 +266,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 </div></body></html>");
 
         var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
-        return File(bytes, "application/vnd.ms-excel", $"AMPM_IT_Goals_Week{curWk}_{DateTime.Now:yyyyMMdd}.xls");
+        return File(bytes, "application/vnd.ms-excel", $"AMPM_IT_Goals_Week{curWk}_{IstTime.Now:yyyyMMdd}.xls");
     }
 
     // ── Email Report (mailto link) ────────────────────────────

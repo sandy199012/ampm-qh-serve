@@ -87,7 +87,7 @@ public class AssetsController : Controller
         asset["assignedToName"] = form["assignedToName"].ToString();
         asset["assignedToEmp"]  = form["assignedToEmp"].ToString();
         asset["assignedToDept"] = form["assignedToDept"].ToString();
-        asset["assignedDate"]   = DateTime.Today.ToString("yyyy-MM-dd");
+        asset["assignedDate"]   = IstTime.Today.ToString("yyyy-MM-dd");
         asset["returnDate"]     = "";
         SaveAssets(assets);
         TempData["Success"] = $"Asset assigned to {form["assignedToName"]}.";
@@ -103,7 +103,7 @@ public class AssetsController : Controller
         asset["assignedToName"] = "";
         asset["assignedToEmp"]  = "";
         asset["assignedToDept"] = "";
-        asset["returnDate"]     = DateTime.Today.ToString("yyyy-MM-dd");
+        asset["returnDate"]     = IstTime.Today.ToString("yyyy-MM-dd");
         SaveAssets(assets);
         TempData["Success"] = "Asset unassigned and returned to stock.";
         return RedirectToAction("Index");
@@ -168,7 +168,7 @@ table.kv td.v{color:#0F172A}
       <div class='co'>AMPM FASHIONS PVT. LTD.</div>
       <div class='sub'>IT Department — Asset Handover Form</div>
     </div>
-    <div class='meta'>Handover Date: <b>").Append(DateTime.Now.ToString("dd-MMM-yyyy")).Append(@"</b></div>
+    <div class='meta'>Handover Date: <b>").Append(IstTime.Now.ToString("dd-MMM-yyyy")).Append(@"</b></div>
   </div>
   <div class='pad'>
 
@@ -200,7 +200,7 @@ table.kv td.v{color:#0F172A}
       <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>IT Department</div><div class='sig-pre'>Sandeep Kumar Singh Kushwaha</div></div>
     </div>
 
-    <div class='footer'>Printed: ").Append(DateTime.Now.ToString("dd MMM yyyy HH:mm")).Append(@" &nbsp;|&nbsp; AMPM Fashions Pvt. Ltd, B-144, Sector 10, Noida - 201301 &nbsp;|&nbsp; IT Department</div>
+    <div class='footer'>Printed: ").Append(IstTime.Now.ToString("dd MMM yyyy HH:mm")).Append(@" &nbsp;|&nbsp; AMPM Fashions Pvt. Ltd, B-144, Sector 10, Noida - 201301 &nbsp;|&nbsp; IT Department</div>
 
   </div>
 </div>
@@ -222,7 +222,7 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
 .green{{color:#059669;font-weight:bold}}.amber{{color:#D97706;font-weight:bold}}
 </style></head><body>
 <table style='margin-bottom:12px'><tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — ASSET STOCK REPORT</td></tr>
-<tr><td style='padding:5px;font-size:10px'>Generated: {DateTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
+<tr><td style='padding:5px;font-size:10px'>Generated: {IstTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
 <table><thead><tr><th>#</th><th>Asset Tag</th><th>Type</th><th>Brand/Model</th><th>Serial</th><th>Condition</th><th>Assigned To</th><th>Dept</th><th>Location</th></tr></thead><tbody>");
         int sno = 0;
         foreach (var a in assets)
@@ -233,6 +233,6 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
             sb.Append($"<tr><td style='text-align:center'>{sno}</td><td><b>{a.GetValueOrDefault("assetTag")}</b></td><td>{a.GetValueOrDefault("assetType")}</td><td>{a.GetValueOrDefault("brand")} {a.GetValueOrDefault("model")}</td><td>{a.GetValueOrDefault("serial")}</td><td>{a.GetValueOrDefault("condition")}</td><td class='{cls}'>{(assigned ? a.GetValueOrDefault("assignedToName") : "Unassigned")}</td><td>{a.GetValueOrDefault("assignedToDept")}</td><td>{a.GetValueOrDefault("location")}</td></tr>");
         }
         sb.Append("</tbody></table></body></html>");
-        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Assets_{DateTime.Now:yyyyMMdd}.xls");
+        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Assets_{IstTime.Now:yyyyMMdd}.xls");
     }
 }

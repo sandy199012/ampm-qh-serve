@@ -17,7 +17,7 @@
             <div class="card-header fw-bold" style="background:#0A192F;color:white">PO Details</div>
             <div class="card-body">
                 <div class="mb-3"><label class="form-label small fw-bold">PO Date *</label>
-                    <input type="date" name="poDate" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" required/></div>
+                    <input type="date" name="poDate" class="form-control" value="@IstTime.Now.ToString("yyyy-MM-dd")" required/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Priority</label>
                     <select name="priority" class="form-select">
                         <option>Normal</option><option>High</option><option selected>Urgent</option>

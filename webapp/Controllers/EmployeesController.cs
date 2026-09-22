@@ -82,7 +82,7 @@ public class EmployeesController : Controller
         var data = new Dictionary<string,object?>();
         foreach (var key in form.Keys) data[key] = form[key].ToString();
         _db.Execute("INSERT INTO employees (emp,data,ts) VALUES (@emp,@data,@ts) ON CONFLICT (emp) DO UPDATE SET data=@data",
-            new { emp, data=JsonConvert.SerializeObject(data), ts=DateTime.Now.ToString("o") });
+            new { emp, data=JsonConvert.SerializeObject(data), ts=IstTime.Now.ToString("o") });
         TempData["Success"] = $"Employee {emp} added!";
         return RedirectToAction("Index");
     }
@@ -125,7 +125,7 @@ public class EmployeesController : Controller
         var raw = _db.QueryFirst<string>("SELECT data FROM employees WHERE emp=@e", new { e = id });
         if (raw == null) return NotFound();
         var data = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
-        data["exitDate"] = DateTime.Today.ToString("yyyy-MM-dd");
+        data["exitDate"] = IstTime.Today.ToString("yyyy-MM-dd");
         _db.Execute("UPDATE employees SET data=@d WHERE emp=@e", new { d=JsonConvert.SerializeObject(data), e=id });
         TempData["Success"] = $"Employee {id} marked exited.";
         return RedirectToAction("Index");
@@ -164,7 +164,7 @@ public class EmployeesController : Controller
                 CsvE(e.GetValueOrDefault("ip")?.ToString()),
                 CsvE(e.GetValueOrDefault("os")?.ToString())
             ));
-        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"Employees_{DateTime.Now:yyyyMMdd}.csv");
+        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"Employees_{IstTime.Now:yyyyMMdd}.csv");
     }
 
     [HttpGet]
@@ -215,7 +215,7 @@ public class EmployeesController : Controller
             SetIf("os", "os");
 
             _db.Execute("INSERT INTO employees (emp,data,ts) VALUES (@emp,@data,@ts) ON CONFLICT (emp) DO UPDATE SET data=@data",
-                new { emp, data = JsonConvert.SerializeObject(data), ts = DateTime.Now.ToString("o") });
+                new { emp, data = JsonConvert.SerializeObject(data), ts = IstTime.Now.ToString("o") });
 
             if (isNew) added++; else updated++;
         }
@@ -319,7 +319,7 @@ table.items tr:last-child td{border-bottom:none}
       <div class='co'>AMPM FASHIONS PVT. LTD.</div>
       <div class='sub'>IT Department — Asset Handover Form</div>
     </div>
-    <div class='meta'>Handover Date: <b>").Append(DateTime.Now.ToString("dd-MMM-yyyy")).Append(@"</b></div>
+    <div class='meta'>Handover Date: <b>").Append(IstTime.Now.ToString("dd-MMM-yyyy")).Append(@"</b></div>
   </div>
   <div class='pad'>
 
@@ -370,7 +370,7 @@ table.items tr:last-child td{border-bottom:none}
       <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>HOD / Manager</div><div class='sig-pre'>").Append(S("manager")).Append(@"</div></div>
     </div>
 
-    <div class='footer'>Printed: ").Append(DateTime.Now.ToString("dd MMM yyyy HH:mm")).Append(@" &nbsp;|&nbsp; AMPM Fashions Pvt. Ltd, B-144, Sector 10, Noida - 201301 &nbsp;|&nbsp; IT Department</div>
+    <div class='footer'>Printed: ").Append(IstTime.Now.ToString("dd MMM yyyy HH:mm")).Append(@" &nbsp;|&nbsp; AMPM Fashions Pvt. Ltd, B-144, Sector 10, Noida - 201301 &nbsp;|&nbsp; IT Department</div>
 
   </div>
 </div>
@@ -386,7 +386,7 @@ table.items tr:last-child td{border-bottom:none}
         if (raw == null) return NotFound();
         var e = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
         string S(string k) => e.GetValueOrDefault(k)?.ToString() ?? "";
-        var exitDate = string.IsNullOrEmpty(S("exitDate")) ? DateTime.Today.ToString("yyyy-MM-dd") : S("exitDate");
+        var exitDate = string.IsNullOrEmpty(S("exitDate")) ? IstTime.Today.ToString("yyyy-MM-dd") : S("exitDate");
 
         var assignedAssets = _db.GetAssets()
             .Where(a => a.GetValueOrDefault("assignedToEmp")?.ToString() == id)
@@ -506,7 +506,7 @@ table.items tr:last-child td{border-bottom:none}
       <div class='sig-box'><div class='sig-line'></div><div class='sig-name'>HOD / Manager Approval</div><div class='sig-pre'>").Append(S("manager")).Append(@"</div></div>
     </div>
 
-    <div class='footer'>Printed: ").Append(DateTime.Now.ToString("dd MMM yyyy HH:mm")).Append(@" &nbsp;|&nbsp; AMPM Fashions Pvt. Ltd, B-144, Sector 10, Noida - 201301 &nbsp;|&nbsp; IT Department</div>
+    <div class='footer'>Printed: ").Append(IstTime.Now.ToString("dd MMM yyyy HH:mm")).Append(@" &nbsp;|&nbsp; AMPM Fashions Pvt. Ltd, B-144, Sector 10, Noida - 201301 &nbsp;|&nbsp; IT Department</div>
 
   </div>
 </div>

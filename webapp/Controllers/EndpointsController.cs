@@ -114,7 +114,7 @@ public class EndpointsController : Controller
         // agent from the Windows Uninstall registry keys. Stored as-is; the
         // PC Inventory view renders it in a per-PC "Installed Software" modal.
         if (data.TryGetValue("software", out var sw) && sw != null) rec["software"] = sw;
-        rec["lastSeen"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+        rec["lastSeen"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
         if (!rec.ContainsKey("qhVersion")) rec["qhVersion"] = "";
         if (!rec.ContainsKey("qhService")) rec["qhService"] = "Not Installed";
         if (!rec.ContainsKey("licenseKey")) rec["licenseKey"] = "";
@@ -513,7 +513,7 @@ public class EndpointsController : Controller
                 CsvE(p.GetValueOrDefault("lastSeen")?.ToString()),
                 CsvE(p.GetValueOrDefault("notes")?.ToString())
             ));
-        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"AMPM_PCInventory_{DateTime.Now:yyyyMMdd}.csv");
+        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"AMPM_PCInventory_{IstTime.Now:yyyyMMdd}.csv");
     }
 
     [HttpGet("/Endpoints/ExportLicenses")]
@@ -535,13 +535,13 @@ public class EndpointsController : Controller
                 CsvE(l.GetValueOrDefault("expiryDate")?.ToString()),
                 CsvE(l.GetValueOrDefault("notes")?.ToString())
             ));
-        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"AMPM_QHLicenses_{DateTime.Now:yyyyMMdd}.csv");
+        return File(System.Text.Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"AMPM_QHLicenses_{IstTime.Now:yyyyMMdd}.csv");
     }
 
     static string ComputeLicStatus(Dictionary<string,object?> l)
     {
         var hostname = l.GetValueOrDefault("hostname")?.ToString();
-        if (DateTime.TryParse(l.GetValueOrDefault("expiryDate")?.ToString(), out var exp) && exp.Date < DateTime.Today)
+        if (DateTime.TryParse(l.GetValueOrDefault("expiryDate")?.ToString(), out var exp) && exp.Date < IstTime.Today)
             return "Expired";
         return string.IsNullOrEmpty(hostname) ? "Unassigned" : "Assigned";
     }
@@ -798,7 +798,7 @@ public class EndpointsController : Controller
 
         return File(ms.ToArray(),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            $"AMPM_IT_Report_{DateTime.Now:yyyyMMdd}.xlsx");
+            $"AMPM_IT_Report_{IstTime.Now:yyyyMMdd}.xlsx");
     }
 
     static string CsvE(string? s) => $"\"{(s ?? "").Replace("\"", "\"\"")}\"";

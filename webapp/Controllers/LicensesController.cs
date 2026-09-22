@@ -15,7 +15,7 @@ public class LicensesController : Controller
         if (!DateTime.TryParse(l.GetValueOrDefault("renewalDate")?.ToString(), out var rd)) return false;
         int.TryParse(l.GetValueOrDefault("alertDays")?.ToString(), out var ad);
         int window = ad > 0 ? ad : 30;
-        return (rd.Date - DateTime.Today).TotalDays <= window;
+        return (rd.Date - IstTime.Today).TotalDays <= window;
     }
 
     public IActionResult Index(string? status, string? search)
@@ -128,8 +128,8 @@ public class LicensesController : Controller
         if (lic == null) return NotFound();
 
         DateTime.TryParse(lic.GetValueOrDefault("renewalDate")?.ToString(), out var oldRenewal);
-        var baseDate = oldRenewal > DateTime.Today ? oldRenewal : DateTime.Today;
-        lic["lastRenewedDate"] = DateTime.Today.ToString("yyyy-MM-dd");
+        var baseDate = oldRenewal > IstTime.Today ? oldRenewal : IstTime.Today;
+        lic["lastRenewedDate"] = IstTime.Today.ToString("yyyy-MM-dd");
         lic["lastRenewedBy"]   = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy";
         lic["renewalDate"]     = baseDate.AddYears(1).ToString("yyyy-MM-dd");
         lic["status"]          = "Active";
@@ -162,7 +162,7 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
 .green{{color:#059669;font-weight:bold}}.red{{color:#DC2626;font-weight:bold}}.amber{{color:#D97706;font-weight:bold}}
 </style></head><body>
 <table style='margin-bottom:12px'><tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — SOFTWARE LICENSES REPORT</td></tr>
-<tr><td style='padding:5px;font-size:10px'>Generated: {DateTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
+<tr><td style='padding:5px;font-size:10px'>Generated: {IstTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
 <table><thead><tr><th>#</th><th>Name</th><th>Vendor</th><th>Category</th><th>Seats</th><th>Renewal Date</th><th>Cost</th><th>Status</th><th>Invoice No</th></tr></thead><tbody>");
 
         int sno = 0;
@@ -171,10 +171,10 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
             sno++;
             DateTime.TryParse(l.GetValueOrDefault("renewalDate")?.ToString(), out var rd);
             bool expiring = IsExpiringSoon(l);
-            string cls = rd < DateTime.Today ? "red" : expiring ? "amber" : "green";
+            string cls = rd < IstTime.Today ? "red" : expiring ? "amber" : "green";
             sb.Append($"<tr><td style='text-align:center'>{sno}</td><td><b>{l.GetValueOrDefault("name")}</b></td><td>{l.GetValueOrDefault("vendor")}</td><td>{l.GetValueOrDefault("category")}</td><td style='text-align:center'>{l.GetValueOrDefault("seats")}</td><td class='{cls}'>{l.GetValueOrDefault("renewalDate")}</td><td>₹{l.GetValueOrDefault("cost")}</td><td>{l.GetValueOrDefault("status")}</td><td>{l.GetValueOrDefault("invoiceNo")}</td></tr>");
         }
         sb.Append("</tbody></table></body></html>");
-        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Licenses_{DateTime.Now:yyyyMMdd}.xls");
+        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Licenses_{IstTime.Now:yyyyMMdd}.xls");
     }
 }

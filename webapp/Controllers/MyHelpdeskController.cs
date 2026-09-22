@@ -54,7 +54,7 @@ public class MyHelpdeskController : Controller
 
         var ticket = new Dictionary<string, object?>
         {
-            ["ticketId"] = "TKT-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
+            ["ticketId"] = "TKT-" + IstTime.Now.ToString("yyyyMMddHHmmss"),
             ["title"] = form["title"].ToString(),
             ["description"] = form["description"].ToString(),
             ["empId"] = empId,
@@ -69,7 +69,7 @@ public class MyHelpdeskController : Controller
             ["category"] = form["category"].ToString(),
             ["assignedTo"] = "",
             ["status"] = "Open",
-            ["dateRaised"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+            ["dateRaised"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm"),
             ["raisedBy"] = user.Name
         };
         _db.SaveTicket(ticket);

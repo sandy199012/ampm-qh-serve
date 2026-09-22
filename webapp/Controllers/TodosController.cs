@@ -30,7 +30,7 @@ public class TodosController : Controller
         if (current == null) return RedirectToAction("Login", "Account");
         bool canApprove = current.CanApprove("Todos");
 
-        DateTime selDate = DateTime.TryParse(date, out var d) ? d.Date : DateTime.Today;
+        DateTime selDate = DateTime.TryParse(date, out var d) ? d.Date : IstTime.Today;
         string dateStr = selDate.ToString("yyyy-MM-dd");
 
         string viewUser = canApprove ? (string.IsNullOrEmpty(user) ? current.Username : user) : current.Username;
@@ -51,7 +51,7 @@ public class TodosController : Controller
         ViewBag.Done        = todos.Count(t => t.GetValueOrDefault("status")?.ToString() == "Done");
 
         // ── Morning Checklist tab (recurring daily IT check items) ──
-        DateTime cSelDate = DateTime.TryParse(cdate, out var cd) ? cd.Date : DateTime.Today;
+        DateTime cSelDate = DateTime.TryParse(cdate, out var cd) ? cd.Date : IstTime.Today;
         string cDateStr = cSelDate.ToString("yyyy-MM-dd");
         var items = EnsureChecklistSeed();
         var log = _db.GetChecklistLogForDate(cDateStr);
@@ -101,7 +101,7 @@ public class TodosController : Controller
             ["task"]     = "Checking",
             ["priority"] = "High",
             ["active"]   = true,
-            ["createdAt"]= DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
+            ["createdAt"]= IstTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
         }).ToList();
         _db.SaveChecklistItems(seeded);
         return seeded;
@@ -124,7 +124,7 @@ public class TodosController : Controller
             ["task"]     = string.IsNullOrWhiteSpace(task) ? "Checking" : task.Trim(),
             ["priority"] = string.IsNullOrWhiteSpace(priority) ? "Medium" : priority,
             ["active"]   = true,
-            ["createdAt"]= DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
+            ["createdAt"]= IstTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
         });
         _db.SaveChecklistItems(items);
         TempData["Success"] = "Checklist item added.";
@@ -163,8 +163,8 @@ public class TodosController : Controller
         var current = _auth.GetCurrentUser(HttpContext);
         if (current == null) return RedirectToAction("Login", "Account");
 
-        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : DateTime.Today;
-        DateTime toD   = DateTime.TryParse(to, out var tt) ? tt.Date : DateTime.Today;
+        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : IstTime.Today;
+        DateTime toD   = DateTime.TryParse(to, out var tt) ? tt.Date : IstTime.Today;
         if (toD < fromD) (fromD, toD) = (toD, fromD);
         string fromS = fromD.ToString("yyyy-MM-dd"), toS = toD.ToString("yyyy-MM-dd");
 
@@ -198,7 +198,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 </style></head><body>
 <table style='margin-bottom:14px;border:1px solid #0891B2'>
   <tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — MORNING IT CHECKLIST REPORT</td></tr>
-  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {DateTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
+  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {IstTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
   <tr><td class='wki'><b>Period:</b> {fromD:dd-MMM-yyyy} to {toD:dd-MMM-yyyy} &nbsp;&nbsp; <b>Prepared By:</b> Sandeep Kumar Singh Kushwaha — IT System Administrator</td></tr>
 </table>
 <table>
@@ -276,7 +276,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
     {
         var current = _auth.GetCurrentUser(HttpContext);
         if (current == null) return RedirectToAction("Login", "Account");
-        string taskDate = DateTime.TryParse(date, out var d) ? d.Date.ToString("yyyy-MM-dd") : DateTime.Today.ToString("yyyy-MM-dd");
+        string taskDate = DateTime.TryParse(date, out var d) ? d.Date.ToString("yyyy-MM-dd") : IstTime.Today.ToString("yyyy-MM-dd");
 
         if (string.IsNullOrWhiteSpace(task))
         {
@@ -297,11 +297,11 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
             ["taskDate"]    = taskDate,
             ["startTime"]   = FormatTime(startTime),
             ["endTime"]     = FormatTime(endTime),
-            ["createdAt"]   = DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
+            ["createdAt"]   = IstTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
             ["completedAt"] = null,
         };
         _db.Execute("INSERT INTO todos (id,username,task_date,data,ts) VALUES (@id,@u,@d,@data,@ts)",
-            new { id, u = current.Username, d = taskDate, data = JsonConvert.SerializeObject(todo), ts = DateTime.Now.ToString("o") });
+            new { id, u = current.Username, d = taskDate, data = JsonConvert.SerializeObject(todo), ts = IstTime.Now.ToString("o") });
 
         TempData["Success"] = "Task added successfully!";
         return RedirectToAction("Index", new { date = taskDate });
@@ -321,7 +321,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
             return Json(new { ok = false, error = "You can only update your own tasks." });
 
         t["status"] = status;
-        t["completedAt"] = status == "Done" ? DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt") : null;
+        t["completedAt"] = status == "Done" ? IstTime.Now.ToString("dd-MMM-yyyy hh:mm tt") : null;
 
         // "In Progress" asks what step is being taken; "Done" asks the final step
         // and whether it was verified — both surface on the card and in the Excel export.
@@ -362,8 +362,8 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
         if (current == null) return RedirectToAction("Login", "Account");
         bool canApprove = current.CanApprove("Todos");
 
-        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : DateTime.Today;
-        DateTime toD   = DateTime.TryParse(to, out var tt) ? tt.Date : DateTime.Today;
+        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : IstTime.Today;
+        DateTime toD   = DateTime.TryParse(to, out var tt) ? tt.Date : IstTime.Today;
         if (toD < fromD) (fromD, toD) = (toD, fromD);
         string fromS = fromD.ToString("yyyy-MM-dd"), toS = toD.ToString("yyyy-MM-dd");
 
@@ -404,7 +404,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 </style></head><body>
 <table style='margin-bottom:14px;border:1px solid #4F46E5'>
   <tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — DAILY TO-DO / WORK REPORT</td></tr>
-  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {DateTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
+  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {IstTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
   <tr><td class='wki'><b>Period:</b> {fromD:dd-MMM-yyyy} to {toD:dd-MMM-yyyy} &nbsp;&nbsp; <b>Scope:</b> {scope} &nbsp;&nbsp; <b>Prepared By:</b> Sandeep Kumar Singh Kushwaha — IT System Administrator</td></tr>
 </table>
 <table>

@@ -41,7 +41,7 @@ public class VendorsController : Controller
         var vendor = new Dictionary<string,object?> { ["vendorId"] = id };
         foreach (var key in form.Keys) vendor[key] = form[key].ToString();
         _db.Execute("INSERT INTO vendors (vendor_id,name,data,ts) VALUES (@id,@name,@data,@ts)",
-            new { id, name=form["name"].ToString(), data=JsonConvert.SerializeObject(vendor), ts=DateTime.Now.ToString("o") });
+            new { id, name=form["name"].ToString(), data=JsonConvert.SerializeObject(vendor), ts=IstTime.Now.ToString("o") });
         TempData["Success"] = $"Vendor '{form["name"]}' added!";
         return RedirectToAction("Index");
     }
@@ -87,7 +87,7 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
 .hdr{{background:#0A192F;color:white;font-size:14px;font-weight:bold;padding:10px}}
 </style></head><body>
 <table style='margin-bottom:12px'><tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — VENDOR MASTER</td></tr>
-<tr><td style='padding:5px;font-size:10px'>Generated: {DateTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
+<tr><td style='padding:5px;font-size:10px'>Generated: {IstTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
 <table><thead><tr><th>#</th><th>Name</th><th>Category</th><th>GST</th><th>Contact Person</th><th>Phone</th><th>Email</th><th>Payment Terms</th><th>Address</th></tr></thead><tbody>");
         int sno = 0;
         foreach (var v in vendors)
@@ -96,6 +96,6 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
             sb.Append($"<tr><td style='text-align:center'>{sno}</td><td><b>{v.GetValueOrDefault("name")}</b></td><td>{v.GetValueOrDefault("category")}</td><td>{v.GetValueOrDefault("gst")}</td><td>{v.GetValueOrDefault("contactPerson")}</td><td>{v.GetValueOrDefault("phone")}</td><td>{v.GetValueOrDefault("email")}</td><td>{v.GetValueOrDefault("paymentTerms")}</td><td>{v.GetValueOrDefault("address")}</td></tr>");
         }
         sb.Append("</tbody></table></body></html>");
-        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Vendors_{DateTime.Now:yyyyMMdd}.xls");
+        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Vendors_{IstTime.Now:yyyyMMdd}.xls");
     }
 }

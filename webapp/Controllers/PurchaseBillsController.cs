@@ -68,7 +68,7 @@ public class PurchaseBillsController : Controller
                 ["vendorName"]  = "",
                 ["billNo"]      = Path.GetFileNameWithoutExtension(file.FileName),
                 ["fileName"]    = file.FileName,
-                ["billDate"]    = DateTime.Today.ToString("yyyy-MM-dd"),
+                ["billDate"]    = IstTime.Today.ToString("yyyy-MM-dd"),
                 ["amount"]      = 0.0,
                 ["gstAmount"]   = 0.0,
                 ["totalAmount"] = 0.0,
@@ -77,7 +77,7 @@ public class PurchaseBillsController : Controller
                 ["notes"]       = "",
                 ["status"]      = "Unmapped",
                 ["createdBy"]   = createdBy,
-                ["createdOn"]   = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+                ["createdOn"]   = IstTime.Now.ToString("yyyy-MM-dd HH:mm"),
             };
 
             using var ms = new MemoryStream();
@@ -87,7 +87,7 @@ public class PurchaseBillsController : Controller
             try
             {
                 _db.Execute("INSERT INTO bill_scans (id,bill_id,file_name,file_data,content_type,uploaded_at,uploaded_by) VALUES (@id,@bid,@fn,@fd,@ct,@at,@by)",
-                    new { id = scanId, bid = billId, fn = file.FileName, fd = base64, ct = file.ContentType, at = DateTime.Now.ToString("o"), by = createdBy });
+                    new { id = scanId, bid = billId, fn = file.FileName, fd = base64, ct = file.ContentType, at = IstTime.Now.ToString("o"), by = createdBy });
                 bills.Add(bill);
                 uploaded++;
             }
@@ -158,7 +158,7 @@ public class PurchaseBillsController : Controller
         bill["notes"]       = form["notes"].ToString();
         bill["status"]      = (!string.IsNullOrEmpty(poNumber) || !string.IsNullOrEmpty(budgetId)) ? "Mapped" : "Unmapped";
         bill["mappedBy"]    = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy";
-        bill["mappedOn"]    = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+        bill["mappedOn"]    = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
 
         SaveBills(bills);
 
@@ -210,7 +210,7 @@ public class PurchaseBillsController : Controller
             ["notes"]       = form["notes"].ToString(),
             ["status"]      = "Mapped",
             ["createdBy"]   = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy",
-            ["createdOn"]   = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+            ["createdOn"]   = IstTime.Now.ToString("yyyy-MM-dd HH:mm"),
         };
 
         var bills = GetBills();

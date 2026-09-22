@@ -21,7 +21,7 @@ public class BillsController : Controller
         {
             var st = b.GetValueOrDefault("status")?.ToString();
             if ((st == "Pending" || st == "Submitted") &&
-                DateTime.TryParse(b.GetValueOrDefault("dueDate")?.ToString(), out var dd) && dd.Date < DateTime.Today)
+                DateTime.TryParse(b.GetValueOrDefault("dueDate")?.ToString(), out var dd) && dd.Date < IstTime.Today)
             {
                 b["status"] = "Overdue";
                 changed = true;
@@ -129,7 +129,7 @@ public class BillsController : Controller
         if (bill == null) return NotFound();
 
         bill["status"]        = "Submitted";
-        bill["submittedDate"] = DateTime.Today.ToString("yyyy-MM-dd");
+        bill["submittedDate"] = IstTime.Today.ToString("yyyy-MM-dd");
         bill["submittedBy"]   = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy";
 
         _db.SaveBills(bills);
@@ -142,7 +142,7 @@ public class BillsController : Controller
     {
         if (_auth.GetCurrentUser(HttpContext)?.CanApprove("Bills") != true)
         {
-            TempData["Error"] = "You don't have permission to approve/pay bills.";
+            TempData["Error"] = "Aapke paas bills approve/pay karne ki permission nahi hai.";
             return RedirectToAction("Index");
         }
 
@@ -153,11 +153,11 @@ public class BillsController : Controller
         // auto-backfill submission if it was skipped
         if (string.IsNullOrEmpty(bill.GetValueOrDefault("submittedDate")?.ToString()))
         {
-            bill["submittedDate"] = DateTime.Today.ToString("yyyy-MM-dd");
+            bill["submittedDate"] = IstTime.Today.ToString("yyyy-MM-dd");
             bill["submittedBy"]   = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy";
         }
         bill["status"]     = "Paid";
-        bill["paidDate"]   = DateTime.Today.ToString("yyyy-MM-dd");
+        bill["paidDate"]   = IstTime.Today.ToString("yyyy-MM-dd");
         bill["paidBy"]     = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy";
         bill["paymentRef"] = form["paymentRef"].ToString();
         bill["invoiceNo"]  = form["invoiceNo"].ToString();
@@ -190,7 +190,7 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
 .green{{color:#059669;font-weight:bold}}.red{{color:#DC2626;font-weight:bold}}.amber{{color:#D97706;font-weight:bold}}.teal{{color:#0891B2;font-weight:bold}}
 </style></head><body>
 <table style='margin-bottom:12px'><tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — BILLS & UTILITIES REPORT</td></tr>
-<tr><td style='padding:5px;font-size:10px'>Generated: {DateTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
+<tr><td style='padding:5px;font-size:10px'>Generated: {IstTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
 <table><thead><tr><th>#</th><th>Name</th><th>Category</th><th>Vendor/Place</th><th>Due Date</th><th>Amount</th><th>Period</th><th>Status</th></tr></thead><tbody>");
 
         int sno = 0;
@@ -202,6 +202,6 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
             sb.Append($"<tr><td style='text-align:center'>{sno}</td><td><b>{b.GetValueOrDefault("name")}</b></td><td>{b.GetValueOrDefault("category")}</td><td>{b.GetValueOrDefault("vendor")}</td><td>{b.GetValueOrDefault("dueDate")}</td><td>₹{b.GetValueOrDefault("amount")}</td><td>{b.GetValueOrDefault("period")}</td><td class='{cls}'>{st}</td></tr>");
         }
         sb.Append("</tbody></table></body></html>");
-        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Bills_{DateTime.Now:yyyyMMdd}.xls");
+        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Bills_{IstTime.Now:yyyyMMdd}.xls");
     }
 }

@@ -49,7 +49,7 @@ public class HelpdeskController : Controller
     {
         var ticket = new Dictionary<string,object?>
         {
-            ["ticketId"]    = "TKT-" + DateTime.Now.ToString("yyyyMMddHHmmss"),
+            ["ticketId"]    = "TKT-" + IstTime.Now.ToString("yyyyMMddHHmmss"),
             ["title"]       = form["title"].ToString(),
             ["description"] = form["description"].ToString(),
             ["empName"]     = form["empName"].ToString(),
@@ -64,7 +64,7 @@ public class HelpdeskController : Controller
             ["category"]    = form["category"].ToString(),
             ["assignedTo"]  = form["assignedTo"].ToString(),
             ["status"]      = "Open",
-            ["dateRaised"]  = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+            ["dateRaised"]  = IstTime.Now.ToString("yyyy-MM-dd HH:mm"),
             ["raisedBy"]    = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy"
         };
         _db.SaveTicket(ticket);
@@ -166,7 +166,7 @@ public class HelpdeskController : Controller
       &nbsp;
       <span style='display:inline-block;background:{priBg};color:{priColor};font-size:11px;font-weight:700;padding:4px 10px;border-radius:3px;letter-spacing:.5px'>{S("priority").ToUpper()} PRIORITY</span>
     </td>
-    <td style='text-align:right;font-size:12px;color:#6B7280'>{DateTime.Now:dd MMM yyyy, hh:mm tt}</td>
+    <td style='text-align:right;font-size:12px;color:#6B7280'>{IstTime.Now:dd MMM yyyy, hh:mm tt}</td>
   </tr></table>
   <div style='font-size:19px;font-weight:700;color:#111827;margin:18px 0 14px 0'>{S("title")}</div>
 
@@ -296,19 +296,19 @@ public class HelpdeskController : Controller
         if (!string.IsNullOrEmpty(resolution)) ticket["resolution"] = resolution;
 
         if (status == "In Progress" && string.IsNullOrEmpty(ticket.GetValueOrDefault("dateAcknowledged")?.ToString()))
-            ticket["dateAcknowledged"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            ticket["dateAcknowledged"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
         if (status == "In Progress" && !string.IsNullOrWhiteSpace(ackComment))
             ticket["ackComment"] = ackComment.Trim();
 
         if (status == "Resolved" || status == "Closed")
         {
-            ticket["dateResolved"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            ticket["dateResolved"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
             if (DateTime.TryParse(ticket.GetValueOrDefault("dateRaised")?.ToString(), out var dr))
-                ticket["resolutionHrs"] = Math.Round((DateTime.Now - dr).TotalHours, 2);
+                ticket["resolutionHrs"] = Math.Round((IstTime.Now - dr).TotalHours, 2);
         }
         if (status == "Closed")
         {
-            ticket["dateClosed"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+            ticket["dateClosed"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
             if (!string.IsNullOrWhiteSpace(closeWorkDone)) ticket["closeWorkDone"] = closeWorkDone.Trim();
             if (!string.IsNullOrWhiteSpace(closeIssue)) ticket["closeIssue"] = closeIssue.Trim();
         }
@@ -390,7 +390,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 </style></head><body>
 <table style='margin-bottom:14px;border:1px solid #DC2626'>
   <tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — IT HELPDESK TICKET REPORT</td></tr>
-  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {DateTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
+  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {IstTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
   <tr><td class='wki'><b>Filter:</b> {E(scope)} &nbsp;&nbsp; <b>Total Tickets:</b> {total} &nbsp;&nbsp; <b>Prepared By:</b> Sandeep Kumar Singh Kushwaha — IT System Administrator</td></tr>
 </table>
 <table>
@@ -462,6 +462,6 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 </div></body></html>");
 
         var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
-        return File(bytes, "application/vnd.ms-excel", $"AMPM_Helpdesk_Report_{DateTime.Now:yyyyMMdd}.xls");
+        return File(bytes, "application/vnd.ms-excel", $"AMPM_Helpdesk_Report_{IstTime.Now:yyyyMMdd}.xls");
     }
 }

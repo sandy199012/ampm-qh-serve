@@ -49,8 +49,8 @@
     DateTime.TryParse(l.GetValueOrDefault("renewalDate")?.ToString(), out var rd);
     int.TryParse(l.GetValueOrDefault("alertDays")?.ToString(), out var ad);
     int window = ad > 0 ? ad : 30;
-    bool expired = rd < DateTime.Today;
-    bool soon = !expired && (rd - DateTime.Today).TotalDays <= window;
+    bool expired = rd < IstTime.Today;
+    bool soon = !expired && (rd - IstTime.Today).TotalDays <= window;
     string rowCls = expired ? "table-danger" : soon ? "table-warning" : "";
     <tr class="@rowCls">
         <td class="ps-3 fw-bold small">@l.GetValueOrDefault("name")</td>

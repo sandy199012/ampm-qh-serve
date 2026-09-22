@@ -2,7 +2,7 @@
 @{
     ViewData["Title"] = "IT Budget";
     var months = new[]{"Apr26","May26","Jun26","Jul26","Aug26","Sep26","Oct26","Nov26","Dec26","Jan27","Feb27","Mar27"};
-    var curMonth = DateTime.Now.ToString("MMMy").Replace("20","");
+    var curMonth = IstTime.Now.ToString("MMMy").Replace("20","");
     string[] sections = Model.Select(b => b.GetValueOrDefault("section")?.ToString() ?? "Other")
         .Distinct().OrderBy(s=>s).ToArray();
 }

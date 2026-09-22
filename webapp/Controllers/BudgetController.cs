@@ -112,7 +112,7 @@ td{{padding:4px;border:1px solid #CBD5E1;font-size:9px}}
 .green{{color:#059669;font-weight:bold}}.red{{color:#DC2626;font-weight:bold}}
 </style></head><body>
 <table><tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — IT BUDGET 2026-27</td></tr>
-<tr><td style='padding:5px;font-size:10px'>Generated: {DateTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>");
+<tr><td style='padding:5px;font-size:10px'>Generated: {IstTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>");
 
         foreach (var section in sections)
         {
@@ -145,7 +145,7 @@ td{{padding:4px;border:1px solid #CBD5E1;font-size:9px}}
         }
 
         sb.Append("</body></html>");
-        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Budget_{DateTime.Now:yyyyMMdd}.xls");
+        return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Budget_{IstTime.Now:yyyyMMdd}.xls");
     }
 
     void SaveBudget(List<Dictionary<string,object?>> budget) => _db.SaveBudget(budget);

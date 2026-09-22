@@ -57,8 +57,8 @@ public class PurchaseOrdersController : Controller
     {
         // Generate PO Number — based on the highest existing sequence for this FY, not the row count,
         // so a gap (a deleted/missing number in the middle) never collides with an existing higher number.
-        var year = DateTime.Now.Year;
-        var fy = DateTime.Now.Month >= 4 ? $"{year}-{(year+1).ToString()[2..]}" : $"{year-1}-{year.ToString()[2..]}";
+        var year = IstTime.Now.Year;
+        var fy = IstTime.Now.Month >= 4 ? $"{year}-{(year+1).ToString()[2..]}" : $"{year-1}-{year.ToString()[2..]}";
         var fyPrefix = $"AMPM/IT/PO/{fy}/";
         var existingPOs = _db.GetPOs();
         var maxSeq = existingPOs
@@ -128,12 +128,12 @@ public class PurchaseOrdersController : Controller
             ["budgetId"]     = budgetId,
             ["budgetDesc"]   = budgetItem?.GetValueOrDefault("description")?.ToString() ?? "",
             ["createdBy"]    = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy",
-            ["createdOn"]    = DateTime.Now.ToString("yyyy-MM-dd HH:mm"),
+            ["createdOn"]    = IstTime.Now.ToString("yyyy-MM-dd HH:mm"),
         };
 
         string json = JsonConvert.SerializeObject(po);
         _db.Execute("INSERT INTO po_list (po_number,data,vendor,total,status,ts) VALUES (@pn,@data,@vendor,@total,@status,@ts)",
-            new { pn=poNumber, data=json, vendor=form["vendorName"].ToString(), total=grandTotal, status="Draft", ts=DateTime.Now.ToString("o") });
+            new { pn=poNumber, data=json, vendor=form["vendorName"].ToString(), total=grandTotal, status="Draft", ts=IstTime.Now.ToString("o") });
 
         TempData["Success"] = $"PO created: {poNumber}";
         return RedirectToAction("Details", new { id = poNumber });
@@ -357,7 +357,7 @@ table.items tbody td{font-size:12px;padding:9px 6px;border-bottom:1px solid #F1F
         string scanId = Guid.NewGuid().ToString("N")[..8];
         try {
             _db.Execute("INSERT INTO po_scans (id,po_number,file_name,file_data,content_type,uploaded_at,uploaded_by) VALUES (@id,@pn,@fn,@fd,@ct,@at,@by)",
-                new { id=scanId, pn=poNumber, fn=scan.FileName, fd=base64, ct=scan.ContentType, at=DateTime.Now.ToString("o"), by=HttpContext.Request.Cookies["ampm_name"] ?? "Sandy" });
+                new { id=scanId, pn=poNumber, fn=scan.FileName, fd=base64, ct=scan.ContentType, at=IstTime.Now.ToString("o"), by=HttpContext.Request.Cookies["ampm_name"] ?? "Sandy" });
         } catch { }
         return Json(new { ok=true, scanId, fileName=scan.FileName });
     }
