@@ -12,7 +12,7 @@
 <div class="col-lg-8">
 <div class="card border-0 shadow-sm">
 <div class="card-body p-4">
-<form method="post">
+<form method="post" id="ticketForm">
 
     <!-- Employee Info -->
     <div class="p-3 mb-4 rounded" style="background:#F8FAFC;border-left:4px solid #2563EB">
@@ -82,10 +82,10 @@
                 </select>
             </div>
             <div class="col-md-6">
-                <label class="form-label fw-semibold small">Issue Type *</label>
-                <select name="issueType" id="issueTypeSelect" class="form-select" required>
-                    <option value="">Select Category first</option>
-                </select>
+                <label class="form-label fw-semibold small">Issue Type * <span class="text-muted fw-normal">(select one or more)</span></label>
+                <div id="issueTypeBox" class="border rounded p-2" style="max-height:170px;overflow-y:auto;background:#fff">
+                    <div class="small text-muted">Select Category first</div>
+                </div>
             </div>
             <div class="col-md-6">
                 <label class="form-label fw-semibold small">Priority *</label>
@@ -166,17 +166,27 @@ const categoryIssueMap = {
     "IT Request / General": ["New requirement", "IT consultation", "Configuration request", "Information request", "IT policy/SOP", "Other"]
 };
 
-function fillIssueTypes(preselect) {
+// Issue Type is a checkbox list (not a single dropdown) so an employee/IT
+// staff can tick more than one issue type for the same ticket (e.g. a
+// laptop that's both "Slow performance" and "Overheating"). All checked
+// boxes share name="issueType", so on submit ASP.NET Core's model binding
+// joins them into one comma-separated string automatically — no controller
+// change needed, same as when only one was ever selected.
+function fillIssueTypes() {
     const cat = document.getElementById('categorySelect').value;
-    const sel = document.getElementById('issueTypeSelect');
+    const box = document.getElementById('issueTypeBox');
     const items = categoryIssueMap[cat] || [];
     if (!cat) {
-        sel.innerHTML = '<option value="">Select Category first</option>';
+        box.innerHTML = '<div class="small text-muted">Select Category first</div>';
         return;
     }
-    let html = '<option value="">Select Type</option>';
-    items.forEach(i => { html += '<option' + (i === preselect ? ' selected' : '') + '>' + i + '</option>'; });
-    sel.innerHTML = html;
+    let html = '';
+    items.forEach((i, idx) => {
+        const id = 'it_' + idx;
+        html += '<div class="form-check"><input class="form-check-input" type="checkbox" name="issueType" value="' + i + '" id="' + id + '">'
+              + '<label class="form-check-label small" for="' + id + '">' + i + '</label></div>';
+    });
+    box.innerHTML = html;
 }
 
 function fillEmployee() {
@@ -192,5 +202,12 @@ function fillEmployee() {
     document.getElementById('empEmail').value = e.email || '';
     document.getElementById('empMobile').value = e.mobile || '';
 }
+
+document.getElementById('ticketForm').addEventListener('submit', function(e) {
+    if (document.querySelectorAll('input[name="issueType"]:checked').length === 0) {
+        e.preventDefault();
+        alert('Please select at least one Issue Type.');
+    }
+});
 </script>
 }
