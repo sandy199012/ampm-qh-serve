@@ -32,8 +32,20 @@ app.Services.GetRequiredService<DbService>().Init();
 
 app.UseStaticFiles();
 app.UseRouting();
+// The "default" route below maps a bare "/{Controller}" URL (action omitted)
+// to that controller's *Login* action, because the route's action default is
+// "Login" — that's only correct for "/" itself (root -> Account/Login). Any
+// other bare-controller link, like the "Back"/"Cancel" buttons on the
+// Helpdesk pages that just do href="/Helpdesk", was 404ing because most
+// controllers have no Login() action. These two routes run first and fix
+// that: an explicit literal match for "/Account" preserves the original
+// root-login behavior, and a generic single-segment "{controller}" route
+// sends every other bare "/{Controller}" URL to that controller's Index()
+// instead, which is what every such link actually means.
+app.MapControllerRoute("accountBare", "Account", new { controller = "Account", action = "Login" });
+app.MapControllerRoute("controllerBare", "{controller}", new { action = "Index" });
 app.MapControllerRoute("default", "{controller=Account}/{action=Login}/{id?}");
 // Allow encoded slashes in route values
-app.MapControllerRoute("podetails", "PurchaseOrders/Details/{*id}", 
+app.MapControllerRoute("podetails", "PurchaseOrders/Details/{*id}",
     new { controller="PurchaseOrders", action="Details" });
 app.Run();
