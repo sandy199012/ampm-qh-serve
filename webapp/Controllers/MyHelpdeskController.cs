@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using AMPMWeb.Data;
 using AMPMWeb.Services;
+using Newtonsoft.Json;
 
 namespace AMPMWeb.Controllers;
 
@@ -74,6 +75,46 @@ public class MyHelpdeskController : Controller
         };
         _db.SaveTicket(ticket);
         TempData["Success"] = "Ticket raised: " + ticket["ticketId"];
+        return RedirectToAction("Index");
+    }
+
+    // Employee-submitted feedback once IT marks a ticket Resolved (or Closed)
+    // — a simple "did this actually fix it?" confirmation plus a free-text
+    // comment. Shows up on the same ticket for IT (Helpdesk/Details) and in
+    // the Excel report, so Sandy can see whether a "Resolved" ticket was
+    // actually resolved from the employee's point of view.
+    [HttpPost]
+    public IActionResult SubmitFeedback(string id, string feedbackStatus, string? feedbackComment)
+    {
+        var user = _auth.GetCurrentUser(HttpContext);
+        if (user == null) return RedirectToAction("Login", "Account");
+        var empId = user.EmpId ?? "";
+
+        var raw = _db.QueryFirst<string>("SELECT data FROM tickets WHERE ticket_id=@id", new { id });
+        if (raw == null) return NotFound();
+        var ticket = JsonConvert.DeserializeObject<Dictionary<string, object?>>(raw) ?? new();
+
+        // Only the employee who raised this ticket can leave feedback on it.
+        if ((ticket.GetValueOrDefault("empId")?.ToString() ?? "") != empId)
+            return RedirectToAction("AccessDenied", "Home");
+
+        var status = ticket.GetValueOrDefault("status")?.ToString() ?? "";
+        if (status != "Resolved" && status != "Closed")
+        {
+            TempData["Error"] = "Feedback can only be given once the ticket is marked Resolved.";
+            return RedirectToAction("Index");
+        }
+        if (feedbackStatus != "Resolved" && feedbackStatus != "Not Resolved")
+        {
+            TempData["Error"] = "Please choose whether the issue was resolved or not.";
+            return RedirectToAction("Index");
+        }
+
+        ticket["empFeedbackStatus"] = feedbackStatus;
+        ticket["empFeedback"] = (feedbackComment ?? "").Trim();
+        ticket["empFeedbackDate"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
+        _db.SaveTicket(ticket);
+        TempData["Success"] = "Thanks — your feedback has been recorded.";
         return RedirectToAction("Index");
     }
 }

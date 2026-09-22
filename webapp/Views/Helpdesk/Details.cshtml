@@ -46,9 +46,23 @@
             </div>
         </div>
         @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("resolution")?.ToString())){
-        <div class="card border-0 shadow-sm border-success">
+        <div class="card border-0 shadow-sm border-success mb-3">
             <div class="card-header fw-bold bg-success text-white">Resolution</div>
             <div class="card-body">@Model.GetValueOrDefault("resolution")</div>
+        </div>}
+        @{ var fbStatus = Model.GetValueOrDefault("empFeedbackStatus")?.ToString(); }
+        @if(!string.IsNullOrEmpty(fbStatus)){
+        var fbOk = fbStatus == "Resolved";
+        <div class="card border-0 shadow-sm @(fbOk ? "border-success" : "border-danger")">
+            <div class="card-header fw-bold @(fbOk ? "bg-success" : "bg-danger") text-white">
+                <i class="bi bi-chat-square-heart"></i> Employee Feedback — @fbStatus
+            </div>
+            <div class="card-body">
+                @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("empFeedback")?.ToString())){
+                    <p class="mb-1">@Model.GetValueOrDefault("empFeedback")</p>
+                }
+                <small class="text-muted">Submitted @Model.GetValueOrDefault("empFeedbackDate")</small>
+            </div>
         </div>}
     </div>
     <div class="col-md-4">

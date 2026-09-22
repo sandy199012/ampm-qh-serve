@@ -193,6 +193,37 @@ public class ApiController : Controller
         return Json(new { ok = true });
     }
 
+    // Employee-submitted feedback on a Resolved/Closed ticket — mirrors the
+    // web "My Helpdesk" feedback form so a future mobile-app screen can wire
+    // straight into the same field IT already sees on Helpdesk/Details and
+    // in the Excel report (empFeedbackStatus/empFeedback/empFeedbackDate).
+    [HttpPost("tickets/{id}/feedback")]
+    public async Task<IActionResult> SubmitFeedback(string id)
+    {
+        var user = AuthenticateRequest();
+        if (user == null) return Unauthorized();
+        var raw = _db.QueryFirst<string>("SELECT data FROM tickets WHERE ticket_id=@id", new { id });
+        if (raw == null) return NotFound();
+        var ticket = JsonConvert.DeserializeObject<Dictionary<string, object?>>(raw) ?? new();
+        if (!user.IsAdmin && ticket.GetValueOrDefault("empId")?.ToString() != (user.EmpId ?? ""))
+            return Unauthorized();
+
+        var status = ticket.GetValueOrDefault("status")?.ToString() ?? "";
+        if (status != "Resolved" && status != "Closed")
+            return Json(new { ok = false, error = "Feedback can only be given once the ticket is Resolved." });
+
+        var data = await ReadBody(Request);
+        var fbStatus = data.GetValueOrDefault("feedbackStatus")?.ToString() ?? "";
+        if (fbStatus != "Resolved" && fbStatus != "Not Resolved")
+            return Json(new { ok = false, error = "feedbackStatus must be 'Resolved' or 'Not Resolved'." });
+
+        ticket["empFeedbackStatus"] = fbStatus;
+        ticket["empFeedback"] = data.GetValueOrDefault("feedbackComment")?.ToString() ?? "";
+        ticket["empFeedbackDate"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
+        _db.SaveTicket(ticket);
+        return Json(new { ok = true });
+    }
+
     [HttpDelete("tickets/{id}")]
     public IActionResult DeleteTicket(string id)
     {

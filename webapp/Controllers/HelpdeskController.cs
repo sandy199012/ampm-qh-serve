@@ -428,6 +428,8 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
   <th style='width:150px'>Work Done (Close)</th>
   <th style='width:150px'>Issue (Close)</th>
   <th style='width:60px'>Res. Hrs</th>
+  <th style='width:80px'>Emp. Feedback</th>
+  <th style='width:150px'>Feedback Comment</th>
 </tr></thead><tbody>");
 
         int sno = 0;
@@ -439,6 +441,8 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
             string rowCls = st switch { "Open" => "open", "In Progress" => "inprog", "Resolved" => "resolved", "Closed" => "closedRow", _ => "" };
             string prioCls = pr switch { "Critical" => "critical", "High" => "high", "Medium" => "medium", "Low" => "low", _ => "" };
             string statusStyle = st switch { "Open" => "color:#DC2626;font-weight:bold", "In Progress" => "color:#2563EB;font-weight:bold", "Resolved" => "color:#059669;font-weight:bold", _ => "color:#4B5563;font-weight:bold" };
+            var empFb = t.GetValueOrDefault("empFeedbackStatus")?.ToString() ?? "";
+            string fbStyle = empFb == "Resolved" ? "color:#059669;font-weight:bold" : empFb == "Not Resolved" ? "color:#DC2626;font-weight:bold" : "";
             sb.Append($@"<tr class='{rowCls}'>
   <td style='text-align:center'>{sno}</td>
   <td style='text-align:center;font-weight:bold;color:#0A192F'>{E(t.GetValueOrDefault("ticketId")?.ToString())}</td>
@@ -457,6 +461,8 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
   <td>{E(t.GetValueOrDefault("closeWorkDone")?.ToString())}</td>
   <td>{E(t.GetValueOrDefault("closeIssue")?.ToString())}</td>
   <td style='text-align:center'>{E(t.GetValueOrDefault("resolutionHrs")?.ToString())}</td>
+  <td style='{fbStyle};text-align:center'>{E(empFb)}</td>
+  <td>{E(t.GetValueOrDefault("empFeedback")?.ToString())}</td>
 </tr>");
         }
         sb.Append($@"</tbody></table>

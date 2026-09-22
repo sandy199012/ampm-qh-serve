@@ -97,6 +97,11 @@
                         {
                             <div class="small text-warning mt-1" style="white-space:nowrap"><i class="bi bi-hourglass-split"></i> ETA: @myEta</div>
                         }
+                        @{ var myFb = t.GetValueOrDefault("empFeedbackStatus")?.ToString(); }
+                        @if ((status == "Resolved" || status == "Closed") && string.IsNullOrEmpty(myFb))
+                        {
+                            <div class="small text-danger mt-1" style="white-space:nowrap"><i class="bi bi-exclamation-circle"></i> Feedback pending</div>
+                        }
                     </td>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="showTicket('@tid')">
@@ -215,8 +220,35 @@ function showTicket(id) {
     html += '<div class="mb-2"><div class="small fw-bold text-muted">DESCRIPTION</div><div class="p-2 bg-light rounded small">' + (esc(t.description) || '—') + '</div></div>';
     if (t.resolution) html += '<div class="mb-2"><div class="small fw-bold text-success">RESOLUTION</div><div class="p-2 bg-success-subtle rounded small">' + esc(t.resolution) + '</div></div>';
     if (t.ackComment) html += '<div class="mb-2"><div class="small fw-bold text-primary">IT NOTE (ACKNOWLEDGED)</div><div class="p-2 bg-primary-subtle rounded small">' + esc(t.ackComment) + '</div></div>';
+    html += feedbackSectionHtml(t);
     document.getElementById('vtBody').innerHTML = html;
     new bootstrap.Modal(document.getElementById('viewTicketModal')).show();
+}
+
+// Once a ticket is Resolved/Closed, let the employee confirm whether it
+// actually fixed their issue (plus an optional comment). Re-showing the
+// same form pre-filled with whatever was submitted last also lets them
+// update their feedback if IT re-opens/re-resolves the ticket later.
+function feedbackSectionHtml(t) {
+    if (t.status !== 'Resolved' && t.status !== 'Closed') return '';
+    const cur = t.empFeedbackStatus || '';
+    const curComment = t.empFeedback || '';
+    let html = '<div class="card border-0 shadow-sm mt-3">';
+    html += '<div class="card-header fw-bold" style="background:#FEF3C7;color:#92400E"><i class="bi bi-chat-square-heart"></i> Your Feedback</div>';
+    html += '<div class="card-body">';
+    if (t.empFeedbackDate) {
+        html += '<div class="small text-muted mb-2">Last submitted: ' + esc(t.empFeedbackDate) + '</div>';
+    }
+    html += '<form method="post" action="/MyHelpdesk/SubmitFeedback">';
+    html += '<input type="hidden" name="id" value="' + esc(t.ticketId) + '"/>';
+    html += '<div class="mb-2">';
+    html += '<div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="feedbackStatus" id="fbYes" value="Resolved" required' + (cur === 'Resolved' ? ' checked' : '') + '><label class="form-check-label" for="fbYes">✅ Issue Resolved</label></div>';
+    html += '<div class="form-check form-check-inline"><input class="form-check-input" type="radio" name="feedbackStatus" id="fbNo" value="Not Resolved"' + (cur === 'Not Resolved' ? ' checked' : '') + '><label class="form-check-label" for="fbNo">❌ Not Resolved</label></div>';
+    html += '</div>';
+    html += '<textarea name="feedbackComment" class="form-control form-control-sm mb-2" rows="2" placeholder="Anything else you want IT to know...">' + esc(curComment) + '</textarea>';
+    html += '<button type="submit" class="btn btn-warning btn-sm"><i class="bi bi-send"></i> Submit Feedback</button>';
+    html += '</form></div></div>';
+    return html;
 }
 </script>
 }

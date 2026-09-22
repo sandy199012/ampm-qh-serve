@@ -128,6 +128,18 @@
                         {
                             <div class="small text-warning mt-1" style="white-space:nowrap"><i class="bi bi-hourglass-split"></i> @eta</div>
                         }
+                        @{ var fb = t.GetValueOrDefault("empFeedbackStatus")?.ToString(); }
+                        @if (!string.IsNullOrEmpty(fb))
+                        {
+                            if (fb == "Resolved")
+                            {
+                                <div class="small text-success mt-1" style="white-space:nowrap"><i class="bi bi-emoji-smile"></i> Feedback: OK</div>
+                            }
+                            else
+                            {
+                                <div class="small text-danger mt-1" style="white-space:nowrap"><i class="bi bi-emoji-frown"></i> Feedback: Issue</div>
+                            }
+                        }
                     </td>
                     <td>
                         <div class="dropdown">
