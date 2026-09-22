@@ -16,6 +16,18 @@
     var pending_  = Model.Where(t => (t.GetValueOrDefault("status")?.ToString() ?? "Pending") == "Pending").ToList();
     var inprog_   = Model.Where(t => t.GetValueOrDefault("status")?.ToString() == "In Progress").ToList();
     var done_     = Model.Where(t => t.GetValueOrDefault("status")?.ToString() == "Done").ToList();
+
+    // ── Morning Checklist tab data ──
+    var checklistItems = (List<Dictionary<string,object?>>)ViewBag.ChecklistItems;
+    var checklistLog   = (Dictionary<string, Dictionary<string,object?>>)ViewBag.ChecklistLog;
+    string cDateStr    = ViewBag.CDateStr;
+    DateTime cSelDate  = ViewBag.CSelDate;
+    bool cIsToday      = cSelDate.Date == DateTime.Today;
+    int cTotal = ViewBag.CTotal, cChecked = ViewBag.CChecked, cIssue = ViewBag.CIssue, cPending = ViewBag.CPending;
+    int cPct = cTotal > 0 ? (int)Math.Round(cChecked * 100.0 / cTotal) : 0;
+    var activeItems = checklistItems.Where(i => (i.GetValueOrDefault("active")?.ToString() ?? "True") != "False").ToList();
+    var byLocation = activeItems.GroupBy(i => i.GetValueOrDefault("location")?.ToString() ?? "Other").OrderBy(g => g.Key).ToList();
+    var knownLocations = activeItems.Select(i => i.GetValueOrDefault("location")?.ToString() ?? "").Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().OrderBy(s => s).ToList();
 }
 
 <style>
@@ -28,7 +40,31 @@
     .kanban-col{background:#F8FAFC;border-radius:10px;padding:10px;min-height:200px}
     .stat-tile{border-radius:12px;padding:14px;color:#fff;text-align:center}
     .todo-actions button{border:0;background:none;font-size:15px;padding:2px 6px}
+    .cl-loc-head{background:#ECFEFF;color:#155E75;font-weight:bold;padding:8px 12px;border-radius:8px 8px 0 0;font-size:13px}
+    .cl-item-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #F1F5F9;flex-wrap:wrap}
+    .cl-item-row:last-child{border-bottom:0}
+    .cl-status-btn{border:0;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:bold;cursor:pointer}
+    .cl-badge-checked{background:#DCFCE7;color:#166534}
+    .cl-badge-pending{background:#FEF3C7;color:#92400E}
+    .cl-badge-issue{background:#FEE2E2;color:#991B1B}
+    .nav-tabs .nav-link.active{font-weight:bold}
 </style>
+
+<ul class="nav nav-tabs mb-3" id="todosTabBar" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab-todo-btn" data-bs-toggle="tab" data-bs-target="#tab-todo-pane" type="button" role="tab">
+            <i class="bi bi-check2-square"></i> Daily To-Do
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab-checklist-btn" data-bs-toggle="tab" data-bs-target="#tab-checklist-pane" type="button" role="tab">
+            <i class="bi bi-clipboard2-check"></i> Morning Checklist
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content">
+<div class="tab-pane fade show active" id="tab-todo-pane" role="tabpanel">
 
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <div>
@@ -120,7 +156,166 @@
     </div>
 </div>
 
-<!-- Export Modal -->
+</div><!-- /tab-todo-pane -->
+
+<div class="tab-pane fade" id="tab-checklist-pane" role="tabpanel">
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h5 class="fw-bold mb-0"><i class="bi bi-clipboard2-check text-info"></i> Morning Checklist</h5>
+        <small class="text-muted">@cSelDate.ToString("dddd, dd-MMM-yyyy") — tick off every location's routine IT checks (Internet, Emails, ERP, CCTV, UPS, etc.)</small>
+    </div>
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <form method="get" class="d-flex gap-2 align-items-center">
+            <input type="hidden" name="date" value="@dateStr"/>
+            <a href="?date=@dateStr&cdate=@cSelDate.AddDays(-1).ToString("yyyy-MM-dd")" class="btn btn-outline-secondary btn-sm" onclick="rememberChecklistTab()"><i class="bi bi-chevron-left"></i></a>
+            <input type="date" name="cdate" value="@cDateStr" class="form-control form-control-sm" style="width:150px" onchange="rememberChecklistTab();this.form.submit()"/>
+            <a href="?date=@dateStr&cdate=@cSelDate.AddDays(1).ToString("yyyy-MM-dd")" class="btn btn-outline-secondary btn-sm" onclick="rememberChecklistTab()"><i class="bi bi-chevron-right"></i></a>
+            @if (!cIsToday) { <a href="?date=@dateStr&cdate=@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-outline-primary btn-sm" onclick="rememberChecklistTab()">Today</a> }
+        </form>
+        <button type="button" class="btn btn-sm text-white px-3" style="background:linear-gradient(135deg,#0891B2,#155E75)" data-bs-toggle="modal" data-bs-target="#addChecklistItemModal"><i class="bi bi-plus-circle"></i> Add Check Item</button>
+        <button type="button" class="btn btn-sm text-white px-3" style="background:linear-gradient(135deg,#059669,#10B981)" data-bs-toggle="modal" data-bs-target="#checklistExportModal"><i class="bi bi-file-earmark-excel"></i> Excel Report</button>
+    </div>
+</div>
+
+<!-- Checklist Stats -->
+<div class="row g-2 mb-3">
+    <div class="col"><div class="stat-tile" style="background:linear-gradient(135deg,#334155,#1E293B)"><div class="fw-bold fs-4">@cTotal</div><div class="small">Total Items</div></div></div>
+    <div class="col"><div class="stat-tile" style="background:linear-gradient(135deg,#10B981,#059669)"><div class="fw-bold fs-4">@cChecked</div><div class="small">Checked</div></div></div>
+    <div class="col"><div class="stat-tile" style="background:linear-gradient(135deg,#F59E0B,#D97706)"><div class="fw-bold fs-4">@cPending</div><div class="small">Pending</div></div></div>
+    <div class="col"><div class="stat-tile" style="background:linear-gradient(135deg,#DC2626,#991B1B)"><div class="fw-bold fs-4">@cIssue</div><div class="small">Issue Found</div></div></div>
+    <div class="col"><div class="stat-tile" style="background:linear-gradient(135deg,#0891B2,#155E75)"><div class="fw-bold fs-4">@cPct%</div><div class="small">Checked Rate</div></div></div>
+</div>
+
+@if (!activeItems.Any())
+{
+    <div class="text-center text-muted py-5"><i class="bi bi-clipboard2-x fs-1 d-block mb-2"></i> No checklist items yet — click "Add Check Item" to start.</div>
+}
+@foreach (var grp in byLocation)
+{
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="cl-loc-head"><i class="bi bi-geo-alt"></i> @grp.Key</div>
+        <div>
+            @foreach (var item in grp.OrderBy(i => i.GetValueOrDefault("category")?.ToString()))
+            {
+                var itemId = item.GetValueOrDefault("id")?.ToString() ?? "";
+                var priority = item.GetValueOrDefault("priority")?.ToString() ?? "Medium";
+                var pBadge = priority == "High" ? "danger" : priority == "Medium" ? "warning" : "success";
+                checklistLog.TryGetValue(itemId, out var logEntry);
+                var status = logEntry?.GetValueOrDefault("status")?.ToString() ?? "Pending";
+                var note = logEntry?.GetValueOrDefault("note")?.ToString() ?? "";
+                var updatedBy = logEntry?.GetValueOrDefault("updatedBy")?.ToString() ?? "";
+                var badgeCls = status == "Checked" ? "cl-badge-checked" : status == "Issue Found" ? "cl-badge-issue" : "cl-badge-pending";
+                <div class="cl-item-row" id="cl-row-@itemId">
+                    <div style="min-width:180px;flex:1">
+                        <strong class="small">@item.GetValueOrDefault("category")</strong>
+                        <span class="text-muted small">— @item.GetValueOrDefault("task")</span>
+                    </div>
+                    <span class="badge bg-@pBadge" style="font-size:10px">@priority</span>
+                    <span class="badge @badgeCls" id="cl-badge-@itemId" style="font-size:11px">@status</span>
+                    @if (!string.IsNullOrWhiteSpace(note))
+                    {
+                        <span class="small text-danger" id="cl-note-@itemId" title="@updatedBy"><i class="bi bi-chat-left-text"></i> @note</span>
+                    }
+                    else
+                    {
+                        <span class="small text-muted" id="cl-note-@itemId"></span>
+                    }
+                    <div class="ms-auto d-flex gap-1">
+                        <button type="button" class="cl-status-btn cl-badge-checked" onclick="setChecklistStatus('@itemId','Checked')"><i class="bi bi-check-lg"></i> Checked</button>
+                        <button type="button" class="cl-status-btn cl-badge-pending" onclick="setChecklistStatus('@itemId','Pending')"><i class="bi bi-hourglass-split"></i> Pending</button>
+                        <button type="button" class="cl-status-btn cl-badge-issue" onclick="setChecklistStatus('@itemId','Issue Found')"><i class="bi bi-exclamation-triangle"></i> Issue</button>
+                        @if (canApprove)
+                        {
+                            <button type="button" class="cl-status-btn" style="background:#F1F5F9;color:#64748B" onclick="deleteChecklistItem('@itemId')" title="Remove this recurring item"><i class="bi bi-trash"></i></button>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+<!-- Add Checklist Item Modal -->
+<div class="modal fade" id="addChecklistItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="/Todos/ChecklistAddItem">
+                <input type="hidden" name="cdate" value="@cDateStr"/>
+                <div class="modal-header text-white" style="background:linear-gradient(135deg,#0891B2,#155E75)">
+                    <h6 class="modal-title"><i class="bi bi-clipboard2-plus"></i> Add Recurring Check Item</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-12">
+                            <label class="small fw-semibold">Location *</label>
+                            <input type="text" name="location" class="form-control form-control-sm" list="locList" placeholder="e.g. AMPM HO, Emporio, Kila, Khan" required/>
+                            <datalist id="locList">
+                                @foreach (var loc in knownLocations) { <option value="@loc"></option> }
+                            </datalist>
+                        </div>
+                        <div class="col-12">
+                            <label class="small fw-semibold">Category *</label>
+                            <input type="text" name="category" class="form-control form-control-sm" placeholder="e.g. Internet, CCTV, UPS, ERP-Wondersoft" required/>
+                        </div>
+                        <div class="col-12">
+                            <label class="small fw-semibold">Task</label>
+                            <input type="text" name="task" class="form-control form-control-sm" value="Checking" placeholder="What to check"/>
+                        </div>
+                        <div class="col-12">
+                            <label class="small fw-semibold">Priority</label>
+                            <select name="priority" class="form-select form-select-sm">
+                                <option value="High" selected>High</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Low">Low</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-sm text-white" style="background:#0891B2"><i class="bi bi-plus-circle"></i> Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Checklist Export Modal -->
+<div class="modal fade" id="checklistExportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="get" action="/Todos/ChecklistExport">
+                <div class="modal-header text-white" style="background:linear-gradient(135deg,#059669,#10B981)">
+                    <h6 class="modal-title"><i class="bi bi-file-earmark-excel"></i> Morning Checklist — Excel Report</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="small fw-semibold">From</label>
+                            <input type="date" name="from" class="form-control form-control-sm" value="@DateTime.Today.ToString("yyyy-MM-01")"/>
+                        </div>
+                        <div class="col-6">
+                            <label class="small fw-semibold">To</label>
+                            <input type="date" name="to" class="form-control form-control-sm" value="@cDateStr"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn btn-success btn-sm"><i class="bi bi-download"></i> Download</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+</div><!-- /tab-checklist-pane -->
+</div><!-- /tab-content -->
+
+<!-- Export Modal (Daily To-Do) -->
 <div class="modal fade" id="exportModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -193,5 +388,53 @@ function deleteTodo(id) {
         body: 'id=' + encodeURIComponent(id)
     }).then(r => r.json()).then(d => { if (d.ok) location.reload(); else alert(d.error || 'Failed to delete.'); });
 }
+
+// ───────────── Morning Checklist tab ─────────────
+const checklistDate = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(cDateStr));
+
+function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function setChecklistStatus(itemId, status) {
+    let note = '';
+    if (status === 'Issue Found') {
+        const n = prompt('What issue did you find?');
+        if (n === null) return; // cancelled
+        note = n.trim();
+    }
+    fetch('/Todos/ChecklistSetStatus', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: 'itemId=' + encodeURIComponent(itemId) + '&date=' + encodeURIComponent(checklistDate) + '&status=' + encodeURIComponent(status) + '&note=' + encodeURIComponent(note)
+    }).then(r => r.json()).then(d => {
+        if (!d.ok) { alert(d.error || 'Failed to update.'); return; }
+        rememberChecklistTab();
+        location.reload();
+    });
+}
+
+function deleteChecklistItem(id) {
+    if (!confirm('Remove this recurring check item? (Past history stays in Excel reports.)')) return;
+    fetch('/Todos/ChecklistDeleteItem', {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: 'id=' + encodeURIComponent(id)
+    }).then(r => r.json()).then(d => {
+        if (!d.ok) { alert(d.error || 'Failed to remove.'); return; }
+        rememberChecklistTab();
+        location.reload();
+    });
+}
+
+// Keep the Morning Checklist tab active across a reload/navigation triggered
+// from inside it (status updates, date changes, add/delete), so the page
+// doesn't snap back to the Daily To-Do tab after every action.
+function rememberChecklistTab() { sessionStorage.setItem('todosActiveTab', 'checklist'); }
+document.addEventListener('DOMContentLoaded', function () {
+    if (sessionStorage.getItem('todosActiveTab') === 'checklist') {
+        sessionStorage.removeItem('todosActiveTab');
+        const btn = document.getElementById('tab-checklist-btn');
+        if (btn && window.bootstrap) { new bootstrap.Tab(btn).show(); }
+    }
+});
 </script>
 }

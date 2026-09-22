@@ -24,7 +24,7 @@ public class TodosController : Controller
     }
 
     [HttpGet]
-    public IActionResult Index(string? date, string? user)
+    public IActionResult Index(string? date, string? user, string? cdate)
     {
         var current = _auth.GetCurrentUser(HttpContext);
         if (current == null) return RedirectToAction("Login", "Account");
@@ -49,7 +49,221 @@ public class TodosController : Controller
         ViewBag.Pending     = todos.Count(t => (t.GetValueOrDefault("status")?.ToString() ?? "Pending") == "Pending");
         ViewBag.InProg      = todos.Count(t => t.GetValueOrDefault("status")?.ToString() == "In Progress");
         ViewBag.Done        = todos.Count(t => t.GetValueOrDefault("status")?.ToString() == "Done");
+
+        // ── Morning Checklist tab (recurring daily IT check items) ──
+        DateTime cSelDate = DateTime.TryParse(cdate, out var cd) ? cd.Date : DateTime.Today;
+        string cDateStr = cSelDate.ToString("yyyy-MM-dd");
+        var items = EnsureChecklistSeed();
+        var log = _db.GetChecklistLogForDate(cDateStr);
+        ViewBag.ChecklistItems  = items;
+        ViewBag.ChecklistLog    = log;
+        ViewBag.CDateStr        = cDateStr;
+        ViewBag.CSelDate        = cSelDate;
+        int cTotal = items.Count(i => (i.GetValueOrDefault("active")?.ToString() ?? "True") != "False");
+        int cChecked = log.Values.Count(v => v.GetValueOrDefault("status")?.ToString() == "Checked");
+        int cIssue   = log.Values.Count(v => v.GetValueOrDefault("status")?.ToString() == "Issue Found");
+        ViewBag.CTotal   = cTotal;
+        ViewBag.CChecked = cChecked;
+        ViewBag.CIssue   = cIssue;
+        ViewBag.CPending = Math.Max(0, cTotal - cChecked - cIssue);
+
         return View(todos);
+    }
+
+    // Default recurring items, seeded once (first time the checklist tab is
+    // opened and no items exist yet) from Sandy's real morning-check routine
+    // across AMPM's locations (HO, DLF Emporio, The Kila, Khan Market) — mirrors
+    // the "Daily IT Task Tracker" sheet in his reference Excel. After the first
+    // seed, everything is fully editable/addable/removable from the UI.
+    static readonly (string loc, string cat)[] SeedItems = new[]
+    {
+        ("AMPM HO","Internet"), ("AMPM HO","Emails"), ("AMPM HO","ERP-Wondersoft"),
+        ("AMPM HO","Busy Accounting Software"), ("AMPM HO","CCTV"), ("AMPM HO","EPBAX"),
+        ("AMPM HO","Crome Cast"), ("AMPM HO","UPS"), ("AMPM HO","Music System"),
+        ("Emporio","Internet"), ("Emporio","Emails"), ("Emporio","ERP-Wondersoft"),
+        ("Emporio","CCTV"), ("Emporio","UPS"), ("Emporio","Music System"),
+        ("Kila","Internet"), ("Kila","Emails"), ("Kila","ERP-Wondersoft"),
+        ("Kila","CCTV"), ("Kila","UPS"), ("Kila","Music System"),
+        ("Khan","Internet"), ("Khan","Emails"), ("Khan","ERP-Wondersoft"),
+        ("Khan","CCTV"), ("Khan","UPS"), ("Khan","Music System"),
+    };
+
+    List<Dictionary<string,object?>> EnsureChecklistSeed()
+    {
+        var items = _db.GetChecklistItems();
+        if (items.Any()) return items;
+
+        var seeded = SeedItems.Select(s => new Dictionary<string,object?>
+        {
+            ["id"]       = Guid.NewGuid().ToString("N")[..8],
+            ["location"] = s.loc,
+            ["category"] = s.cat,
+            ["task"]     = "Checking",
+            ["priority"] = "High",
+            ["active"]   = true,
+            ["createdAt"]= DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
+        }).ToList();
+        _db.SaveChecklistItems(seeded);
+        return seeded;
+    }
+
+    [HttpPost]
+    public IActionResult ChecklistAddItem(string location, string category, string? task, string? priority, string? cdate)
+    {
+        if (string.IsNullOrWhiteSpace(location) || string.IsNullOrWhiteSpace(category))
+        {
+            TempData["Error"] = "Location and Category are required.";
+            return RedirectToAction("Index", new { cdate });
+        }
+        var items = EnsureChecklistSeed();
+        items.Add(new Dictionary<string,object?>
+        {
+            ["id"]       = Guid.NewGuid().ToString("N")[..8],
+            ["location"] = location.Trim(),
+            ["category"] = category.Trim(),
+            ["task"]     = string.IsNullOrWhiteSpace(task) ? "Checking" : task.Trim(),
+            ["priority"] = string.IsNullOrWhiteSpace(priority) ? "Medium" : priority,
+            ["active"]   = true,
+            ["createdAt"]= DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
+        });
+        _db.SaveChecklistItems(items);
+        TempData["Success"] = "Checklist item added.";
+        return RedirectToAction("Index", new { cdate });
+    }
+
+    [HttpPost]
+    public IActionResult ChecklistDeleteItem(string id, string? cdate)
+    {
+        var current = _auth.GetCurrentUser(HttpContext);
+        if (current == null) return Json(new { ok = false, error = "Login required." });
+        if (!current.CanApprove("Todos")) return Json(new { ok = false, error = "Not allowed." });
+
+        var items = _db.GetChecklistItems();
+        items.RemoveAll(i => i.GetValueOrDefault("id")?.ToString() == id);
+        _db.SaveChecklistItems(items);
+        return Json(new { ok = true });
+    }
+
+    [HttpPost]
+    public IActionResult ChecklistSetStatus(string itemId, string date, string status, string? note)
+    {
+        var current = _auth.GetCurrentUser(HttpContext);
+        if (current == null) return Json(new { ok = false, error = "Login required." });
+        if (string.IsNullOrWhiteSpace(itemId) || string.IsNullOrWhiteSpace(date) || string.IsNullOrWhiteSpace(status))
+            return Json(new { ok = false, error = "Missing data." });
+
+        _db.SetChecklistStatus(itemId, date, status, note, current.Name);
+        return Json(new { ok = true });
+    }
+
+    // ── Checklist Excel Report ────────────────────────────────
+    [HttpGet("/Todos/ChecklistExport")]
+    public IActionResult ChecklistExport(string? from, string? to)
+    {
+        var current = _auth.GetCurrentUser(HttpContext);
+        if (current == null) return RedirectToAction("Login", "Account");
+
+        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : DateTime.Today;
+        DateTime toD   = DateTime.TryParse(to, out var tt) ? tt.Date : DateTime.Today;
+        if (toD < fromD) (fromD, toD) = (toD, fromD);
+        string fromS = fromD.ToString("yyyy-MM-dd"), toS = toD.ToString("yyyy-MM-dd");
+
+        var items = EnsureChecklistSeed().ToDictionary(i => i.GetValueOrDefault("id")?.ToString() ?? "", i => i);
+        var logRows = _db.GetChecklistLogRange(fromS, toS);
+
+        int total = logRows.Count;
+        int checkedCnt = logRows.Count(r => r.GetValueOrDefault("status")?.ToString() == "Checked");
+        int issueCnt   = logRows.Count(r => r.GetValueOrDefault("status")?.ToString() == "Issue Found");
+        int pendingCnt = logRows.Count(r => r.GetValueOrDefault("status")?.ToString() == "Pending");
+        int pct = total > 0 ? (int)Math.Round(checkedCnt * 100.0 / total) : 0;
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append($@"<html><head><meta charset='UTF-8'><style>
+body{{font-family:Arial,sans-serif;font-size:11px;margin:12px}}
+table{{border-collapse:collapse;width:100%}}
+th{{background:#0891B2;color:#FFF;padding:7px 5px;text-align:center;font-size:10px;border:1px solid #155E75}}
+td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px}}
+.hdr{{background:#0891B2;color:#FFF;font-size:15px;font-weight:bold;padding:10px 14px}}
+.sub{{background:#164E63;color:#A5F3FC;font-size:10px;padding:5px 14px;letter-spacing:1px}}
+.wki{{background:#ECFEFF;padding:7px 14px;font-size:10px;color:#374151;border:1px solid #E2E8F0}}
+.datehdr{{background:#ECFEFF;color:#155E75;font-weight:bold;padding:6px 8px;font-size:11px}}
+.checked{{background:#F0FDF4}} .pending{{background:#FFFBEB}} .issue{{background:#FEF2F2}}
+.high{{background:#FEE2E2;color:#991B1B;font-weight:bold;text-align:center}}
+.medium{{background:#FEF3C7;color:#92400E;font-weight:bold;text-align:center}}
+.low{{background:#D1FAE5;color:#065F46;font-weight:bold;text-align:center}}
+.sh{{background:#0891B2;color:#FFF;font-weight:bold;text-align:center;padding:7px}}
+.sl{{background:#F1F5F9;font-weight:bold;color:#374151;padding:6px 10px}}
+.sv{{text-align:center;font-weight:bold;padding:6px}}
+.green{{color:#059669}} .amber{{color:#D97706}} .red{{color:#DC2626}}
+</style></head><body>
+<table style='margin-bottom:14px;border:1px solid #0891B2'>
+  <tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — MORNING IT CHECKLIST REPORT</td></tr>
+  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {DateTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
+  <tr><td class='wki'><b>Period:</b> {fromD:dd-MMM-yyyy} to {toD:dd-MMM-yyyy} &nbsp;&nbsp; <b>Prepared By:</b> Sandeep Kumar Singh Kushwaha — IT System Administrator</td></tr>
+</table>
+<table>
+<thead><tr>
+  <th style='width:28px'>S.No.</th>
+  <th style='width:80px'>Date</th>
+  <th style='width:100px'>Location</th>
+  <th style='width:150px'>Category</th>
+  <th style='width:150px'>Task</th>
+  <th style='width:55px'>Priority</th>
+  <th style='width:80px'>Status</th>
+  <th style='width:160px'>Note</th>
+  <th style='width:110px'>Updated By</th>
+  <th style='width:110px'>Updated At</th>
+</tr></thead><tbody>");
+
+        int sno = 0;
+        string? lastDate = null;
+        foreach (var r in logRows)
+        {
+            var cdt = r.GetValueOrDefault("checkDate")?.ToString() ?? "";
+            if (cdt != lastDate)
+            {
+                sb.Append($"<tr><td colspan='10' class='datehdr'>📅 {cdt}</td></tr>");
+                lastDate = cdt;
+            }
+            sno++;
+            var itemId = r.GetValueOrDefault("itemId")?.ToString() ?? "";
+            items.TryGetValue(itemId, out var itm);
+            var status = r.GetValueOrDefault("status")?.ToString() ?? "Pending";
+            var priority = itm?.GetValueOrDefault("priority")?.ToString() ?? "Medium";
+            string rowCls = status switch { "Checked" => "checked", "Issue Found" => "issue", _ => "pending" };
+            string prioCls = priority switch { "High" => "high", "Medium" => "medium", "Low" => "low", _ => "" };
+            string statusStyle = status switch { "Checked" => "color:#059669;font-weight:bold", "Issue Found" => "color:#DC2626;font-weight:bold", _ => "color:#D97706;font-weight:bold" };
+            sb.Append($@"<tr class='{rowCls}'>
+  <td style='text-align:center'>{sno}</td>
+  <td style='text-align:center'>{cdt}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(itm?.GetValueOrDefault("location")?.ToString() ?? "")}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(itm?.GetValueOrDefault("category")?.ToString() ?? "")}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(itm?.GetValueOrDefault("task")?.ToString() ?? "")}</td>
+  <td class='{prioCls}'>{priority}</td>
+  <td style='{statusStyle};text-align:center'>{status}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(r.GetValueOrDefault("note")?.ToString() ?? "")}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(r.GetValueOrDefault("updatedBy")?.ToString() ?? "")}</td>
+  <td style='text-align:center'>{r.GetValueOrDefault("updatedAt")}</td>
+</tr>");
+        }
+        sb.Append($@"</tbody></table>
+<br>
+<table style='width:360px;margin-top:14px;border:1px solid #0891B2'>
+  <tr><td colspan='2' class='sh'>REPORT SUMMARY</td></tr>
+  <tr><td class='sl'>Total Entries</td><td class='sv'>{total}</td></tr>
+  <tr class='checked'><td class='sl'>Checked</td><td class='sv green'>{checkedCnt}</td></tr>
+  <tr class='pending'><td class='sl'>Pending</td><td class='sv amber'>{pendingCnt}</td></tr>
+  <tr class='issue'><td class='sl'>Issue Found</td><td class='sv red'>{issueCnt}</td></tr>
+  <tr style='background:#F0FDF4'><td class='sl'>Checked Rate</td><td class='sv green' style='font-size:13px'>{pct}%</td></tr>
+</table>
+<br>
+<div style='font-size:10px;color:#6B7280;border-top:1px solid #E2E8F0;padding-top:6px'>
+  <b>Sandeep Kumar Singh Kushwaha</b> | IT System Administrator | AMPM Fashions Pvt Ltd<br>
+  +91 93156 31188 | B-144, Sector 10, Noida - 201301
+</div></body></html>");
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        return File(bytes, "application/vnd.ms-excel", $"AMPM_Morning_Checklist_{fromD:yyyyMMdd}_{toD:yyyyMMdd}.xls");
     }
 
     // HTML <input type="time"> posts 24-hour "HH:mm" — reformat to a friendly

@@ -48,6 +48,7 @@ public class DbService
             CREATE TABLE IF NOT EXISTS cartridge_issues (id TEXT PRIMARY KEY, cartridge_id TEXT, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS goals (id TEXT PRIMARY KEY, week_no INTEGER, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS todos (id TEXT PRIMARY KEY, username TEXT, task_date TEXT, data TEXT NOT NULL, ts TEXT);
+            CREATE TABLE IF NOT EXISTS checklist_log (id TEXT PRIMARY KEY, item_id TEXT, check_date TEXT, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS stock_items (id TEXT PRIMARY KEY, item_type TEXT, name TEXT NOT NULL, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS stock_issues (id TEXT PRIMARY KEY, item_id TEXT, issue_no TEXT, data TEXT NOT NULL, ts TEXT);
             CREATE TABLE IF NOT EXISTS it_stock_items (id TEXT PRIMARY KEY, item_type TEXT, name TEXT NOT NULL, data TEXT NOT NULL, ts TEXT);
@@ -439,6 +440,45 @@ public class DbService
         var data = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
         data["emp"] = code;
         return data;
+    }
+
+    // ── Morning Checklist (recurring daily IT check items) ───────
+    // Master list of recurring items (e.g. "AMPM HO — Internet — Checking") is a
+    // small list stored via the KV store, same pattern as Budget/Bills/Licenses.
+    // Each day's tick (Checked / Pending / Issue Found) per item is a separate row
+    // in checklist_log, keyed by item_id+date — same shape as the "todos" table.
+    public List<Dictionary<string,object?>> GetChecklistItems()
+        => KGetObj<List<Dictionary<string,object?>>>("checklist_items") ?? new();
+
+    public void SaveChecklistItems(List<Dictionary<string,object?>> items)
+        => KSet("checklist_items", items);
+
+    public Dictionary<string, Dictionary<string,object?>> GetChecklistLogForDate(string dateStr)
+    {
+        var rows = Query<string>("SELECT data FROM checklist_log WHERE check_date=@d", new { d = dateStr })
+            .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList();
+        return rows.ToDictionary(r => r.GetValueOrDefault("itemId")?.ToString() ?? "", r => r);
+    }
+
+    public List<Dictionary<string,object?>> GetChecklistLogRange(string fromS, string toS)
+        => Query<string>("SELECT data FROM checklist_log WHERE check_date>=@f AND check_date<=@t ORDER BY check_date", new { f = fromS, t = toS })
+            .Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList();
+
+    public void SetChecklistStatus(string itemId, string dateStr, string status, string? note, string updatedBy)
+    {
+        var id = itemId + "|" + dateStr;
+        var data = new Dictionary<string,object?>
+        {
+            ["itemId"] = itemId,
+            ["checkDate"] = dateStr,
+            ["status"] = status,
+            ["note"] = note ?? "",
+            ["updatedBy"] = updatedBy,
+            ["updatedAt"] = DateTime.Now.ToString("dd-MMM-yyyy hh:mm tt"),
+        };
+        Execute("INSERT INTO checklist_log (id,item_id,check_date,data,ts) VALUES (@id,@itemId,@d,@data,@ts) " +
+                "ON CONFLICT(id) DO UPDATE SET data=@data, ts=@ts",
+            new { id, itemId, d = dateStr, data = JsonConvert.SerializeObject(data), ts = DateTime.Now.ToString("o") });
     }
 }
 
