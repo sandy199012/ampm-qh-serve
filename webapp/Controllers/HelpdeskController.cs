@@ -287,7 +287,7 @@ public class HelpdeskController : Controller
     }
 
     [HttpPost]
-    public IActionResult UpdateStatus(string id, string status, string? resolution, string? ackComment, string? closeWorkDone, string? closeIssue)
+    public IActionResult UpdateStatus(string id, string status, string? resolution, string? ackComment, string? closeWorkDone, string? closeIssue, string? expectedResolution)
     {
         var raw = _db.QueryFirst<string>("SELECT data FROM tickets WHERE ticket_id=@id", new { id });
         if (raw == null) return NotFound();
@@ -299,6 +299,13 @@ public class HelpdeskController : Controller
             ticket["dateAcknowledged"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
         if (status == "In Progress" && !string.IsNullOrWhiteSpace(ackComment))
             ticket["ackComment"] = ackComment.Trim();
+        // "Expected Time Line to Resolve" — captured whenever the ticket is
+        // Acknowledged/In Processed (and re-settable any time after via the
+        // "Set/Update ETA" button), so the employee always sees the latest
+        // promised timeline on their own ticket view (MyHelpdesk + mobile app,
+        // since both just read this same ticket JSON).
+        if (!string.IsNullOrWhiteSpace(expectedResolution))
+            ticket["expectedResolution"] = expectedResolution.Trim();
 
         if (status == "Resolved" || status == "Closed")
         {

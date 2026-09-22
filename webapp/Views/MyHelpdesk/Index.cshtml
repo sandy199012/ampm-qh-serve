@@ -90,7 +90,14 @@
                     <td class="small text-muted">@t.GetValueOrDefault("dateRaised")</td>
                     <td class="small text-truncate" style="max-width:220px">@t.GetValueOrDefault("title")</td>
                     <td><span class="badge bg-@pBadge">@priority</span></td>
-                    <td><span class="badge bg-@sBadge">@status</span></td>
+                    <td>
+                        <span class="badge bg-@sBadge">@status</span>
+                        @{ var myEta = t.GetValueOrDefault("expectedResolution")?.ToString(); }
+                        @if (!string.IsNullOrEmpty(myEta))
+                        {
+                            <div class="small text-warning mt-1" style="white-space:nowrap"><i class="bi bi-hourglass-split"></i> ETA: @myEta</div>
+                        }
+                    </td>
                     <td>
                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="showTicket('@tid')">
                             <i class="bi bi-eye"></i> View
@@ -193,11 +200,16 @@ function showTicket(id) {
         ['Category', esc(t.category)],
         ['Date Raised', esc(t.dateRaised)],
         ['Acknowledged', esc(t.dateAcknowledged) || '—'],
+        ['Expected Resolution (ETA)', esc(t.expectedResolution) || '—'],
         ['Resolved', esc(t.dateResolved) || '—'],
         ['Closed', esc(t.dateClosed) || '—'],
         ['Assigned To', esc(t.assignedTo) || '—'],
     ];
-    let html = '<table class="table table-sm mb-3">';
+    let html = '';
+    if (t.expectedResolution && t.status !== 'Resolved' && t.status !== 'Closed') {
+        html += '<div class="alert alert-warning py-2 mb-3"><i class="bi bi-hourglass-split"></i> <strong>Expected to be resolved by:</strong> ' + esc(t.expectedResolution) + '</div>';
+    }
+    html += '<table class="table table-sm mb-3">';
     rows.forEach(r => html += `<tr><td class="text-muted small" style="width:160px">${r[0]}</td><td>${r[1]}</td></tr>`);
     html += '</table>';
     html += '<div class="mb-2"><div class="small fw-bold text-muted">DESCRIPTION</div><div class="p-2 bg-light rounded small">' + (esc(t.description) || '—') + '</div></div>';

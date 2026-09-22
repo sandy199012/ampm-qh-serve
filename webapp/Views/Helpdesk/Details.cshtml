@@ -64,6 +64,10 @@
                         <div class="small text-muted mt-1"><i class="bi bi-chat-left-text"></i> @Model.GetValueOrDefault("ackComment")</div>
                     }
                 }
+                @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("expectedResolution")?.ToString())){
+                    <small class="text-muted d-block mt-2">Expected Resolution (ETA)</small>
+                    <strong class="text-warning"><i class="bi bi-hourglass-split"></i> @Model.GetValueOrDefault("expectedResolution")</strong>
+                }
                 @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("dateResolved")?.ToString())){
                     <small class="text-muted d-block mt-2">Date Resolved</small>
                     <strong class="text-success">@Model.GetValueOrDefault("dateResolved")</strong>
@@ -87,6 +91,7 @@
                     <button class="btn btn-primary btn-sm" onclick="updateStatus('@tid','In Progress')"><i class="bi bi-play-circle"></i> In Progress</button>
                     <button class="btn btn-success btn-sm" onclick="showResolve('@tid')"><i class="bi bi-check-circle"></i> Resolve</button>
                     <button class="btn btn-secondary btn-sm" onclick="updateStatus('@tid','Closed')"><i class="bi bi-x-circle"></i> Close</button>
+                    <button class="btn btn-outline-warning btn-sm" onclick="setEta('@tid')"><i class="bi bi-hourglass-split"></i> Set/Update ETA</button>
                 </div>
                 <div id="resolveDiv" class="mt-3 d-none">
                     <textarea id="resolutionText" class="form-control form-control-sm mb-2" rows="3" placeholder="Resolution notes..."></textarea>
@@ -152,6 +157,8 @@ function updateStatus(id, status) {
         const comment = prompt('Acknowledging this ticket — enter a comment:');
         if (comment === null) return;
         extra = '&ackComment=' + encodeURIComponent(comment.trim());
+        const eta = prompt('Expected time line to resolve? (e.g. "2 days", "25-Sep-2026", "By tomorrow evening") — the employee will see this. Leave blank to skip:', ticket.expectedResolution || '');
+        if (eta !== null && eta.trim()) extra += '&expectedResolution=' + encodeURIComponent(eta.trim());
     } else if (status === 'Closed') {
         const workDone = prompt('What did you do to resolve this ticket?');
         if (workDone === null) return;
@@ -167,6 +174,15 @@ function updateStatus(id, status) {
 }
 function showResolve(id) {
     document.getElementById('resolveDiv').classList.remove('d-none');
+}
+function setEta(id) {
+    const eta = prompt('Expected time line to resolve? (e.g. "2 days", "25-Sep-2026", "By tomorrow evening") — the employee will see this:', ticket.expectedResolution || '');
+    if (eta === null) return;
+    fetch('/Helpdesk/UpdateStatus/' + id, {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: 'status=' + encodeURIComponent(ticket.status) + '&expectedResolution=' + encodeURIComponent(eta.trim())
+    }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
 }
 function submitResolve(id) {
     var res = document.getElementById('resolutionText').value;

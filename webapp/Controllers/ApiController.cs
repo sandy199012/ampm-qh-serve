@@ -171,6 +171,7 @@ public class ApiController : Controller
         if (data.TryGetValue("assignedTo", out var at) && at != null) ticket["assignedTo"] = at.ToString();
         if (data.TryGetValue("resolution", out var res) && !string.IsNullOrWhiteSpace(res?.ToString())) ticket["resolution"] = res!.ToString();
         if (data.TryGetValue("remarks", out var rm) && rm != null) ticket["remarks"] = rm.ToString();
+        if (data.TryGetValue("expectedResolution", out var er) && !string.IsNullOrWhiteSpace(er?.ToString())) ticket["expectedResolution"] = er!.ToString().Trim();
 
         var status = ticket.GetValueOrDefault("status")?.ToString() ?? "";
         if (status == "In Progress" && string.IsNullOrEmpty(ticket.GetValueOrDefault("dateAcknowledged")?.ToString()))

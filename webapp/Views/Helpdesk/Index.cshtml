@@ -118,7 +118,14 @@
                     <td class="small text-truncate" style="max-width:180px">@t.GetValueOrDefault("title")</td>
                     <td><span class="badge bg-@pBadge">@priority</span></td>
                     <td class="small">@t.GetValueOrDefault("assignedTo")</td>
-                    <td><span class="badge bg-@sBadge">@status</span></td>
+                    <td>
+                        <span class="badge bg-@sBadge">@status</span>
+                        @{ var eta = t.GetValueOrDefault("expectedResolution")?.ToString(); }
+                        @if (!string.IsNullOrEmpty(eta))
+                        {
+                            <div class="small text-warning mt-1" style="white-space:nowrap"><i class="bi bi-hourglass-split"></i> @eta</div>
+                        }
+                    </td>
                     <td>
                         <div class="dropdown">
                             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">Act</button>
@@ -142,10 +149,18 @@
 @section Scripts {
 <script>
 function updateStatus(id, status) {
+    let extra = '';
+    if (status === 'In Progress') {
+        const comment = prompt('Acknowledging this ticket — enter a comment:');
+        if (comment === null) return;
+        extra = '&ackComment=' + encodeURIComponent(comment.trim());
+        const eta = prompt('Expected time line to resolve? (e.g. "2 days", "25-Sep-2026", "By tomorrow evening") — the employee will see this. Leave blank to skip:');
+        if (eta !== null && eta.trim()) extra += '&expectedResolution=' + encodeURIComponent(eta.trim());
+    }
     fetch('/Helpdesk/UpdateStatus/' + id, {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
-        body: 'status=' + encodeURIComponent(status)
+        body: 'status=' + encodeURIComponent(status) + extra
     }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
 }
 
