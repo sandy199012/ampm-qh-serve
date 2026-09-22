@@ -425,7 +425,7 @@ public class DbService
     {
         using var conn = GetConn();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT {UserCols} FROM users WHERE emp_id=@e LIMIT 1";
+        cmd.CommandText = $"SELECT {UserCols} FROM users WHERE lower(emp_id)=lower(@e) LIMIT 1";
         cmd.Parameters.AddWithValue("@e", empId);
         using var reader = cmd.ExecuteReader();
         return reader.Read() ? ReadUserRow(reader) : null;

@@ -33,7 +33,16 @@ public class AuthService
 
     public UserSession? Login(string username, string password)
     {
-        var row = _db.GetUserByUsername((username ?? "").Trim());
+        var id = (username ?? "").Trim();
+        var row = _db.GetUserByUsername(id);
+        // The mobile app's login screen asks for "Employee Code", not the account
+        // Username — those only match when a login was created by picking the
+        // employee in the dropdown and leaving Username blank. If admin typed a
+        // different Username (or edited it), logging in with the Employee Code
+        // would otherwise fail even with the correct password. Fall back to
+        // matching by the linked Employee Code so "Employee Code + Password"
+        // always works, for both the mobile app and the web login.
+        if (row == null) row = _db.GetUserByEmpId(id);
         if (row == null || row.IsActive == 0) return null;
         if (string.IsNullOrEmpty(row.PasswordHash) || !SafeVerify(password ?? "", row.PasswordHash)) return null;
         return ToSession(row);
