@@ -303,9 +303,18 @@ public class HelpdeskController : Controller
         // Acknowledged/In Processed (and re-settable any time after via the
         // "Set/Update ETA" button), so the employee always sees the latest
         // promised timeline on their own ticket view (MyHelpdesk + mobile app,
-        // since both just read this same ticket JSON).
+        // since both just read this same ticket JSON). Comes in from an
+        // <input type="datetime-local"> picker, e.g. "2026-09-25T18:30" —
+        // keep the raw value (to re-populate the picker next time it's
+        // opened) and a nicely formatted display string.
         if (!string.IsNullOrWhiteSpace(expectedResolution))
-            ticket["expectedResolution"] = expectedResolution.Trim();
+        {
+            var etaRaw = expectedResolution.Trim();
+            ticket["expectedResolutionRaw"] = etaRaw;
+            ticket["expectedResolution"] = DateTime.TryParse(etaRaw, out var etaDt)
+                ? etaDt.ToString("dd-MMM-yyyy hh:mm tt")
+                : etaRaw;
+        }
 
         if (status == "Resolved" || status == "Closed")
         {

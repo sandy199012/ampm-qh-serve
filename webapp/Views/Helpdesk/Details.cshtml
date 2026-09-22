@@ -143,6 +143,54 @@
     </div>
 </div>
 
+<!-- ═══ Acknowledge / In Progress Modal ═══ -->
+<div class="modal fade" id="ackModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#7C3AED;color:white">
+                <h6 class="modal-title fw-bold"><i class="bi bi-play-circle"></i> Acknowledge Ticket @tid</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Comment</label>
+                    <textarea id="ackCommentInput" class="form-control" rows="3" placeholder="What's being done about this..."></textarea>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label fw-semibold small">Expected Date &amp; Time to Resolve</label>
+                    <input type="datetime-local" id="ackEtaInput" class="form-control"/>
+                    <div class="form-text">The employee will see this on their ticket.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-primary" onclick="submitAck()"><i class="bi bi-check2"></i> Acknowledge</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ Set/Update ETA Modal ═══ -->
+<div class="modal fade" id="etaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:#D97706;color:white">
+                <h6 class="modal-title fw-bold"><i class="bi bi-hourglass-split"></i> Set / Update Expected Resolution</h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label fw-semibold small">Expected Date &amp; Time to Resolve</label>
+                <input type="datetime-local" id="etaOnlyInput" class="form-control"/>
+                <div class="form-text">The employee will see this on their ticket.</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-warning" onclick="submitEtaOnly()"><i class="bi bi-check2"></i> Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
 <script>
 const ticket = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(Model));
@@ -151,14 +199,15 @@ const ccEmails = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(ViewBag.C
 const sendOnClose = @Html.Raw(ViewBag.SendOnClose ? "true" : "false");
 let cachedEmailHtml = '';
 
+let ackId = null;
 function updateStatus(id, status) {
     let extra = '';
     if (status === 'In Progress') {
-        const comment = prompt('Acknowledging this ticket — enter a comment:');
-        if (comment === null) return;
-        extra = '&ackComment=' + encodeURIComponent(comment.trim());
-        const eta = prompt('Expected time line to resolve? (e.g. "2 days", "25-Sep-2026", "By tomorrow evening") — the employee will see this. Leave blank to skip:', ticket.expectedResolution || '');
-        if (eta !== null && eta.trim()) extra += '&expectedResolution=' + encodeURIComponent(eta.trim());
+        ackId = id;
+        document.getElementById('ackCommentInput').value = '';
+        document.getElementById('ackEtaInput').value = ticket.expectedResolutionRaw || '';
+        new bootstrap.Modal(document.getElementById('ackModal')).show();
+        return;
     } else if (status === 'Closed') {
         const workDone = prompt('What did you do to resolve this ticket?');
         if (workDone === null) return;
@@ -172,16 +221,33 @@ function updateStatus(id, status) {
         body: 'status=' + encodeURIComponent(status) + extra
     }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
 }
+function submitAck() {
+    const comment = document.getElementById('ackCommentInput').value.trim();
+    const eta = document.getElementById('ackEtaInput').value;
+    let extra = '';
+    if (comment) extra += '&ackComment=' + encodeURIComponent(comment);
+    if (eta) extra += '&expectedResolution=' + encodeURIComponent(eta);
+    fetch('/Helpdesk/UpdateStatus/' + ackId, {
+        method: 'POST',
+        headers: {'Content-Type':'application/x-www-form-urlencoded'},
+        body: 'status=' + encodeURIComponent('In Progress') + extra
+    }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
+}
 function showResolve(id) {
     document.getElementById('resolveDiv').classList.remove('d-none');
 }
 function setEta(id) {
-    const eta = prompt('Expected time line to resolve? (e.g. "2 days", "25-Sep-2026", "By tomorrow evening") — the employee will see this:', ticket.expectedResolution || '');
-    if (eta === null) return;
-    fetch('/Helpdesk/UpdateStatus/' + id, {
+    ackId = id;
+    document.getElementById('etaOnlyInput').value = ticket.expectedResolutionRaw || '';
+    new bootstrap.Modal(document.getElementById('etaModal')).show();
+}
+function submitEtaOnly() {
+    const eta = document.getElementById('etaOnlyInput').value;
+    if (!eta) return;
+    fetch('/Helpdesk/UpdateStatus/' + ackId, {
         method: 'POST',
         headers: {'Content-Type':'application/x-www-form-urlencoded'},
-        body: 'status=' + encodeURIComponent(ticket.status) + '&expectedResolution=' + encodeURIComponent(eta.trim())
+        body: 'status=' + encodeURIComponent(ticket.status) + '&expectedResolution=' + encodeURIComponent(eta)
     }).then(r => r.json()).then(d => { if(d.ok) location.reload(); });
 }
 function submitResolve(id) {
