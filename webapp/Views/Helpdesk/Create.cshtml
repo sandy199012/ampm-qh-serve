@@ -74,19 +74,19 @@
                 <input type="text" name="title" class="form-control" required placeholder="Brief description of the issue"/>
             </div>
             <div class="col-md-6">
-                <label class="form-label fw-semibold small">Issue Type *</label>
-                <select name="issueType" class="form-select" required>
-                    <option value="">Select Type</option>
-                    @foreach(var t in new[]{"Hardware - Laptop/Desktop","Hardware - Monitor","Hardware - Keyboard/Mouse","Hardware - Printer","Software - Installation","Software - Error","Network - Internet","Network - WiFi","Email - Outlook","Email - Access","Access - System Login","Access - Application","Other"})
-                    {<option>@t</option>}
-                </select>
-            </div>
-            <div class="col-md-6">
                 <label class="form-label fw-semibold small">Category</label>
                 <select name="category" class="form-select">
                     <option value="">Select Category</option>
                     @foreach(var c in new[]{"Hardware","Software","Network","Email","Access","Other"})
                     {<option>@c</option>}
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-semibold small">Issue Type *</label>
+                <select name="issueType" class="form-select" required>
+                    <option value="">Select Type</option>
+                    @foreach(var t in new[]{"Hardware - Laptop/Desktop","Hardware - Monitor","Hardware - Keyboard/Mouse","Hardware - Printer","Software - Installation","Software - Error","Network - Internet","Network - WiFi","Email - Outlook","Email - Access","Access - System Login","Access - Application","Other"})
+                    {<option>@t</option>}
                 </select>
             </div>
             <div class="col-md-6">
