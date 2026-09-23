@@ -391,62 +391,81 @@ body{{font-family:Arial,sans-serif;font-size:11px;margin:12px}}
         return Json(new { ok = true });
     }
 
-    // Original per-sheet CSS for the Daily To-Do report (indigo/purple theme).
-    const string TodoCss = @"
-table{border-collapse:collapse;width:100%}
-th{background:#4F46E5;color:#FFF;padding:7px 5px;text-align:center;font-size:10px;border:1px solid #3730A3}
-td{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px}
-.hdr{background:linear-gradient(90deg,#4F46E5,#7C3AED);background-color:#4F46E5;color:#FFF;font-size:15px;font-weight:bold;padding:10px 14px}
-.sub{background:#312E81;color:#A5B4FC;font-size:10px;padding:5px 14px;letter-spacing:1px}
-.wki{background:#F5F3FF;padding:7px 14px;font-size:10px;color:#374151;border:1px solid #E2E8F0}
-.datehdr{background:#EEF2FF;color:#3730A3;font-weight:bold;padding:6px 8px;font-size:11px}
-.done{background:#F0FDF4} .inprog{background:#EFF6FF} .pending{background:#FFFBEB}
-.high{background:#FEE2E2;color:#991B1B;font-weight:bold;text-align:center}
-.medium{background:#FEF3C7;color:#92400E;font-weight:bold;text-align:center}
-.low{background:#D1FAE5;color:#065F46;font-weight:bold;text-align:center}
-.sh{background:#4F46E5;color:#FFF;font-weight:bold;text-align:center;padding:7px}
-.sl{background:#F1F5F9;font-weight:bold;color:#374151;padding:6px 10px}
-.sv{text-align:center;font-weight:bold;padding:6px}
-.green{color:#059669} .blue{color:#2563EB} .amber{color:#D97706}
-";
-
-    // Same CSS as above, but every selector scoped under a container div id —
-    // used only in the combined Todo+Checklist workbook (Export, below) so
-    // the two sheets' identically-named classes (.hdr, .sub, .pending, ...)
-    // don't clash when both style blocks share one <head>.
-    static string ScopeCss(string css, string scopeId)
+    // ── Combined Todo+Checklist workbook (genuine SpreadsheetML / "Excel 2003
+    // XML" format) ───────────────────────────────────────────────────────────
+    // The old combined Export() built one HTML document and relied on the
+    // <x:ExcelWorkbook><x:ExcelWorksheets> mso-comment convention to split it
+    // into two sheet tabs. That convention turned out to NOT be reliably
+    // honored by real Excel — Sandy's Excel showed a "Problems During Load"
+    // error specifically on the Morning Checklist tab. SpreadsheetML is a
+    // genuine, fully-documented Microsoft XML schema (this is literally what
+    // Excel itself writes out when you pick "XML Spreadsheet 2003" from Save
+    // As) with first-class multi-<Worksheet> support, so it doesn't depend on
+    // Excel's much less predictable HTML-to-workbook importer at all.
+    static string XEsc(object? s)
     {
-        // Scans for every "<selectors>{...}" rule in the CSS constant — some
-        // lines hold more than one rule (e.g. ".done{...} .inprog{...} .pending{...}"),
-        // so this walks brace-to-brace across the whole string rather than
-        // assuming one rule per line — and prefixes each rule's comma-separated
-        // selectors with "#scopeId " so the two sheets' identically-named
-        // classes (.hdr, .sub, .pending, ...) never clash when both style
-        // blocks share one <head> in the combined workbook.
-        var outSb = new System.Text.StringBuilder();
-        int i = 0;
-        while (i < css.Length)
-        {
-            int openIdx = css.IndexOf('{', i);
-            if (openIdx < 0) break;
-            int closeIdx = css.IndexOf('}', openIdx);
-            if (closeIdx < 0) break;
-            var selectorPart = css.Substring(i, openIdx - i).Trim();
-            var rulePart = css.Substring(openIdx, closeIdx - openIdx + 1);
-            if (selectorPart.Length > 0)
-            {
-                var scoped = string.Join(", ", selectorPart.Split(',').Select(s => $"#{scopeId} {s.Trim()}"));
-                outSb.Append(scoped).Append(rulePart).Append('\n');
-            }
-            i = closeIdx + 1;
-        }
-        return outSb.ToString();
+        var str = s?.ToString() ?? "";
+        return str.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;");
+    }
+    static string XCell(object? text, string? style = null, int mergeAcross = 0)
+    {
+        var styleAttr = style != null ? $" ss:StyleID='{style}'" : "";
+        var mergeAttr = mergeAcross > 0 ? $" ss:MergeAcross='{mergeAcross}'" : "";
+        return $"<Cell{styleAttr}{mergeAttr}><Data ss:Type='String'>{XEsc(text)}</Data></Cell>";
+    }
+    static string XRow(string cells, int? height = null)
+    {
+        var h = height.HasValue ? $" ss:Height='{height}'" : "";
+        return $"<Row{h}>{cells}</Row>";
     }
 
-    // Builds just the Daily To-Do report's tables (info block + data table +
-    // summary table) for a date range — no <html>/<style> wrapper, mirroring
-    // BuildChecklistSheetBody so both can share one workbook (see Export).
-    string BuildTodoSheetBody(DateTime fromD, DateTime toD, string fromS, string toS, bool allUsers, string targetUser)
+    // Every style used by both sheets. ss:Parent='Default' means anything not
+    // explicitly overridden here (font family/size, mainly) is inherited from
+    // the "Default"/"Normal" style below, so we don't have to repeat
+    // Font ss:FontName='Arial' on every single one.
+    const string XlBorder = "<Borders><Border ss:Position='Bottom' ss:LineStyle='Continuous' ss:Weight='1' ss:Color='#CBD5E1'/><Border ss:Position='Left' ss:LineStyle='Continuous' ss:Weight='1' ss:Color='#CBD5E1'/><Border ss:Position='Right' ss:LineStyle='Continuous' ss:Weight='1' ss:Color='#CBD5E1'/><Border ss:Position='Top' ss:LineStyle='Continuous' ss:Weight='1' ss:Color='#CBD5E1'/></Borders>";
+    static readonly string XlStyles = $@"
+<Style ss:ID='Default' ss:Name='Normal'><Font ss:FontName='Arial' ss:Size='10'/></Style>
+<Style ss:ID='titleTodo' ss:Parent='Default'><Interior ss:Color='#4F46E5' ss:Pattern='Solid'/><Font ss:Color='#FFFFFF' ss:Bold='1' ss:Size='14'/><Alignment ss:Vertical='Center'/></Style>
+<Style ss:ID='subTodo' ss:Parent='Default'><Interior ss:Color='#312E81' ss:Pattern='Solid'/><Font ss:Color='#A5B4FC' ss:Size='9'/><Alignment ss:Vertical='Center'/></Style>
+<Style ss:ID='infoTodo' ss:Parent='Default'><Interior ss:Color='#F5F3FF' ss:Pattern='Solid'/><Font ss:Color='#374151' ss:Size='9'/><Alignment ss:Vertical='Center' ss:WrapText='1'/>{XlBorder}</Style>
+<Style ss:ID='dateHdrTodo' ss:Parent='Default'><Interior ss:Color='#EEF2FF' ss:Pattern='Solid'/><Font ss:Color='#3730A3' ss:Bold='1' ss:Size='10'/><Alignment ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='colHdrTodo' ss:Parent='Default'><Interior ss:Color='#4F46E5' ss:Pattern='Solid'/><Font ss:Color='#FFFFFF' ss:Bold='1' ss:Size='9'/><Alignment ss:Horizontal='Center' ss:Vertical='Center' ss:WrapText='1'/>{XlBorder}</Style>
+<Style ss:ID='titleChecklist' ss:Parent='Default'><Interior ss:Color='#0891B2' ss:Pattern='Solid'/><Font ss:Color='#FFFFFF' ss:Bold='1' ss:Size='14'/><Alignment ss:Vertical='Center'/></Style>
+<Style ss:ID='subChecklist' ss:Parent='Default'><Interior ss:Color='#164E63' ss:Pattern='Solid'/><Font ss:Color='#A5F3FC' ss:Size='9'/><Alignment ss:Vertical='Center'/></Style>
+<Style ss:ID='infoChecklist' ss:Parent='Default'><Interior ss:Color='#ECFEFF' ss:Pattern='Solid'/><Font ss:Color='#374151' ss:Size='9'/><Alignment ss:Vertical='Center' ss:WrapText='1'/>{XlBorder}</Style>
+<Style ss:ID='dateHdrChecklist' ss:Parent='Default'><Interior ss:Color='#ECFEFF' ss:Pattern='Solid'/><Font ss:Color='#155E75' ss:Bold='1' ss:Size='10'/><Alignment ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='colHdrChecklist' ss:Parent='Default'><Interior ss:Color='#0891B2' ss:Pattern='Solid'/><Font ss:Color='#FFFFFF' ss:Bold='1' ss:Size='9'/><Alignment ss:Horizontal='Center' ss:Vertical='Center' ss:WrapText='1'/>{XlBorder}</Style>
+<Style ss:ID='rowDoneC' ss:Parent='Default'><Interior ss:Color='#F0FDF4' ss:Pattern='Solid'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='rowDoneL' ss:Parent='Default'><Interior ss:Color='#F0FDF4' ss:Pattern='Solid'/><Alignment ss:Horizontal='Left' ss:Vertical='Center' ss:WrapText='1'/>{XlBorder}</Style>
+<Style ss:ID='rowInprogC' ss:Parent='Default'><Interior ss:Color='#EFF6FF' ss:Pattern='Solid'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='rowInprogL' ss:Parent='Default'><Interior ss:Color='#EFF6FF' ss:Pattern='Solid'/><Alignment ss:Horizontal='Left' ss:Vertical='Center' ss:WrapText='1'/>{XlBorder}</Style>
+<Style ss:ID='rowPendingC' ss:Parent='Default'><Interior ss:Color='#FFFBEB' ss:Pattern='Solid'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='rowPendingL' ss:Parent='Default'><Interior ss:Color='#FFFBEB' ss:Pattern='Solid'/><Alignment ss:Horizontal='Left' ss:Vertical='Center' ss:WrapText='1'/>{XlBorder}</Style>
+<Style ss:ID='rowIssueC' ss:Parent='Default'><Interior ss:Color='#FEF2F2' ss:Pattern='Solid'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='rowIssueL' ss:Parent='Default'><Interior ss:Color='#FEF2F2' ss:Pattern='Solid'/><Alignment ss:Horizontal='Left' ss:Vertical='Center' ss:WrapText='1'/>{XlBorder}</Style>
+<Style ss:ID='pHigh' ss:Parent='Default'><Interior ss:Color='#FEE2E2' ss:Pattern='Solid'/><Font ss:Color='#991B1B' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='pMedium' ss:Parent='Default'><Interior ss:Color='#FEF3C7' ss:Pattern='Solid'/><Font ss:Color='#92400E' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='pLow' ss:Parent='Default'><Interior ss:Color='#D1FAE5' ss:Pattern='Solid'/><Font ss:Color='#065F46' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='statusDone' ss:Parent='Default'><Interior ss:Color='#F0FDF4' ss:Pattern='Solid'/><Font ss:Color='#059669' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='statusInprog' ss:Parent='Default'><Interior ss:Color='#EFF6FF' ss:Pattern='Solid'/><Font ss:Color='#2563EB' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='statusPending' ss:Parent='Default'><Interior ss:Color='#FFFBEB' ss:Pattern='Solid'/><Font ss:Color='#D97706' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='statusIssue' ss:Parent='Default'><Interior ss:Color='#FEF2F2' ss:Pattern='Solid'/><Font ss:Color='#DC2626' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='vYes' ss:Parent='Default'><Interior ss:Color='#F0FDF4' ss:Pattern='Solid'/><Font ss:Color='#059669' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='vNo' ss:Parent='Default'><Interior ss:Color='#F0FDF4' ss:Pattern='Solid'/><Font ss:Color='#DC2626' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='sumHeaderTodo' ss:Parent='Default'><Interior ss:Color='#4F46E5' ss:Pattern='Solid'/><Font ss:Color='#FFFFFF' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='sumHeaderChecklist' ss:Parent='Default'><Interior ss:Color='#0891B2' ss:Pattern='Solid'/><Font ss:Color='#FFFFFF' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='sumLabel' ss:Parent='Default'><Interior ss:Color='#F1F5F9' ss:Pattern='Solid'/><Font ss:Color='#374151' ss:Bold='1'/><Alignment ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='sumValue' ss:Parent='Default'><Font ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='sumGreen' ss:Parent='Default'><Interior ss:Color='#F0FDF4' ss:Pattern='Solid'/><Font ss:Color='#059669' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='sumBlue' ss:Parent='Default'><Font ss:Color='#2563EB' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='sumAmber' ss:Parent='Default'><Font ss:Color='#D97706' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+<Style ss:ID='sumRed' ss:Parent='Default'><Font ss:Color='#DC2626' ss:Bold='1'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{XlBorder}</Style>
+";
+
+    // Builds the <Row>...</Row> XML for the Daily To-Do sheet plus the
+    // <Column ss:Width=.../> definitions for its table, for a date range.
+    string BuildTodoSheetRowsXml(DateTime fromD, DateTime toD, string fromS, string toS, bool allUsers, string targetUser, out string colDefsXml)
     {
         string sql = allUsers
             ? "SELECT data FROM todos WHERE task_date>=@f AND task_date<=@t ORDER BY task_date, username, ts"
@@ -461,26 +480,28 @@ td{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px
         int pct = total > 0 ? (int)Math.Round(done * 100.0 / total) : 0;
         string scope = allUsers ? "All Employees" : (rows.FirstOrDefault()?.GetValueOrDefault("userName")?.ToString() ?? targetUser);
 
+        int lastColIdx = (allUsers ? 11 : 10) - 1;
+        var widths = allUsers
+            ? new[] { 30, 65, 85, 180, 90, 50, 65, 130, 55, 90, 90 }
+            : new[] { 30, 65, 180, 90, 50, 65, 130, 55, 90, 90 };
+        colDefsXml = string.Concat(widths.Select(w => $"<Column ss:Width='{w}'/>"));
+
         var sb = new System.Text.StringBuilder();
-        sb.Append($@"<table style='margin-bottom:14px;border:1px solid #4F46E5'>
-  <tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — DAILY TO-DO / WORK REPORT</td></tr>
-  <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {IstTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
-  <tr><td class='wki'><b>Period:</b> {fromD:dd-MMM-yyyy} to {toD:dd-MMM-yyyy} &nbsp;&nbsp; <b>Scope:</b> {scope} &nbsp;&nbsp; <b>Prepared By:</b> Sandeep Kumar Singh Kushwaha — IT System Administrator</td></tr>
-</table>
-<table>
-<thead><tr>
-  <th style='width:28px'>S.No.</th>
-  <th style='width:80px'>Date</th>
-  {(allUsers ? "<th style='width:100px'>Employee</th>" : "")}
-  <th style='width:220px'>Task / Work Done</th>
-  <th style='width:110px'>Time</th>
-  <th style='width:60px'>Priority</th>
-  <th style='width:80px'>Status</th>
-  <th style='width:160px'>Step / Last Update</th>
-  <th style='width:70px'>Verified</th>
-  <th style='width:110px'>Added At</th>
-  <th style='width:110px'>Completed At</th>
-</tr></thead><tbody>");
+        sb.Append(XRow(XCell("AMPM FASHIONS PVT. LTD. — DAILY TO-DO / WORK REPORT", "titleTodo", lastColIdx), 22));
+        sb.Append(XRow(XCell($"IT ASSET MANAGEMENT SYSTEM · GENERATED: {IstTime.Now:dd-MMM-yyyy HH:mm}", "subTodo", lastColIdx)));
+        sb.Append(XRow(XCell($"Period: {fromD:dd-MMM-yyyy} to {toD:dd-MMM-yyyy}    Scope: {scope}    Prepared By: Sandeep Kumar Singh Kushwaha — IT System Administrator", "infoTodo", lastColIdx)));
+
+        var headerCells = new List<string> { XCell("S.No.", "colHdrTodo"), XCell("Date", "colHdrTodo") };
+        if (allUsers) headerCells.Add(XCell("Employee", "colHdrTodo"));
+        headerCells.Add(XCell("Task / Work Done", "colHdrTodo"));
+        headerCells.Add(XCell("Time", "colHdrTodo"));
+        headerCells.Add(XCell("Priority", "colHdrTodo"));
+        headerCells.Add(XCell("Status", "colHdrTodo"));
+        headerCells.Add(XCell("Step / Last Update", "colHdrTodo"));
+        headerCells.Add(XCell("Verified", "colHdrTodo"));
+        headerCells.Add(XCell("Added At", "colHdrTodo"));
+        headerCells.Add(XCell("Completed At", "colHdrTodo"));
+        sb.Append(XRow(string.Concat(headerCells), 26));
 
         int sno = 0;
         string? lastDate = null;
@@ -489,15 +510,16 @@ td{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px
             var td = g.GetValueOrDefault("taskDate")?.ToString() ?? "";
             if (td != lastDate)
             {
-                sb.Append($"<tr><td colspan='{(allUsers ? 11 : 10)}' class='datehdr'>📅 {td}</td></tr>");
+                sb.Append(XRow(XCell($"📅 {td}", "dateHdrTodo", lastColIdx)));
                 lastDate = td;
             }
             sno++;
             var status = g.GetValueOrDefault("status")?.ToString() ?? "Pending";
             var priority = g.GetValueOrDefault("priority")?.ToString() ?? "Medium";
-            string rowCls = status switch { "Done" => "done", "In Progress" => "inprog", _ => "pending" };
-            string prioCls = priority switch { "High" => "high", "Medium" => "medium", "Low" => "low", _ => "" };
-            string statusStyle = status switch { "Done" => "color:#059669;font-weight:bold", "In Progress" => "color:#2563EB;font-weight:bold", _ => "color:#D97706;font-weight:bold" };
+            string rowC = status switch { "Done" => "rowDoneC", "In Progress" => "rowInprogC", _ => "rowPendingC" };
+            string rowL = status switch { "Done" => "rowDoneL", "In Progress" => "rowInprogL", _ => "rowPendingL" };
+            string prioStyle = priority switch { "High" => "pHigh", "Medium" => "pMedium", "Low" => "pLow", _ => rowC };
+            string statusStyle = status switch { "Done" => "statusDone", "In Progress" => "statusInprog", _ => "statusPending" };
             var st1 = g.GetValueOrDefault("startTime")?.ToString(); var et1 = g.GetValueOrDefault("endTime")?.ToString();
             string timeRange = (!string.IsNullOrEmpty(st1) || !string.IsNullOrEmpty(et1)) ? $"{st1} - {et1}" : "";
             string stepNote = status switch {
@@ -506,44 +528,126 @@ td{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px
                 _ => ""
             };
             string verifiedVal = status == "Done" ? (g.GetValueOrDefault("verified")?.ToString() ?? "No") : "";
-            string verifiedStyle = verifiedVal == "Yes" ? "color:#059669;font-weight:bold" : (verifiedVal == "No" ? "color:#DC2626;font-weight:bold" : "");
-            sb.Append($@"<tr class='{rowCls}'>
-  <td style='text-align:center'>{sno}</td>
-  <td style='text-align:center'>{td}</td>
-  {(allUsers ? $"<td>{System.Net.WebUtility.HtmlEncode(g.GetValueOrDefault("userName")?.ToString())}</td>" : "")}
-  <td>{System.Net.WebUtility.HtmlEncode(g.GetValueOrDefault("task")?.ToString())}</td>
-  <td style='text-align:center;white-space:nowrap'>{timeRange}</td>
-  <td class='{prioCls}'>{priority}</td>
-  <td style='{statusStyle};text-align:center'>{status}</td>
-  <td>{System.Net.WebUtility.HtmlEncode(stepNote)}</td>
-  <td style='{verifiedStyle};text-align:center'>{verifiedVal}</td>
-  <td style='text-align:center'>{g.GetValueOrDefault("createdAt")}</td>
-  <td style='text-align:center'>{g.GetValueOrDefault("completedAt")}</td>
-</tr>");
+            string verifiedStyle = verifiedVal == "Yes" ? "vYes" : (verifiedVal == "No" ? "vNo" : rowC);
+
+            var cells = new List<string> { XCell(sno, rowC), XCell(td, rowC) };
+            if (allUsers) cells.Add(XCell(g.GetValueOrDefault("userName")?.ToString() ?? "", rowL));
+            cells.Add(XCell(g.GetValueOrDefault("task")?.ToString() ?? "", rowL));
+            cells.Add(XCell(timeRange, rowC));
+            cells.Add(XCell(priority, prioStyle));
+            cells.Add(XCell(status, statusStyle));
+            cells.Add(XCell(stepNote, rowL));
+            cells.Add(XCell(verifiedVal, verifiedStyle));
+            cells.Add(XCell(g.GetValueOrDefault("createdAt")?.ToString() ?? "", rowC));
+            cells.Add(XCell(g.GetValueOrDefault("completedAt")?.ToString() ?? "", rowC));
+            sb.Append(XRow(string.Concat(cells)));
         }
-        sb.Append($@"</tbody></table>
-<br>
-<table style='width:360px;margin-top:14px;border:1px solid #4F46E5'>
-  <tr><td colspan='2' class='sh'>REPORT SUMMARY</td></tr>
-  <tr><td class='sl'>Total Tasks</td><td class='sv'>{total}</td></tr>
-  <tr class='done'><td class='sl'>Done</td><td class='sv green'>{done}</td></tr>
-  <tr class='inprog'><td class='sl'>In Progress</td><td class='sv blue'>{inprog}</td></tr>
-  <tr class='pending'><td class='sl'>Pending</td><td class='sv amber'>{pending}</td></tr>
-  <tr style='background:#F0FDF4'><td class='sl'>Completion Rate</td><td class='sv green' style='font-size:13px'>{pct}%</td></tr>
-</table>
-<br>
-<div style='font-size:10px;color:#6B7280;border-top:1px solid #E2E8F0;padding-top:6px'>
-  <b>Sandeep Kumar Singh Kushwaha</b> | IT System Administrator | AMPM Fashions Pvt Ltd<br>
-  +91 93156 31188 | B-144, Sector 10, Noida - 201301
-</div>");
+
+        sb.Append(XRow(XCell("", null, lastColIdx)));
+        sb.Append(XRow(XCell("REPORT SUMMARY", "sumHeaderTodo", 1)));
+        sb.Append(XRow(XCell("Total Tasks", "sumLabel") + XCell(total, "sumValue")));
+        sb.Append(XRow(XCell("Done", "sumLabel") + XCell(done, "sumGreen")));
+        sb.Append(XRow(XCell("In Progress", "sumLabel") + XCell(inprog, "sumBlue")));
+        sb.Append(XRow(XCell("Pending", "sumLabel") + XCell(pending, "sumAmber")));
+        sb.Append(XRow(XCell("Completion Rate", "sumLabel") + XCell($"{pct}%", "sumGreen")));
+
         return sb.ToString();
     }
 
-    // ── Colorful Excel Report (HTML workbook, opens directly in Excel) ──────
-    // One .xls download with TWO sheet tabs: "Daily To-Do" (this module's own
-    // list) and "Morning Checklist" (the recurring IT checks tab), both for
-    // the same date range Sandy picked here — so downloading the Todo list
-    // always brings that day's Morning Checklist along on its own sheet.
+    // Builds the <Row>...</Row> XML for the Morning Checklist sheet plus its
+    // <Column ss:Width=.../> definitions, for a date range — mirrors
+    // BuildChecklistSheetBody's data logic (every active item × every date,
+    // defaulting untouched items to "Pending") but emits SpreadsheetML cells
+    // instead of HTML <td>s.
+    string BuildChecklistSheetRowsXml(DateTime fromD, DateTime toD, string fromS, string toS, out string colDefsXml)
+    {
+        var items = EnsureChecklistSeed()
+            .Where(i => (i.GetValueOrDefault("active")?.ToString() ?? "True") != "False").ToList();
+        var logRows = _db.GetChecklistLogRange(fromS, toS);
+        var logByDate = logRows
+            .GroupBy(r => r.GetValueOrDefault("checkDate")?.ToString() ?? "")
+            .ToDictionary(g => g.Key, g => g.ToDictionary(r => r.GetValueOrDefault("itemId")?.ToString() ?? "", r => r));
+
+        int total = 0, checkedCnt = 0, issueCnt = 0, pendingCnt = 0;
+        const int lastColIdx = 9; // 10 columns: S.No, Date, Location, Category, Task, Priority, Status, Note, Updated By, Updated At
+
+        var widths = new[] { 30, 65, 85, 120, 120, 50, 65, 130, 90, 90 };
+        colDefsXml = string.Concat(widths.Select(w => $"<Column ss:Width='{w}'/>"));
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append(XRow(XCell("AMPM FASHIONS PVT. LTD. — MORNING IT CHECKLIST REPORT", "titleChecklist", lastColIdx), 22));
+        sb.Append(XRow(XCell($"IT ASSET MANAGEMENT SYSTEM · GENERATED: {IstTime.Now:dd-MMM-yyyy HH:mm}", "subChecklist", lastColIdx)));
+        sb.Append(XRow(XCell($"Period: {fromD:dd-MMM-yyyy} to {toD:dd-MMM-yyyy}    Prepared By: Sandeep Kumar Singh Kushwaha — IT System Administrator", "infoChecklist", lastColIdx)));
+
+        sb.Append(XRow(
+            XCell("S.No.", "colHdrChecklist") + XCell("Date", "colHdrChecklist") + XCell("Location", "colHdrChecklist") +
+            XCell("Category", "colHdrChecklist") + XCell("Task", "colHdrChecklist") + XCell("Priority", "colHdrChecklist") +
+            XCell("Status", "colHdrChecklist") + XCell("Note", "colHdrChecklist") + XCell("Updated By", "colHdrChecklist") +
+            XCell("Updated At", "colHdrChecklist"), 26));
+
+        int sno = 0;
+        for (var day = fromD; day <= toD; day = day.AddDays(1))
+        {
+            var cdt = day.ToString("yyyy-MM-dd");
+            logByDate.TryGetValue(cdt, out var dayLog);
+            sb.Append(XRow(XCell($"📅 {cdt}", "dateHdrChecklist", lastColIdx)));
+
+            foreach (var itm in items)
+            {
+                var itemId = itm.GetValueOrDefault("id")?.ToString() ?? "";
+                Dictionary<string, object?>? r = null;
+                dayLog?.TryGetValue(itemId, out r);
+
+                sno++;
+                var status = r?.GetValueOrDefault("status")?.ToString() ?? "Pending";
+                var priority = itm.GetValueOrDefault("priority")?.ToString() ?? "Medium";
+                total++;
+                if (status == "Checked") checkedCnt++;
+                else if (status == "Issue Found") issueCnt++;
+                else pendingCnt++;
+
+                string rowC = status switch { "Checked" => "rowDoneC", "Issue Found" => "rowIssueC", _ => "rowPendingC" };
+                string rowL = status switch { "Checked" => "rowDoneL", "Issue Found" => "rowIssueL", _ => "rowPendingL" };
+                string prioStyle = priority switch { "High" => "pHigh", "Medium" => "pMedium", "Low" => "pLow", _ => rowC };
+                string statusStyle = status switch { "Checked" => "statusDone", "Issue Found" => "statusIssue", _ => "statusPending" };
+
+                var cells = new List<string>
+                {
+                    XCell(sno, rowC),
+                    XCell(cdt, rowC),
+                    XCell(itm.GetValueOrDefault("location")?.ToString() ?? "", rowL),
+                    XCell(itm.GetValueOrDefault("category")?.ToString() ?? "", rowL),
+                    XCell(itm.GetValueOrDefault("task")?.ToString() ?? "", rowL),
+                    XCell(priority, prioStyle),
+                    XCell(status, statusStyle),
+                    XCell(r?.GetValueOrDefault("note")?.ToString() ?? "", rowL),
+                    XCell(r?.GetValueOrDefault("updatedBy")?.ToString() ?? "", rowL),
+                    XCell(r?.GetValueOrDefault("updatedAt")?.ToString() ?? "", rowC),
+                };
+                sb.Append(XRow(string.Concat(cells)));
+            }
+        }
+        int pct = total > 0 ? (int)Math.Round(checkedCnt * 100.0 / total) : 0;
+
+        sb.Append(XRow(XCell("", null, lastColIdx)));
+        sb.Append(XRow(XCell("REPORT SUMMARY", "sumHeaderChecklist", 1)));
+        sb.Append(XRow(XCell("Total Entries", "sumLabel") + XCell(total, "sumValue")));
+        sb.Append(XRow(XCell("Checked", "sumLabel") + XCell(checkedCnt, "sumGreen")));
+        sb.Append(XRow(XCell("Pending", "sumLabel") + XCell(pendingCnt, "sumAmber")));
+        sb.Append(XRow(XCell("Issue Found", "sumLabel") + XCell(issueCnt, "sumRed")));
+        sb.Append(XRow(XCell("Checked Rate", "sumLabel") + XCell($"{pct}%", "sumGreen")));
+
+        return sb.ToString();
+    }
+
+    // ── Colorful Excel Report (genuine SpreadsheetML workbook) ──────────────
+    // One .xls download with TWO real sheet tabs: "Daily To-Do" (this
+    // module's own list) and "Morning Checklist" (the recurring IT checks
+    // tab), both for the same date range Sandy picked here — so downloading
+    // the Todo list always brings that day's Morning Checklist along on its
+    // own sheet. Uses real SpreadsheetML <Worksheet> elements (see comment
+    // above XlStyles) rather than the old HTML mso-comment trick, which
+    // Excel was failing to load correctly.
     [HttpGet("/Todos/Export")]
     public IActionResult Export(string? from, string? to, string? user)
     {
@@ -559,36 +663,22 @@ td{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px
         string targetUser = canApprove ? (user ?? "") : current.Username;
         bool allUsers = canApprove && (targetUser == "__all__" || string.IsNullOrEmpty(targetUser));
 
-        string todoBody      = BuildTodoSheetBody(fromD, toD, fromS, toS, allUsers, targetUser);
-        string checklistBody = BuildChecklistSheetBody(fromD, toD, fromS, toS);
+        string todoRows      = BuildTodoSheetRowsXml(fromD, toD, fromS, toS, allUsers, targetUser, out var todoCols);
+        string checklistRows = BuildChecklistSheetRowsXml(fromD, toD, fromS, toS, out var checklistCols);
 
         var sb = new System.Text.StringBuilder();
-        sb.Append($@"<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel' xmlns='http://www.w3.org/TR/REC-html40'>
-<head>
-<meta charset='UTF-8'>
-<meta name='ProgId' content='Excel.Sheet'>
-<!--[if gte mso 9]><xml>
- <x:ExcelWorkbook>
-  <x:ExcelWorksheets>
-   <x:ExcelWorksheet><x:Name>Daily To-Do</x:Name><x:WorksheetSource HRef='#todoSheet'/></x:ExcelWorksheet>
-   <x:ExcelWorksheet><x:Name>Morning Checklist</x:Name><x:WorksheetSource HRef='#checklistSheet'/></x:ExcelWorksheet>
-  </x:ExcelWorksheets>
- </x:ExcelWorkbook>
-</xml><![endif]-->
-<style>
-body{{font-family:Arial,sans-serif;font-size:11px;margin:12px}}
-{ScopeCss(TodoCss, "todoSheet")}
-{ScopeCss(ChecklistCss, "checklistSheet")}
-</style>
-</head>
-<body>
-<div id='todoSheet'>
-{todoBody}
-</div>
-<div id='checklistSheet'>
-{checklistBody}
-</div>
-</body></html>");
+        sb.Append("<?xml version='1.0'?>\n");
+        sb.Append("<?mso-application progid='Excel.Sheet'?>\n");
+        sb.Append(@"<Workbook xmlns='urn:schemas-microsoft-com:office:spreadsheet'
+ xmlns:o='urn:schemas-microsoft-com:office:office'
+ xmlns:x='urn:schemas-microsoft-com:office:excel'
+ xmlns:ss='urn:schemas-microsoft-com:office:spreadsheet'>
+<Styles>");
+        sb.Append(XlStyles);
+        sb.Append("</Styles>\n");
+        sb.Append($"<Worksheet ss:Name='Daily To-Do'><Table ss:DefaultColumnWidth='60'>{todoCols}{todoRows}</Table></Worksheet>\n");
+        sb.Append($"<Worksheet ss:Name='Morning Checklist'><Table ss:DefaultColumnWidth='60'>{checklistCols}{checklistRows}</Table></Worksheet>\n");
+        sb.Append("</Workbook>");
 
         var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
         return File(bytes, "application/vnd.ms-excel", $"AMPM_Todo_Report_{fromD:yyyyMMdd}_{toD:yyyyMMdd}.xls");
