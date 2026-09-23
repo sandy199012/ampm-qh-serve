@@ -414,14 +414,24 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
   <th style='width:26px'>S.No.</th>
   <th style='width:110px'>Ticket ID</th>
   <th style='width:80px'>Date Raised</th>
+  <th style='width:90px'>Raised By</th>
   <th style='width:110px'>Employee</th>
+  <th style='width:70px'>Emp ID</th>
   <th style='width:90px'>Department</th>
-  <th style='width:180px'>Issue Title</th>
+  <th style='width:90px'>Designation</th>
+  <th style='width:90px'>HOD</th>
+  <th style='width:130px'>Email</th>
+  <th style='width:90px'>Mobile</th>
+  <th style='width:100px'>Category</th>
   <th style='width:110px'>Issue Type</th>
+  <th style='width:180px'>Issue Title</th>
+  <th style='width:200px'>Description</th>
   <th style='width:55px'>Priority</th>
+  <th style='width:90px'>Assigned To</th>
   <th style='width:75px'>Status</th>
   <th style='width:80px'>Acknowledged</th>
   <th style='width:150px'>Ack Comment</th>
+  <th style='width:110px'>Expected Resolution (ETA)</th>
   <th style='width:80px'>Resolved</th>
   <th style='width:150px'>Resolution</th>
   <th style='width:80px'>Closed</th>
@@ -430,6 +440,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
   <th style='width:60px'>Res. Hrs</th>
   <th style='width:80px'>Emp. Feedback</th>
   <th style='width:150px'>Feedback Comment</th>
+  <th style='width:90px'>Feedback Date</th>
 </tr></thead><tbody>");
 
         int sno = 0;
@@ -447,14 +458,24 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
   <td style='text-align:center'>{sno}</td>
   <td style='text-align:center;font-weight:bold;color:#0A192F'>{E(t.GetValueOrDefault("ticketId")?.ToString())}</td>
   <td style='text-align:center'>{E(t.GetValueOrDefault("dateRaised")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("raisedBy")?.ToString())}</td>
   <td>{E(t.GetValueOrDefault("empName")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("empId")?.ToString())}</td>
   <td style='text-align:center'>{E(t.GetValueOrDefault("empDept")?.ToString())}</td>
-  <td>{E(t.GetValueOrDefault("title")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("empDesig")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("empHod")?.ToString())}</td>
+  <td>{E(t.GetValueOrDefault("empEmail")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("empMobile")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("category")?.ToString())}</td>
   <td style='text-align:center'>{E(t.GetValueOrDefault("issueType")?.ToString())}</td>
+  <td>{E(t.GetValueOrDefault("title")?.ToString())}</td>
+  <td>{E(t.GetValueOrDefault("description")?.ToString())}</td>
   <td class='{prioCls}'>{E(pr)}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("assignedTo")?.ToString())}</td>
   <td style='{statusStyle};text-align:center'>{E(st)}</td>
   <td style='text-align:center'>{E(t.GetValueOrDefault("dateAcknowledged")?.ToString())}</td>
   <td>{E(t.GetValueOrDefault("ackComment")?.ToString())}</td>
+  <td style='text-align:center;color:#D97706;font-weight:bold'>{E(t.GetValueOrDefault("expectedResolution")?.ToString())}</td>
   <td style='text-align:center'>{E(t.GetValueOrDefault("dateResolved")?.ToString())}</td>
   <td>{E(t.GetValueOrDefault("resolution")?.ToString())}</td>
   <td style='text-align:center'>{E(t.GetValueOrDefault("dateClosed")?.ToString())}</td>
@@ -463,6 +484,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
   <td style='text-align:center'>{E(t.GetValueOrDefault("resolutionHrs")?.ToString())}</td>
   <td style='{fbStyle};text-align:center'>{E(empFb)}</td>
   <td>{E(t.GetValueOrDefault("empFeedback")?.ToString())}</td>
+  <td style='text-align:center'>{E(t.GetValueOrDefault("empFeedbackDate")?.ToString())}</td>
 </tr>");
         }
         sb.Append($@"</tbody></table>
