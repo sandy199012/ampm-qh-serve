@@ -156,18 +156,35 @@ public class TodosController : Controller
         return Json(new { ok = true });
     }
 
-    // ── Checklist Excel Report ────────────────────────────────
-    [HttpGet("/Todos/ChecklistExport")]
-    public IActionResult ChecklistExport(string? from, string? to)
+    // Original per-sheet CSS for the Morning Checklist report (cyan theme).
+    // Used unscoped for the standalone ChecklistExport download, and scoped
+    // under #checklistSheet (see ChecklistScopedCss below) when this same
+    // sheet body is embedded as the second tab of the combined Todo export.
+    const string ChecklistCss = @"
+table{border-collapse:collapse;width:100%}
+th{background:#0891B2;color:#FFF;padding:7px 5px;text-align:center;font-size:10px;border:1px solid #155E75}
+td{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px}
+.hdr{background:#0891B2;color:#FFF;font-size:15px;font-weight:bold;padding:10px 14px}
+.sub{background:#164E63;color:#A5F3FC;font-size:10px;padding:5px 14px;letter-spacing:1px}
+.wki{background:#ECFEFF;padding:7px 14px;font-size:10px;color:#374151;border:1px solid #E2E8F0}
+.datehdr{background:#ECFEFF;color:#155E75;font-weight:bold;padding:6px 8px;font-size:11px}
+.checked{background:#F0FDF4} .pending{background:#FFFBEB} .issue{background:#FEF2F2}
+.high{background:#FEE2E2;color:#991B1B;font-weight:bold;text-align:center}
+.medium{background:#FEF3C7;color:#92400E;font-weight:bold;text-align:center}
+.low{background:#D1FAE5;color:#065F46;font-weight:bold;text-align:center}
+.sh{background:#0891B2;color:#FFF;font-weight:bold;text-align:center;padding:7px}
+.sl{background:#F1F5F9;font-weight:bold;color:#374151;padding:6px 10px}
+.sv{text-align:center;font-weight:bold;padding:6px}
+.green{color:#059669} .amber{color:#D97706} .red{color:#DC2626}
+";
+
+    // Builds just the Morning Checklist report's tables (info block + data
+    // table + summary table + signature) for a date range — no <html>/<style>
+    // wrapper, so it can be dropped either into its own standalone document
+    // (ChecklistExport) or embedded as one sheet of a combined workbook
+    // (Todos Export, alongside the Daily To-Do sheet, for the same dates).
+    string BuildChecklistSheetBody(DateTime fromD, DateTime toD, string fromS, string toS)
     {
-        var current = _auth.GetCurrentUser(HttpContext);
-        if (current == null) return RedirectToAction("Login", "Account");
-
-        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : IstTime.Today;
-        DateTime toD   = DateTime.TryParse(to, out var tt) ? tt.Date : IstTime.Today;
-        if (toD < fromD) (fromD, toD) = (toD, fromD);
-        string fromS = fromD.ToString("yyyy-MM-dd"), toS = toD.ToString("yyyy-MM-dd");
-
         var items = EnsureChecklistSeed().ToDictionary(i => i.GetValueOrDefault("id")?.ToString() ?? "", i => i);
         var logRows = _db.GetChecklistLogRange(fromS, toS);
 
@@ -178,25 +195,7 @@ public class TodosController : Controller
         int pct = total > 0 ? (int)Math.Round(checkedCnt * 100.0 / total) : 0;
 
         var sb = new System.Text.StringBuilder();
-        sb.Append($@"<html><head><meta charset='UTF-8'><style>
-body{{font-family:Arial,sans-serif;font-size:11px;margin:12px}}
-table{{border-collapse:collapse;width:100%}}
-th{{background:#0891B2;color:#FFF;padding:7px 5px;text-align:center;font-size:10px;border:1px solid #155E75}}
-td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px}}
-.hdr{{background:#0891B2;color:#FFF;font-size:15px;font-weight:bold;padding:10px 14px}}
-.sub{{background:#164E63;color:#A5F3FC;font-size:10px;padding:5px 14px;letter-spacing:1px}}
-.wki{{background:#ECFEFF;padding:7px 14px;font-size:10px;color:#374151;border:1px solid #E2E8F0}}
-.datehdr{{background:#ECFEFF;color:#155E75;font-weight:bold;padding:6px 8px;font-size:11px}}
-.checked{{background:#F0FDF4}} .pending{{background:#FFFBEB}} .issue{{background:#FEF2F2}}
-.high{{background:#FEE2E2;color:#991B1B;font-weight:bold;text-align:center}}
-.medium{{background:#FEF3C7;color:#92400E;font-weight:bold;text-align:center}}
-.low{{background:#D1FAE5;color:#065F46;font-weight:bold;text-align:center}}
-.sh{{background:#0891B2;color:#FFF;font-weight:bold;text-align:center;padding:7px}}
-.sl{{background:#F1F5F9;font-weight:bold;color:#374151;padding:6px 10px}}
-.sv{{text-align:center;font-weight:bold;padding:6px}}
-.green{{color:#059669}} .amber{{color:#D97706}} .red{{color:#DC2626}}
-</style></head><body>
-<table style='margin-bottom:14px;border:1px solid #0891B2'>
+        sb.Append($@"<table style='margin-bottom:14px;border:1px solid #0891B2'>
   <tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — MORNING IT CHECKLIST REPORT</td></tr>
   <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {IstTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
   <tr><td class='wki'><b>Period:</b> {fromD:dd-MMM-yyyy} to {toD:dd-MMM-yyyy} &nbsp;&nbsp; <b>Prepared By:</b> Sandeep Kumar Singh Kushwaha — IT System Administrator</td></tr>
@@ -260,7 +259,28 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 <div style='font-size:10px;color:#6B7280;border-top:1px solid #E2E8F0;padding-top:6px'>
   <b>Sandeep Kumar Singh Kushwaha</b> | IT System Administrator | AMPM Fashions Pvt Ltd<br>
   +91 93156 31188 | B-144, Sector 10, Noida - 201301
-</div></body></html>");
+</div>");
+        return sb.ToString();
+    }
+
+    // ── Checklist Excel Report (standalone download, own tab's "Excel Report" button) ──
+    [HttpGet("/Todos/ChecklistExport")]
+    public IActionResult ChecklistExport(string? from, string? to)
+    {
+        var current = _auth.GetCurrentUser(HttpContext);
+        if (current == null) return RedirectToAction("Login", "Account");
+
+        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : IstTime.Today;
+        DateTime toD   = DateTime.TryParse(to, out var tt) ? tt.Date : IstTime.Today;
+        if (toD < fromD) (fromD, toD) = (toD, fromD);
+        string fromS = fromD.ToString("yyyy-MM-dd"), toS = toD.ToString("yyyy-MM-dd");
+
+        var body = BuildChecklistSheetBody(fromD, toD, fromS, toS);
+        var sb = new System.Text.StringBuilder();
+        sb.Append($@"<html><head><meta charset='UTF-8'><style>
+body{{font-family:Arial,sans-serif;font-size:11px;margin:12px}}
+{ChecklistCss}
+</style></head><body>{body}</body></html>");
 
         var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
         return File(bytes, "application/vnd.ms-excel", $"AMPM_Morning_Checklist_{fromD:yyyyMMdd}_{toD:yyyyMMdd}.xls");
@@ -354,22 +374,63 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
         return Json(new { ok = true });
     }
 
-    // ── Colorful Excel Report (HTML table, opens directly in Excel) ─────────
-    [HttpGet("/Todos/Export")]
-    public IActionResult Export(string? from, string? to, string? user)
+    // Original per-sheet CSS for the Daily To-Do report (indigo/purple theme).
+    const string TodoCss = @"
+table{border-collapse:collapse;width:100%}
+th{background:#4F46E5;color:#FFF;padding:7px 5px;text-align:center;font-size:10px;border:1px solid #3730A3}
+td{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px}
+.hdr{background:linear-gradient(90deg,#4F46E5,#7C3AED);background-color:#4F46E5;color:#FFF;font-size:15px;font-weight:bold;padding:10px 14px}
+.sub{background:#312E81;color:#A5B4FC;font-size:10px;padding:5px 14px;letter-spacing:1px}
+.wki{background:#F5F3FF;padding:7px 14px;font-size:10px;color:#374151;border:1px solid #E2E8F0}
+.datehdr{background:#EEF2FF;color:#3730A3;font-weight:bold;padding:6px 8px;font-size:11px}
+.done{background:#F0FDF4} .inprog{background:#EFF6FF} .pending{background:#FFFBEB}
+.high{background:#FEE2E2;color:#991B1B;font-weight:bold;text-align:center}
+.medium{background:#FEF3C7;color:#92400E;font-weight:bold;text-align:center}
+.low{background:#D1FAE5;color:#065F46;font-weight:bold;text-align:center}
+.sh{background:#4F46E5;color:#FFF;font-weight:bold;text-align:center;padding:7px}
+.sl{background:#F1F5F9;font-weight:bold;color:#374151;padding:6px 10px}
+.sv{text-align:center;font-weight:bold;padding:6px}
+.green{color:#059669} .blue{color:#2563EB} .amber{color:#D97706}
+";
+
+    // Same CSS as above, but every selector scoped under a container div id —
+    // used only in the combined Todo+Checklist workbook (Export, below) so
+    // the two sheets' identically-named classes (.hdr, .sub, .pending, ...)
+    // don't clash when both style blocks share one <head>.
+    static string ScopeCss(string css, string scopeId)
     {
-        var current = _auth.GetCurrentUser(HttpContext);
-        if (current == null) return RedirectToAction("Login", "Account");
-        bool canApprove = current.CanApprove("Todos");
+        // Scans for every "<selectors>{...}" rule in the CSS constant — some
+        // lines hold more than one rule (e.g. ".done{...} .inprog{...} .pending{...}"),
+        // so this walks brace-to-brace across the whole string rather than
+        // assuming one rule per line — and prefixes each rule's comma-separated
+        // selectors with "#scopeId " so the two sheets' identically-named
+        // classes (.hdr, .sub, .pending, ...) never clash when both style
+        // blocks share one <head> in the combined workbook.
+        var outSb = new System.Text.StringBuilder();
+        int i = 0;
+        while (i < css.Length)
+        {
+            int openIdx = css.IndexOf('{', i);
+            if (openIdx < 0) break;
+            int closeIdx = css.IndexOf('}', openIdx);
+            if (closeIdx < 0) break;
+            var selectorPart = css.Substring(i, openIdx - i).Trim();
+            var rulePart = css.Substring(openIdx, closeIdx - openIdx + 1);
+            if (selectorPart.Length > 0)
+            {
+                var scoped = string.Join(", ", selectorPart.Split(',').Select(s => $"#{scopeId} {s.Trim()}"));
+                outSb.Append(scoped).Append(rulePart).Append('\n');
+            }
+            i = closeIdx + 1;
+        }
+        return outSb.ToString();
+    }
 
-        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : IstTime.Today;
-        DateTime toD   = DateTime.TryParse(to, out var tt) ? tt.Date : IstTime.Today;
-        if (toD < fromD) (fromD, toD) = (toD, fromD);
-        string fromS = fromD.ToString("yyyy-MM-dd"), toS = toD.ToString("yyyy-MM-dd");
-
-        string targetUser = canApprove ? (user ?? "") : current.Username;
-        bool allUsers = canApprove && (targetUser == "__all__" || string.IsNullOrEmpty(targetUser));
-
+    // Builds just the Daily To-Do report's tables (info block + data table +
+    // summary table) for a date range — no <html>/<style> wrapper, mirroring
+    // BuildChecklistSheetBody so both can share one workbook (see Export).
+    string BuildTodoSheetBody(DateTime fromD, DateTime toD, string fromS, string toS, bool allUsers, string targetUser)
+    {
         string sql = allUsers
             ? "SELECT data FROM todos WHERE task_date>=@f AND task_date<=@t ORDER BY task_date, username, ts"
             : "SELECT data FROM todos WHERE task_date>=@f AND task_date<=@t AND username=@u ORDER BY task_date, ts";
@@ -384,25 +445,7 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
         string scope = allUsers ? "All Employees" : (rows.FirstOrDefault()?.GetValueOrDefault("userName")?.ToString() ?? targetUser);
 
         var sb = new System.Text.StringBuilder();
-        sb.Append($@"<html><head><meta charset='UTF-8'><style>
-body{{font-family:Arial,sans-serif;font-size:11px;margin:12px}}
-table{{border-collapse:collapse;width:100%}}
-th{{background:#4F46E5;color:#FFF;padding:7px 5px;text-align:center;font-size:10px;border:1px solid #3730A3}}
-td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px}}
-.hdr{{background:linear-gradient(90deg,#4F46E5,#7C3AED);background-color:#4F46E5;color:#FFF;font-size:15px;font-weight:bold;padding:10px 14px}}
-.sub{{background:#312E81;color:#A5B4FC;font-size:10px;padding:5px 14px;letter-spacing:1px}}
-.wki{{background:#F5F3FF;padding:7px 14px;font-size:10px;color:#374151;border:1px solid #E2E8F0}}
-.datehdr{{background:#EEF2FF;color:#3730A3;font-weight:bold;padding:6px 8px;font-size:11px}}
-.done{{background:#F0FDF4}} .inprog{{background:#EFF6FF}} .pending{{background:#FFFBEB}}
-.high{{background:#FEE2E2;color:#991B1B;font-weight:bold;text-align:center}}
-.medium{{background:#FEF3C7;color:#92400E;font-weight:bold;text-align:center}}
-.low{{background:#D1FAE5;color:#065F46;font-weight:bold;text-align:center}}
-.sh{{background:#4F46E5;color:#FFF;font-weight:bold;text-align:center;padding:7px}}
-.sl{{background:#F1F5F9;font-weight:bold;color:#374151;padding:6px 10px}}
-.sv{{text-align:center;font-weight:bold;padding:6px}}
-.green{{color:#059669}} .blue{{color:#2563EB}} .amber{{color:#D97706}}
-</style></head><body>
-<table style='margin-bottom:14px;border:1px solid #4F46E5'>
+        sb.Append($@"<table style='margin-bottom:14px;border:1px solid #4F46E5'>
   <tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — DAILY TO-DO / WORK REPORT</td></tr>
   <tr><td class='sub'>IT ASSET MANAGEMENT SYSTEM · GENERATED: {IstTime.Now:dd-MMM-yyyy HH:mm}</td></tr>
   <tr><td class='wki'><b>Period:</b> {fromD:dd-MMM-yyyy} to {toD:dd-MMM-yyyy} &nbsp;&nbsp; <b>Scope:</b> {scope} &nbsp;&nbsp; <b>Prepared By:</b> Sandeep Kumar Singh Kushwaha — IT System Administrator</td></tr>
@@ -475,7 +518,60 @@ td{{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10p
 <div style='font-size:10px;color:#6B7280;border-top:1px solid #E2E8F0;padding-top:6px'>
   <b>Sandeep Kumar Singh Kushwaha</b> | IT System Administrator | AMPM Fashions Pvt Ltd<br>
   +91 93156 31188 | B-144, Sector 10, Noida - 201301
-</div></body></html>");
+</div>");
+        return sb.ToString();
+    }
+
+    // ── Colorful Excel Report (HTML workbook, opens directly in Excel) ──────
+    // One .xls download with TWO sheet tabs: "Daily To-Do" (this module's own
+    // list) and "Morning Checklist" (the recurring IT checks tab), both for
+    // the same date range Sandy picked here — so downloading the Todo list
+    // always brings that day's Morning Checklist along on its own sheet.
+    [HttpGet("/Todos/Export")]
+    public IActionResult Export(string? from, string? to, string? user)
+    {
+        var current = _auth.GetCurrentUser(HttpContext);
+        if (current == null) return RedirectToAction("Login", "Account");
+        bool canApprove = current.CanApprove("Todos");
+
+        DateTime fromD = DateTime.TryParse(from, out var f) ? f.Date : IstTime.Today;
+        DateTime toD   = DateTime.TryParse(to, out var tt) ? tt.Date : IstTime.Today;
+        if (toD < fromD) (fromD, toD) = (toD, fromD);
+        string fromS = fromD.ToString("yyyy-MM-dd"), toS = toD.ToString("yyyy-MM-dd");
+
+        string targetUser = canApprove ? (user ?? "") : current.Username;
+        bool allUsers = canApprove && (targetUser == "__all__" || string.IsNullOrEmpty(targetUser));
+
+        string todoBody      = BuildTodoSheetBody(fromD, toD, fromS, toS, allUsers, targetUser);
+        string checklistBody = BuildChecklistSheetBody(fromD, toD, fromS, toS);
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append($@"<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:x='urn:schemas-microsoft-com:office:excel' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset='UTF-8'>
+<meta name='ProgId' content='Excel.Sheet'>
+<!--[if gte mso 9]><xml>
+ <x:ExcelWorkbook>
+  <x:ExcelWorksheets>
+   <x:ExcelWorksheet><x:Name>Daily To-Do</x:Name><x:WorksheetSource HRef='#todoSheet'/></x:ExcelWorksheet>
+   <x:ExcelWorksheet><x:Name>Morning Checklist</x:Name><x:WorksheetSource HRef='#checklistSheet'/></x:ExcelWorksheet>
+  </x:ExcelWorksheets>
+ </x:ExcelWorkbook>
+</xml><![endif]-->
+<style>
+body{{font-family:Arial,sans-serif;font-size:11px;margin:12px}}
+{ScopeCss(TodoCss, "todoSheet")}
+{ScopeCss(ChecklistCss, "checklistSheet")}
+</style>
+</head>
+<body>
+<div id='todoSheet'>
+{todoBody}
+</div>
+<div id='checklistSheet'>
+{checklistBody}
+</div>
+</body></html>");
 
         var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
         return File(bytes, "application/vnd.ms-excel", $"AMPM_Todo_Report_{fromD:yyyyMMdd}_{toD:yyyyMMdd}.xls");
