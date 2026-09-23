@@ -185,14 +185,23 @@ td{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px
     // (Todos Export, alongside the Daily To-Do sheet, for the same dates).
     string BuildChecklistSheetBody(DateTime fromD, DateTime toD, string fromS, string toS)
     {
-        var items = EnsureChecklistSeed().ToDictionary(i => i.GetValueOrDefault("id")?.ToString() ?? "", i => i);
+        // Only items that were actually clicked (Checked/Pending/Issue Found)
+        // get a row in checklist_log — an item nobody touched on a given day
+        // has NO log row at all, it just silently defaults to "Pending" in the
+        // live Morning Checklist tab. Looping over `logRows` alone (the old
+        // approach) therefore skipped every untouched item entirely, which is
+        // why Sandy saw the Excel export missing most items' Checked/Pending/
+        // Issue Found status. Fixed by looping every ACTIVE item × every date
+        // in the range ourselves, defaulting to "Pending" when no log row
+        // exists for that item+date — same rule the live tab already uses.
+        var items = EnsureChecklistSeed()
+            .Where(i => (i.GetValueOrDefault("active")?.ToString() ?? "True") != "False").ToList();
         var logRows = _db.GetChecklistLogRange(fromS, toS);
+        var logByDate = logRows
+            .GroupBy(r => r.GetValueOrDefault("checkDate")?.ToString() ?? "")
+            .ToDictionary(g => g.Key, g => g.ToDictionary(r => r.GetValueOrDefault("itemId")?.ToString() ?? "", r => r));
 
-        int total = logRows.Count;
-        int checkedCnt = logRows.Count(r => r.GetValueOrDefault("status")?.ToString() == "Checked");
-        int issueCnt   = logRows.Count(r => r.GetValueOrDefault("status")?.ToString() == "Issue Found");
-        int pendingCnt = logRows.Count(r => r.GetValueOrDefault("status")?.ToString() == "Pending");
-        int pct = total > 0 ? (int)Math.Round(checkedCnt * 100.0 / total) : 0;
+        int total = 0, checkedCnt = 0, issueCnt = 0, pendingCnt = 0;
 
         var sb = new System.Text.StringBuilder();
         sb.Append($@"<table style='margin-bottom:14px;border:1px solid #0891B2'>
@@ -215,36 +224,44 @@ td{padding:5px 6px;border:1px solid #CBD5E1;vertical-align:middle;font-size:10px
 </tr></thead><tbody>");
 
         int sno = 0;
-        string? lastDate = null;
-        foreach (var r in logRows)
+        for (var day = fromD; day <= toD; day = day.AddDays(1))
         {
-            var cdt = r.GetValueOrDefault("checkDate")?.ToString() ?? "";
-            if (cdt != lastDate)
+            var cdt = day.ToString("yyyy-MM-dd");
+            logByDate.TryGetValue(cdt, out var dayLog);
+            sb.Append($"<tr><td colspan='10' class='datehdr'>📅 {cdt}</td></tr>");
+
+            foreach (var itm in items)
             {
-                sb.Append($"<tr><td colspan='10' class='datehdr'>📅 {cdt}</td></tr>");
-                lastDate = cdt;
-            }
-            sno++;
-            var itemId = r.GetValueOrDefault("itemId")?.ToString() ?? "";
-            items.TryGetValue(itemId, out var itm);
-            var status = r.GetValueOrDefault("status")?.ToString() ?? "Pending";
-            var priority = itm?.GetValueOrDefault("priority")?.ToString() ?? "Medium";
-            string rowCls = status switch { "Checked" => "checked", "Issue Found" => "issue", _ => "pending" };
-            string prioCls = priority switch { "High" => "high", "Medium" => "medium", "Low" => "low", _ => "" };
-            string statusStyle = status switch { "Checked" => "color:#059669;font-weight:bold", "Issue Found" => "color:#DC2626;font-weight:bold", _ => "color:#D97706;font-weight:bold" };
-            sb.Append($@"<tr class='{rowCls}'>
+                var itemId = itm.GetValueOrDefault("id")?.ToString() ?? "";
+                Dictionary<string, object?>? r = null;
+                dayLog?.TryGetValue(itemId, out r);
+
+                sno++;
+                var status = r?.GetValueOrDefault("status")?.ToString() ?? "Pending";
+                var priority = itm.GetValueOrDefault("priority")?.ToString() ?? "Medium";
+                total++;
+                if (status == "Checked") checkedCnt++;
+                else if (status == "Issue Found") issueCnt++;
+                else pendingCnt++;
+
+                string rowCls = status switch { "Checked" => "checked", "Issue Found" => "issue", _ => "pending" };
+                string prioCls = priority switch { "High" => "high", "Medium" => "medium", "Low" => "low", _ => "" };
+                string statusStyle = status switch { "Checked" => "color:#059669;font-weight:bold", "Issue Found" => "color:#DC2626;font-weight:bold", _ => "color:#D97706;font-weight:bold" };
+                sb.Append($@"<tr class='{rowCls}'>
   <td style='text-align:center'>{sno}</td>
   <td style='text-align:center'>{cdt}</td>
-  <td>{System.Net.WebUtility.HtmlEncode(itm?.GetValueOrDefault("location")?.ToString() ?? "")}</td>
-  <td>{System.Net.WebUtility.HtmlEncode(itm?.GetValueOrDefault("category")?.ToString() ?? "")}</td>
-  <td>{System.Net.WebUtility.HtmlEncode(itm?.GetValueOrDefault("task")?.ToString() ?? "")}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(itm.GetValueOrDefault("location")?.ToString() ?? "")}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(itm.GetValueOrDefault("category")?.ToString() ?? "")}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(itm.GetValueOrDefault("task")?.ToString() ?? "")}</td>
   <td class='{prioCls}'>{priority}</td>
   <td style='{statusStyle};text-align:center'>{status}</td>
-  <td>{System.Net.WebUtility.HtmlEncode(r.GetValueOrDefault("note")?.ToString() ?? "")}</td>
-  <td>{System.Net.WebUtility.HtmlEncode(r.GetValueOrDefault("updatedBy")?.ToString() ?? "")}</td>
-  <td style='text-align:center'>{r.GetValueOrDefault("updatedAt")}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(r?.GetValueOrDefault("note")?.ToString() ?? "")}</td>
+  <td>{System.Net.WebUtility.HtmlEncode(r?.GetValueOrDefault("updatedBy")?.ToString() ?? "")}</td>
+  <td style='text-align:center'>{r?.GetValueOrDefault("updatedAt")}</td>
 </tr>");
+            }
         }
+        int pct = total > 0 ? (int)Math.Round(checkedCnt * 100.0 / total) : 0;
         sb.Append($@"</tbody></table>
 <br>
 <table style='width:360px;margin-top:14px;border:1px solid #0891B2'>
