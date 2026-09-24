@@ -1,0 +1,310 @@
+@model Dictionary<string,object?>
+@{
+    ViewData["Title"] = "Edit Purchase Order";
+    string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING"};
+    var budgetItems = (List<Dictionary<string,object?>>)(ViewBag.BudgetItems ?? new List<Dictionary<string,object?>>());
+    var vendors = (List<Dictionary<string,object?>>)(ViewBag.Vendors ?? new List<Dictionary<string,object?>>());
+    var poNo = Model.GetValueOrDefault("poNumber")?.ToString() ?? "";
+    string V(string key) => Model.GetValueOrDefault(key)?.ToString() ?? "";
+    var itemsRaw = Model.GetValueOrDefault("items");
+    var items = itemsRaw is Newtonsoft.Json.Linq.JArray ja ? ja.Cast<Newtonsoft.Json.Linq.JObject>().ToList() : new List<Newtonsoft.Json.Linq.JObject>();
+    var curBudgetId = V("budgetId");
+    var curDept = V("dept");
+    var curPriority = string.IsNullOrEmpty(V("priority")) ? "Urgent" : V("priority");
+    var curGstType = string.IsNullOrEmpty(V("gstType")) ? "IGST" : V("gstType");
+    var curPayTerms = V("paymentTerms");
+}
+
+<div class="d-flex align-items-center mb-4 gap-3">
+    <a href="/PurchaseOrders/Details/@Uri.EscapeDataString(poNo)" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+    <h5 class="fw-bold mb-0"><i class="bi bi-pencil-square text-primary"></i> Edit Purchase Order <span class="font-monospace">@poNo</span></h5>
+</div>
+
+<form method="post" action="/PurchaseOrders/Edit/@Uri.EscapeDataString(poNo)" id="poForm">
+<div class="row g-3">
+    <!-- PO Header -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#0A192F;color:white">PO Details</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">PO Date *</label>
+                    <input type="date" name="poDate" class="form-control" value="@V("poDate")" required/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Priority</label>
+                    <select name="priority" class="form-select">
+                        @foreach(var p in new[]{"Normal","High","Urgent"})
+                        {
+                            if (curPriority == p) { <option selected>@p</option> } else { <option>@p</option> }
+                        }
+                    </select>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Department</label>
+                    <select name="dept" class="form-select">
+                        @foreach(var d in depts)
+                        {
+                            if (curDept == d) { <option selected>@d</option> } else { <option>@d</option> }
+                        }
+                    </select>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Purpose *</label>
+                    <input type="text" name="purpose" class="form-control" required value="@V("purpose")"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Delivery Date</label>
+                    <input type="date" name="deliveryDate" class="form-control" value="@V("deliveryDate")"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Payment Terms</label>
+                    <select name="paymentTerms" class="form-select">
+                        @foreach(var pt in new[]{"100% Advance","50% Advance","Credit 30 Days","Credit 45 Days","On Delivery"})
+                        {
+                            if (curPayTerms == pt) { <option selected>@pt</option> } else { <option>@pt</option> }
+                        }
+                    </select>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Link to Budget Line</label>
+                    <select name="budgetId" class="form-select">
+                        <option value="">-- None --</option>
+                        @foreach(var b in budgetItems)
+                        {
+                            var bid = b.GetValueOrDefault("id")?.ToString() ?? "";
+                            if (bid == curBudgetId)
+                            { <option value="@bid" selected>@b.GetValueOrDefault("description") (@b.GetValueOrDefault("section"))</option> }
+                            else
+                            { <option value="@bid">@b.GetValueOrDefault("description") (@b.GetValueOrDefault("section"))</option> }
+                        }
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vendor Details -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Vendor Details</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Select Vendor</label>
+                    <select id="vendorSelect" class="form-select" onchange="fillVendor()">
+                        <option value="">-- Select Existing Vendor (or type manually below) --</option>
+                        @foreach(var v in vendors)
+                        {<option value="@v.GetValueOrDefault("vendorId")">@v.GetValueOrDefault("name")</option>}
+                    </select>
+                    @if (!vendors.Any())
+                    {
+                        <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> No vendors in Vendor Master yet — <a href="/Vendors/Create">add one</a> or type details manually below.</div>
+                    }
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Vendor Name *</label>
+                    <input type="text" name="vendorName" id="vendorName" class="form-control" required value="@V("vendorName")"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">GST Number</label>
+                    <input type="text" name="vendorGst" id="vendorGst" class="form-control" value="@V("vendorGst")"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Address</label>
+                    <textarea name="vendorAddr" id="vendorAddr" class="form-control" rows="2">@V("vendorAddr")</textarea></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Phone</label>
+                    <input type="text" name="vendorPhone" id="vendorPhone" class="form-control" value="@V("vendorPhone")"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Contact Person</label>
+                    <input type="text" name="vendorContact" id="vendorContact" class="form-control" value="@V("vendorContact")"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Approved By</label>
+                    <input type="text" name="approvedBy" class="form-control" value="@V("approvedBy")"/></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bill To / Ship To -->
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#0891B2;color:white">Bill To</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Name</label>
+                    <input type="text" name="billToName" class="form-control" value="@V("billToName")"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">GSTIN</label>
+                    <input type="text" name="billToGst" class="form-control" value="@V("billToGst")"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Address</label>
+                    <textarea name="billToAddr" class="form-control" rows="2">@V("billToAddr")</textarea></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#0369A1;color:white">Ship To <span class="fw-normal small">(leave blank if same as Bill To)</span></div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Name</label>
+                    <input type="text" name="shipToName" class="form-control" value="@V("shipToName")"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Address</label>
+                    <textarea name="shipToAddr" class="form-control" rows="3">@V("shipToAddr")</textarea></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center" style="background:#059669;color:white">
+                <span class="fw-bold">Items</span>
+                <button type="button" class="btn btn-sm btn-light" onclick="addItem()"><i class="bi bi-plus"></i> Add Item</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table mb-0" id="itemsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:32%">Description</th>
+                            <th style="width:10%">HSN</th>
+                            <th style="width:9%">Qty</th>
+                            <th style="width:12%">Rate (Rs.)</th>
+                            <th style="width:9%">GST %</th>
+                            <th style="width:13%">Amount</th>
+                            <th style="width:5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="itemsBody">
+                    @{ int idx = 0; }
+                    @foreach (var item in items)
+                    {
+                        double.TryParse(item["qty"]?.ToString(), out var iq);
+                        double.TryParse(item["rate"]?.ToString(), out var ir);
+                        double.TryParse(item["gst"]?.ToString(), out var ig);
+                        var iamt = iq * ir;
+                        <tr id="item_@idx">
+                            <td><input type="text" name="items[@idx][desc]" class="form-control form-control-sm" value="@item["desc"]" placeholder="Item description" required/></td>
+                            <td><input type="text" name="items[@idx][hsn]" class="form-control form-control-sm" value="@item["hsn"]"/></td>
+                            <td><input type="number" name="items[@idx][qty]" class="form-control form-control-sm qty" value="@iq" min="0.01" step="0.01" onchange="calcRow(@idx)"/></td>
+                            <td><input type="number" name="items[@idx][rate]" class="form-control form-control-sm rate" value="@ir" min="0" step="0.01" onchange="calcRow(@idx)"/></td>
+                            <td><input type="number" name="items[@idx][gst]" class="form-control form-control-sm gst" value="@ig" min="0" max="28" onchange="calcTotal()"/></td>
+                            <td><input type="number" name="items[@idx][amount]" class="form-control form-control-sm amount" value="@iamt.ToString("0.00")" readonly style="background:#f8f9fa"/></td>
+                            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(@idx)"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                        idx++;
+                    }
+                    @if (!items.Any())
+                    {
+                        <tr id="item_0">
+                            <td><input type="text" name="items[0][desc]" class="form-control form-control-sm" placeholder="Item description" required/></td>
+                            <td><input type="text" name="items[0][hsn]" class="form-control form-control-sm"/></td>
+                            <td><input type="number" name="items[0][qty]" class="form-control form-control-sm qty" value="1" min="0.01" step="0.01" onchange="calcRow(0)"/></td>
+                            <td><input type="number" name="items[0][rate]" class="form-control form-control-sm rate" value="0" min="0" step="0.01" onchange="calcRow(0)"/></td>
+                            <td><input type="number" name="items[0][gst]" class="form-control form-control-sm gst" value="18" min="0" max="28" onchange="calcTotal()"/></td>
+                            <td><input type="number" name="items[0][amount]" class="form-control form-control-sm amount" value="0" readonly style="background:#f8f9fa"/></td>
+                            <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(0)"><i class="bi bi-trash"></i></button></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- GST & Totals -->
+    <div class="col-md-6 offset-md-6">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header fw-bold" style="background:#7C3AED;color:white">Amount Summary</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">GST Type</label>
+                    <select name="gstType" id="gstType" class="form-select" onchange="calcTotal()">
+                        @if (curGstType == "IGST") { <option value="IGST" selected>IGST (Interstate)</option> } else { <option value="IGST">IGST (Interstate)</option> }
+                        @if (curGstType == "CGST_SGST") { <option value="CGST_SGST" selected>CGST + SGST (Intrastate)</option> } else { <option value="CGST_SGST">CGST + SGST (Intrastate)</option> }
+                    </select>
+                </div>
+                <table class="table table-sm">
+                    <tr><td class="text-muted">Sub Total</td><td class="text-end fw-bold" id="subTotalDisp">&#8377;0.00</td></tr>
+                    <tr><td class="text-muted" id="gstLabel">GST</td><td class="text-end" id="gstDisp">&#8377;0.00</td></tr>
+                    <tr class="table-dark"><td class="fw-bold">Grand Total</td><td class="text-end fw-bold fs-5" id="grandDisp">&#8377;0.00</td></tr>
+                </table>
+                <input type="hidden" name="subTotal" id="subTotal" value="0"/>
+                <input type="hidden" name="gstAmount" id="gstAmount" value="0"/>
+                <input type="hidden" name="grandTotal" id="grandTotal" value="0"/>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <label class="form-label small fw-bold">Notes / Terms</label>
+                <textarea name="notes" class="form-control" rows="3">@V("notes")</textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3 d-flex gap-2">
+    <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save"></i> Save Changes</button>
+    <a href="/PurchaseOrders/Details/@Uri.EscapeDataString(poNo)" class="btn btn-outline-secondary px-4">Cancel</a>
+</div>
+</form>
+
+@section Scripts {
+<script>
+let itemCount = @(Math.Max(items.Count, 1));
+const vendorsData = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(vendors));
+
+function fillVendor() {
+    const id = document.getElementById('vendorSelect').value;
+    if (!id) return;
+    const v = vendorsData.find(x => (x.vendorId || '').toString() === id);
+    if (!v) return;
+    document.getElementById('vendorName').value = v.name || '';
+    document.getElementById('vendorGst').value = v.gst || '';
+    document.getElementById('vendorAddr').value = v.address || '';
+    document.getElementById('vendorPhone').value = v.phone || '';
+    document.getElementById('vendorContact').value = v.contactPerson || '';
+}
+
+function addItem() {
+    const i = itemCount++;
+    const row = `<tr id="item_${i}">
+        <td><input type="text" name="items[${i}][desc]" class="form-control form-control-sm" placeholder="Item description" required/></td>
+        <td><input type="text" name="items[${i}][hsn]" class="form-control form-control-sm"/></td>
+        <td><input type="number" name="items[${i}][qty]" class="form-control form-control-sm qty" value="1" min="0.01" step="0.01" onchange="calcRow(${i})"/></td>
+        <td><input type="number" name="items[${i}][rate]" class="form-control form-control-sm rate" value="0" min="0" step="0.01" onchange="calcRow(${i})"/></td>
+        <td><input type="number" name="items[${i}][gst]" class="form-control form-control-sm gst" value="18" onchange="calcTotal()"/></td>
+        <td><input type="number" name="items[${i}][amount]" class="form-control form-control-sm amount" value="0" readonly style="background:#f8f9fa"/></td>
+        <td><button type="button" class="btn btn-danger btn-sm" onclick="removeItem(${i})"><i class="bi bi-trash"></i></button></td>
+    </tr>`;
+    document.getElementById('itemsBody').insertAdjacentHTML('beforeend', row);
+}
+
+function removeItem(i) {
+    const row = document.getElementById('item_' + i);
+    if (row && document.querySelectorAll('#itemsBody tr').length > 1) {
+        row.remove(); calcTotal();
+    }
+}
+
+function calcRow(i) {
+    const row = document.getElementById('item_' + i);
+    if (!row) return;
+    const qty = parseFloat(row.querySelector('.qty').value) || 0;
+    const rate = parseFloat(row.querySelector('.rate').value) || 0;
+    row.querySelector('.amount').value = (qty * rate).toFixed(2);
+    calcTotal();
+}
+
+function calcTotal() {
+    let subTotal = 0;
+    document.querySelectorAll('#itemsBody tr').forEach(row => {
+        const amt = parseFloat(row.querySelector('.amount')?.value) || 0;
+        subTotal += amt;
+    });
+    // Weighted avg GST
+    let gstAmt = 0;
+    document.querySelectorAll('#itemsBody tr').forEach(row => {
+        const amt = parseFloat(row.querySelector('.amount')?.value) || 0;
+        const gst = parseFloat(row.querySelector('.gst')?.value) || 0;
+        gstAmt += amt * gst / 100;
+    });
+    const grand = subTotal + gstAmt;
+    document.getElementById('subTotal').value = subTotal.toFixed(2);
+    document.getElementById('gstAmount').value = gstAmt.toFixed(2);
+    document.getElementById('grandTotal').value = grand.toFixed(2);
+    document.getElementById('subTotalDisp').innerHTML = '&#8377;' + subTotal.toFixed(2);
+    document.getElementById('gstDisp').innerHTML = '&#8377;' + gstAmt.toFixed(2);
+    document.getElementById('grandDisp').innerHTML = '&#8377;' + grand.toFixed(2);
+    const gstType = document.getElementById('gstType').value;
+    document.getElementById('gstLabel').textContent = gstType === 'IGST' ? 'IGST' : 'CGST + SGST';
+}
+
+// Init - recalc all existing item rows so totals reflect what's actually loaded
+document.querySelectorAll('#itemsBody tr').forEach(row => {
+    const id = row.id.replace('item_', '');
+    calcRow(parseInt(id));
+});
+</script>
+}

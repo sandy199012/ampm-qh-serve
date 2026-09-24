@@ -139,6 +139,99 @@ public class PurchaseOrdersController : Controller
         return RedirectToAction("Details", new { id = poNumber });
     }
 
+    // Sandy asked: once a PO is created there's no way to go back and fix a
+    // price or any other detail — add an Edit option. This lets the vendor
+    // details, items/prices, dates, notes etc. all be changed and re-saved
+    // in place. poNumber, status (Draft/Pending/Approved/...), createdBy and
+    // createdOn are preserved untouched — only UpdateStatus (above) changes
+    // status, and creation metadata shouldn't change just because the PO's
+    // contents were edited later.
+    [HttpGet]
+    public IActionResult Edit(string id)
+    {
+        ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        var poNumber = Uri.UnescapeDataString(id);
+        var raw = _db.QueryFirst<string>("SELECT data FROM po_list WHERE po_number=@id", new { id = poNumber });
+        if (raw == null) return NotFound();
+        ViewBag.BudgetItems = _db.GetBudget();
+        ViewBag.Vendors = _db.GetVendors();
+        return View(JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new());
+    }
+
+    [HttpPost]
+    public IActionResult Edit(string id, IFormCollection form)
+    {
+        var poNumber = Uri.UnescapeDataString(id);
+        var raw = _db.QueryFirst<string>("SELECT data FROM po_list WHERE po_number=@id", new { id = poNumber });
+        if (raw == null) return NotFound();
+        var po = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
+
+        // Parse items from form — same logic as Create.
+        var items = new List<Dictionary<string,object?>>();
+        int i = 0;
+        while (form.ContainsKey($"items[{i}][desc]"))
+        {
+            double.TryParse(form[$"items[{i}][qty]"].ToString(), out var qty);
+            double.TryParse(form[$"items[{i}][rate]"].ToString(), out var rate);
+            double.TryParse(form[$"items[{i}][gst]"].ToString(), out var gst);
+            items.Add(new Dictionary<string,object?>
+            {
+                ["desc"]   = form[$"items[{i}][desc]"].ToString(),
+                ["hsn"]    = form[$"items[{i}][hsn]"].ToString(),
+                ["qty"]    = qty,
+                ["rate"]   = rate,
+                ["gst"]    = gst,
+                ["amount"] = qty * rate
+            });
+            i++;
+        }
+
+        double.TryParse(form["subTotal"].ToString(), out var subTotal);
+        double.TryParse(form["gstAmount"].ToString(), out var gstAmount);
+        double.TryParse(form["grandTotal"].ToString(), out var grandTotal);
+
+        var budgetId = form["budgetId"].ToString();
+        var budget = _db.GetBudget();
+        var budgetItem = budget.FirstOrDefault(b => b.GetValueOrDefault("id")?.ToString() == budgetId);
+
+        po["poDate"]        = form["poDate"].ToString();
+        po["date"]          = form["poDate"].ToString();
+        po["vendorName"]    = form["vendorName"].ToString();
+        po["vendorGst"]     = form["vendorGst"].ToString();
+        po["vendorAddr"]    = form["vendorAddr"].ToString();
+        po["vendorPhone"]   = form["vendorPhone"].ToString();
+        po["vendorContact"] = form["vendorContact"].ToString();
+        po["billToName"]    = string.IsNullOrWhiteSpace(form["billToName"].ToString()) ? "AMPM Fashions Pvt Ltd" : form["billToName"].ToString();
+        po["billToGst"]     = string.IsNullOrWhiteSpace(form["billToGst"].ToString()) ? "09AAFCA4854J1ZE" : form["billToGst"].ToString();
+        po["billToAddr"]    = string.IsNullOrWhiteSpace(form["billToAddr"].ToString()) ? "B-144, Sector 10, Noida - 201301" : form["billToAddr"].ToString();
+        po["shipToName"]    = string.IsNullOrWhiteSpace(form["shipToName"].ToString()) ? form["billToName"].ToString() : form["shipToName"].ToString();
+        po["shipToAddr"]    = string.IsNullOrWhiteSpace(form["shipToAddr"].ToString()) ? form["billToAddr"].ToString() : form["shipToAddr"].ToString();
+        po["approvedBy"]    = form["approvedBy"].ToString();
+        po["purpose"]       = form["purpose"].ToString();
+        po["dept"]          = form["dept"].ToString();
+        po["priority"]      = form["priority"].ToString();
+        po["paymentTerms"]  = form["paymentTerms"].ToString();
+        po["deliveryDate"]  = form["deliveryDate"].ToString();
+        po["gstType"]       = form["gstType"].ToString();
+        po["notes"]         = form["notes"].ToString();
+        po["items"]         = items;
+        po["subTotal"]      = subTotal;
+        po["gstAmount"]     = gstAmount;
+        po["grandTotal"]    = grandTotal;
+        po["budgetId"]      = budgetId;
+        po["budgetDesc"]    = budgetItem?.GetValueOrDefault("description")?.ToString() ?? "";
+        po["lastEditedBy"]  = HttpContext.Request.Cookies["ampm_name"] ?? "Sandy";
+        po["lastEditedOn"]  = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
+        // poNumber, status, createdBy, createdOn stay as they were.
+
+        string json = JsonConvert.SerializeObject(po);
+        _db.Execute("UPDATE po_list SET data=@data, vendor=@vendor, total=@total WHERE po_number=@id",
+            new { data = json, vendor = form["vendorName"].ToString(), total = grandTotal, id = poNumber });
+
+        TempData["Success"] = $"PO updated: {poNumber}";
+        return RedirectToAction("Details", new { id = poNumber });
+    }
+
     [HttpPost]
     public IActionResult UpdateStatus(string id, string status)
     {

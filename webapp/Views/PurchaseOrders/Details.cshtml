@@ -12,7 +12,8 @@
     <a href="/PurchaseOrders/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
     <h5 class="fw-bold mb-0 font-monospace">@poNo</h5>
     <span class="badge bg-@sBadge fs-6">@status</span>
-    <div class="ms-auto">
+    <div class="ms-auto d-flex gap-2">
+        <a href="/PurchaseOrders/Edit/@Uri.EscapeDataString(poNo)" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
         <a href="/PurchaseOrders/Print/@poNo" target="_blank" class="btn btn-outline-dark btn-sm"><i class="bi bi-printer"></i> Print / PDF</a>
     </div>
 </div>
