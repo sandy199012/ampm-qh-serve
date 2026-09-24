@@ -1,5 +1,5 @@
 @{ViewData["Title"] = "New Purchase Order";
-  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING"};
+  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","DESIGN - ACCESSORIES","PRODUCTION - APPAREL","PRODUCTION - LEATHER","PRODUCTION - MTO","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING","SAMPLING - APPAREL","FABRIC STORE","RESEARCH & DEVELOPMENT","TRUNK SHOW","ACCESSORIES STORE"};
   var budgetItems = (List<Dictionary<string,object?>>)(ViewBag.BudgetItems ?? new List<Dictionary<string,object?>>());
   var vendors = (List<Dictionary<string,object?>>)(ViewBag.Vendors ?? new List<Dictionary<string,object?>>());
 }
@@ -28,6 +28,8 @@
                         @foreach(var d in depts){<option>@d</option>}
                     </select>
                 </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Requested By</label>
+                    <input type="text" name="requestedBy" class="form-control" placeholder="Name of the employee who asked for this"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Purpose *</label>
                     <input type="text" name="purpose" class="form-control" required placeholder="Purpose of purchase"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Delivery Date</label>

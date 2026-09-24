@@ -28,6 +28,9 @@
                     <div class="col-md-6"><small class="text-muted d-block">Date</small><strong>@Model.GetValueOrDefault("date")</strong></div>
                     <div class="col-md-6"><small class="text-muted d-block">Vendor</small><strong>@Model.GetValueOrDefault("vendorName")</strong></div>
                     <div class="col-md-6"><small class="text-muted d-block">GST No.</small><strong>@Model.GetValueOrDefault("vendorGst")</strong></div>
+                    <div class="col-md-6"><small class="text-muted d-block">Department</small><strong>@Model.GetValueOrDefault("dept")</strong></div>
+                    <div class="col-md-6"><small class="text-muted d-block">Requested By</small><strong>@(string.IsNullOrEmpty(Model.GetValueOrDefault("requestedBy")?.ToString()) ? "—" : Model.GetValueOrDefault("requestedBy"))</strong></div>
+                    <div class="col-md-6"><small class="text-muted d-block">Approved By</small><strong>@Model.GetValueOrDefault("approvedBy")</strong></div>
                     <div class="col-md-6"><small class="text-muted d-block">Payment Terms</small><strong>@Model.GetValueOrDefault("paymentTerms")</strong></div>
                     <div class="col-md-6"><small class="text-muted d-block">Delivery Date</small><strong>@Model.GetValueOrDefault("deliveryDate")</strong></div>
                     @if (!string.IsNullOrEmpty(Model.GetValueOrDefault("budgetDesc")?.ToString()))

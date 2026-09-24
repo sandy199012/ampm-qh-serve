@@ -113,6 +113,7 @@ public class PurchaseOrdersController : Controller
             ["shipToName"]   = string.IsNullOrWhiteSpace(form["shipToName"].ToString()) ? form["billToName"].ToString() : form["shipToName"].ToString(),
             ["shipToAddr"]   = string.IsNullOrWhiteSpace(form["shipToAddr"].ToString()) ? form["billToAddr"].ToString() : form["shipToAddr"].ToString(),
             ["approvedBy"]   = form["approvedBy"].ToString(),
+            ["requestedBy"]  = form["requestedBy"].ToString(),
             ["purpose"]      = form["purpose"].ToString(),
             ["dept"]         = form["dept"].ToString(),
             ["priority"]     = form["priority"].ToString(),
@@ -207,6 +208,7 @@ public class PurchaseOrdersController : Controller
         po["shipToName"]    = string.IsNullOrWhiteSpace(form["shipToName"].ToString()) ? form["billToName"].ToString() : form["shipToName"].ToString();
         po["shipToAddr"]    = string.IsNullOrWhiteSpace(form["shipToAddr"].ToString()) ? form["billToAddr"].ToString() : form["shipToAddr"].ToString();
         po["approvedBy"]    = form["approvedBy"].ToString();
+        po["requestedBy"]   = form["requestedBy"].ToString();
         po["purpose"]       = form["purpose"].ToString();
         po["dept"]          = form["dept"].ToString();
         po["priority"]      = form["priority"].ToString();
@@ -378,8 +380,7 @@ table.items tbody td{font-size:12px;padding:9px 6px;border-bottom:1px solid #F1F
   <div class='req-grid'>
     <div class='req-item'>
       <div class='k'>REQUESTED BY</div>
-      <div class='v'>").Append(S("createdBy").ToUpper()).Append(@"</div>
-      <div class='v small'>SYSTEM ADMINISTRATOR</div>
+      <div class='v'>").Append(string.IsNullOrWhiteSpace(S("requestedBy")) ? S("createdBy").ToUpper() : S("requestedBy")).Append(@"</div>
     </div>
     <div class='req-item'>
       <div class='k'>DEPARTMENT</div>
