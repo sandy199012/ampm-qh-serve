@@ -129,6 +129,49 @@ public class EndpointsController : Controller
 
         if (existing == null) pcs.Add(rec);
         _db.KSet("pc_inventory", pcs);
+
+        // Mirror the live hardware specs into Asset Management too, matched by
+        // hostname, so Sandy doesn't have to maintain PC Inventory and the Asset
+        // Register as two separate lists. Only hardware/spec fields are synced
+        // here — assignedToName/assignedToEmp/assignedToDept, condition and
+        // location are never touched by the agent; those stay under manual
+        // control from the Assets screen (Sandy assigns the asset to an
+        // employee himself).
+        var assets = _db.GetAssets();
+        var asset = assets.FirstOrDefault(a =>
+            string.Equals(a.GetValueOrDefault("hostname")?.ToString(), hostname, StringComparison.OrdinalIgnoreCase));
+        if (asset == null)
+        {
+            asset = new Dictionary<string,object?>
+            {
+                ["id"] = Guid.NewGuid().ToString("N")[..8],
+                ["assetTag"] = hostname,
+                ["assetType"] = "Desktop",
+                ["condition"] = "Good",
+            };
+            assets.Add(asset);
+        }
+        asset["hostname"] = hostname;
+        void SetAssetIf(string srcKey, string destKey)
+        {
+            var v = data.GetValueOrDefault(srcKey)?.ToString();
+            if (!string.IsNullOrWhiteSpace(v)) asset[destKey] = v;
+        }
+        SetAssetIf("ip", "ip");
+        SetAssetIf("mac", "mac");
+        SetAssetIf("os", "os");
+        SetAssetIf("osBuild", "osBuild");
+        SetAssetIf("arch", "arch");
+        SetAssetIf("manufacturer", "brand");
+        SetAssetIf("model", "model");
+        SetAssetIf("serial", "serial");
+        SetAssetIf("cpu", "processor");
+        SetAssetIf("ramGb", "ram");
+        SetAssetIf("diskFree", "diskFree");
+        SetAssetIf("diskTotal", "storage");
+        asset["lastSeen"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
+        _db.SaveAssets(assets);
+
         return Json(new { ok = true, hostname, updated = existing != null });
     }
 

@@ -104,6 +104,7 @@
     </div>
 </div>
 
+@{ var employees = (List<Dictionary<string,object?>>)(ViewBag.Employees ?? new List<Dictionary<string,object?>>()); }
 @foreach (var a in Model)
 {
     var aid = a.GetValueOrDefault("id")?.ToString() ?? "";
@@ -114,12 +115,39 @@
         <form method="post" action="/Assets/Assign/@aid">
           <div class="modal-header"><h6 class="modal-title">Assign — @a.GetValueOrDefault("assetTag")</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
           <div class="modal-body">
-            <div class="mb-2"><label class="form-label small fw-bold">Assigned To (Name)</label><input type="text" name="assignedToName" class="form-control form-control-sm" required/></div>
-            <div class="mb-2"><label class="form-label small fw-bold">Emp Code</label><input type="text" name="assignedToEmp" class="form-control form-control-sm"/></div>
-            <div class="mb-2"><label class="form-label small fw-bold">Department</label><input type="text" name="assignedToDept" class="form-control form-control-sm"/></div>
+            <div class="mb-2"><label class="form-label small fw-bold">Select Employee <span class="fw-normal text-muted">(optional — auto-fills below)</span></label>
+                <select id="empSelect@(aid)" class="form-select form-select-sm" onchange="fillAssignEmp('@aid')">
+                    <option value="">-- Select Employee --</option>
+                    @foreach(var e in employees)
+                    {
+                        var nm = e.GetValueOrDefault("name")?.ToString() ?? "";
+                        var cd = e.GetValueOrDefault("emp")?.ToString() ?? "";
+                        var dp = e.GetValueOrDefault("dept")?.ToString() ?? "";
+                        <option value="@nm" data-emp="@cd" data-dept="@dp">@nm (@cd)@(string.IsNullOrEmpty(dp) ? "" : " — " + dp)</option>
+                    }
+                </select>
+                @if (!employees.Any())
+                {
+                    <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> No employees in Employee Master yet — <a href="/Employees/Create">add one</a> or type details manually below.</div>
+                }
+            </div>
+            <div class="mb-2"><label class="form-label small fw-bold">Assigned To (Name)</label><input type="text" name="assignedToName" id="assignedToName@(aid)" class="form-control form-control-sm" required/></div>
+            <div class="mb-2"><label class="form-label small fw-bold">Emp Code</label><input type="text" name="assignedToEmp" id="assignedToEmp@(aid)" class="form-control form-control-sm"/></div>
+            <div class="mb-2"><label class="form-label small fw-bold">Department</label><input type="text" name="assignedToDept" id="assignedToDept@(aid)" class="form-control form-control-sm"/></div>
           </div>
           <div class="modal-footer"><button type="submit" class="btn btn-success btn-sm">Confirm Assign</button></div>
         </form>
       </div></div>
     </div>
 }
+
+<script>
+function fillAssignEmp(aid) {
+    const sel = document.getElementById('empSelect' + aid);
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+    document.getElementById('assignedToName' + aid).value = opt.value;
+    document.getElementById('assignedToEmp' + aid).value = opt.dataset.emp || '';
+    document.getElementById('assignedToDept' + aid).value = opt.dataset.dept || '';
+}
+</script>

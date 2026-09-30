@@ -18,6 +18,10 @@ public class AssetsController : Controller
     public IActionResult Index(string? search, string? type)
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        ViewBag.Employees = _db.GetEmployees()
+            .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
+            .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
+            .ToList();
         var assets = _db.GetAssets();
         if (!string.IsNullOrEmpty(search))
         {
@@ -231,14 +235,14 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
 </style></head><body>
 <table style='margin-bottom:12px'><tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — ASSET STOCK REPORT</td></tr>
 <tr><td style='padding:5px;font-size:10px'>Generated: {IstTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
-<table><thead><tr><th>#</th><th>Asset Tag</th><th>Type</th><th>Brand/Model</th><th>Serial</th><th>Condition</th><th>Assigned To</th><th>Dept</th><th>Location</th></tr></thead><tbody>");
+<table><thead><tr><th>#</th><th>Asset Tag</th><th>Type</th><th>Hostname</th><th>Brand</th><th>Model</th><th>Serial Number</th><th>MAC Address</th><th>IP Address</th><th>OS</th><th>OS Build</th><th>Architecture</th><th>CPU</th><th>RAM (GB)</th><th>Disk Free</th><th>Storage (Total)</th><th>Condition</th><th>Assigned To</th><th>Emp Code</th><th>Department</th><th>Assigned Date</th><th>Location</th><th>Last Seen</th></tr></thead><tbody>");
         int sno = 0;
         foreach (var a in assets)
         {
             sno++;
             bool assigned = !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToName")?.ToString());
             string cls = assigned ? "green" : "amber";
-            sb.Append($"<tr><td style='text-align:center'>{sno}</td><td><b>{a.GetValueOrDefault("assetTag")}</b></td><td>{a.GetValueOrDefault("assetType")}</td><td>{a.GetValueOrDefault("brand")} {a.GetValueOrDefault("model")}</td><td>{a.GetValueOrDefault("serial")}</td><td>{a.GetValueOrDefault("condition")}</td><td class='{cls}'>{(assigned ? a.GetValueOrDefault("assignedToName") : "Unassigned")}</td><td>{a.GetValueOrDefault("assignedToDept")}</td><td>{a.GetValueOrDefault("location")}</td></tr>");
+            sb.Append($"<tr><td style='text-align:center'>{sno}</td><td><b>{a.GetValueOrDefault("assetTag")}</b></td><td>{a.GetValueOrDefault("assetType")}</td><td>{a.GetValueOrDefault("hostname")}</td><td>{a.GetValueOrDefault("brand")}</td><td>{a.GetValueOrDefault("model")}</td><td>{a.GetValueOrDefault("serial")}</td><td>{a.GetValueOrDefault("mac")}</td><td>{a.GetValueOrDefault("ip")}</td><td>{a.GetValueOrDefault("os")}</td><td>{a.GetValueOrDefault("osBuild")}</td><td>{a.GetValueOrDefault("arch")}</td><td>{a.GetValueOrDefault("processor")}</td><td>{a.GetValueOrDefault("ram")}</td><td>{a.GetValueOrDefault("diskFree")}</td><td>{a.GetValueOrDefault("storage")}</td><td>{a.GetValueOrDefault("condition")}</td><td class='{cls}'>{(assigned ? a.GetValueOrDefault("assignedToName") : "Unassigned")}</td><td>{a.GetValueOrDefault("assignedToEmp")}</td><td>{a.GetValueOrDefault("assignedToDept")}</td><td>{a.GetValueOrDefault("assignedDate")}</td><td>{a.GetValueOrDefault("location")}</td><td>{a.GetValueOrDefault("lastSeen")}</td></tr>");
         }
         sb.Append("</tbody></table></body></html>");
         return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Assets_{IstTime.Now:yyyyMMdd}.xls");

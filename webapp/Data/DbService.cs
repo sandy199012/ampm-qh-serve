@@ -222,6 +222,9 @@ public class DbService
     public List<Dictionary<string,object?>> GetAssets()
         => KGetObj<List<Dictionary<string,object?>>>("asset_stock") ?? new();
 
+    public void SaveAssets(List<Dictionary<string,object?>> assets)
+        => KSet("asset_stock", assets);
+
     // ── Budget ────────────────────────────────────────────────
     public List<Dictionary<string,object?>> GetBudget()
         => KGetObj<List<Dictionary<string,object?>>>("budget") ?? new();
