@@ -5,7 +5,7 @@
   int.TryParse(Model.GetValueOrDefault("totalQty")?.ToString(), out var t);
   int.TryParse(Model.GetValueOrDefault("issuedQty")?.ToString(), out var iss);
   int bal = t - iss;
-  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING"};
+  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","DESIGN - ACCESSORIES","PRODUCTION - APPAREL","PRODUCTION - LEATHER","PRODUCTION - MTO","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING","SAMPLING - APPAREL","FABRIC STORE","RESEARCH & DEVELOPMENT","TRUNK SHOW","ACCESSORIES STORE"};
   var employees = ViewBag.Employees as List<Dictionary<string,object?>> ?? new();
   var empLookup = employees.Select(e => new {
       name = e.GetValueOrDefault("name")?.ToString() ?? "",

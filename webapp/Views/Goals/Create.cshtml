@@ -1,5 +1,6 @@
 @{ViewData["Title"] = "Add Goal";
-  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","PRODUCTION - APPAREL","PRODUCTION - LEATHER","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING"};}
+  string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","DESIGN - ACCESSORIES","PRODUCTION - APPAREL","PRODUCTION - LEATHER","PRODUCTION - MTO","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING","SAMPLING - APPAREL","FABRIC STORE","RESEARCH & DEVELOPMENT","TRUNK SHOW","ACCESSORIES STORE"};
+  var employees = (List<Dictionary<string,object?>>)(ViewBag.Employees ?? new List<Dictionary<string,object?>>());}
 
 <div class="d-flex align-items-center mb-4 gap-3">
     <a href="/Goals/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
@@ -38,6 +39,24 @@
         <div class="col-md-6">
             <label class="form-label fw-bold small">Requested By</label>
             <input type="text" name="requestedBy" class="form-control" placeholder="HOD/Manager name"/>
+        </div>
+        <div class="col-12">
+            <label class="form-label fw-bold small">Assigned To <span class="fw-normal text-muted">(select one or more employees)</span></label>
+            <div class="border rounded p-2" style="max-height:170px;overflow-y:auto">
+                @if (!employees.Any())
+                {
+                    <div class="small text-muted">No employees in Employee Master yet — <a href="/Employees/Create">add one</a>.</div>
+                }
+                @foreach(var e in employees)
+                {
+                    var ename = e.GetValueOrDefault("name")?.ToString() ?? "";
+                    var eid = e.GetValueOrDefault("emp")?.ToString() ?? "";
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="assignedTo" value="@ename" id="asg_@eid"/>
+                        <label class="form-check-label small" for="asg_@eid">@ename <span class="text-muted">(@e.GetValueOrDefault("dept"))</span></label>
+                    </div>
+                }
+            </div>
         </div>
         <div class="col-md-6">
             <label class="form-label fw-bold small">Start Date</label>

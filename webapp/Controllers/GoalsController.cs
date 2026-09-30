@@ -53,6 +53,15 @@ public class GoalsController : Controller
     public IActionResult Create()
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        // Sandy asked: no way to assign a goal to one or more employees — the
+        // "assignedTo" field already existed in the data model (and in the
+        // Excel export / HOD email), but neither Create nor Edit ever
+        // rendered an input for it, so it was always saved blank. Passing
+        // the employee list here so the view can offer a multi-select.
+        ViewBag.Employees = _db.GetEmployees()
+            .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
+            .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
+            .ToList();
         return View();
     }
 
@@ -103,6 +112,10 @@ public class GoalsController : Controller
         if (raw == null) return NotFound();
         var g = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
         g["id"] = id;
+        ViewBag.Employees = _db.GetEmployees()
+            .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
+            .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
+            .ToList();
         return View(g);
     }
 
@@ -115,6 +128,7 @@ public class GoalsController : Controller
         g["category"]   = form["category"].ToString();
         g["priority"]   = form["priority"].ToString();
         g["department"] = form["department"].ToString();
+        g["assignedTo"] = form["assignedTo"].ToString();
         g["targetDate"] = form["targetDate"].ToString();
         g["status"]     = form["status"].ToString();
         g["remarks"]    = form["remarks"].ToString();
