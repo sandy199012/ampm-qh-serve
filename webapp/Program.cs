@@ -16,7 +16,16 @@ builder.Services.AddSingleton<ModulePermissionFilter>();
 builder.Services.AddControllersWithViews(o => {
     o.Filters.Add(new IgnoreAntiforgeryTokenAttribute());
     o.Filters.AddService<ModulePermissionFilter>();
-}).AddRazorRuntimeCompilation()
+})
+  // Razor RuntimeCompilation (Roslyn) was removed here — it was loading the full
+  // C# compiler into memory on every deploy, which on Render's free 512MB
+  // instance was almost certainly causing an out-of-memory crash-loop right
+  // after "Application started" (matches the repeated
+  // start -> "Application is shutting down..." -> restart pattern and the
+  // resulting "==> Timed Out" deploy status). Views are already precompiled
+  // into the DLL at publish time (MvcRazorCompileOnPublish is on by default),
+  // so this was pure runtime overhead in production with no benefit.
+  //
   // Without this, [FromBody] Dictionary<string,object?> params (used by the
   // Endpoints "Save/SavePcInventory/SaveLicenses" JSON endpoints) deserialize
   // string/bool/number values into JsonElement instead of plain CLR types —
