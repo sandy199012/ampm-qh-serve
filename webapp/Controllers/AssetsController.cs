@@ -61,6 +61,7 @@ public class AssetsController : Controller
         var assets = _db.GetAssets();
         assets.Add(asset);
         SaveAssets(assets);
+        SyncAssetToEmployee(asset);
         TempData["Success"] = $"Asset {form["assetTag"]} added!";
         return RedirectToAction("Index");
     }
@@ -86,6 +87,7 @@ public class AssetsController : Controller
         if (asset == null) return NotFound();
         foreach (var key in form.Keys) asset[key] = form[key].ToString();
         SaveAssets(assets);
+        SyncAssetToEmployee(asset);
         TempData["Success"] = "Asset updated!";
         return RedirectToAction("Index");
     }
@@ -102,6 +104,7 @@ public class AssetsController : Controller
         asset["assignedDate"]   = IstTime.Today.ToString("yyyy-MM-dd");
         asset["returnDate"]     = "";
         SaveAssets(assets);
+        SyncAssetToEmployee(asset);
         TempData["Success"] = $"Asset assigned to {form["assignedToName"]}.";
         return RedirectToAction("Index");
     }
@@ -112,13 +115,66 @@ public class AssetsController : Controller
         var assets = _db.GetAssets();
         var asset = assets.FirstOrDefault(a => a.GetValueOrDefault("id")?.ToString() == id);
         if (asset == null) return NotFound();
+        var prevEmpCode = asset.GetValueOrDefault("assignedToEmp")?.ToString();
         asset["assignedToName"] = "";
         asset["assignedToEmp"]  = "";
         asset["assignedToDept"] = "";
         asset["returnDate"]     = IstTime.Today.ToString("yyyy-MM-dd");
         SaveAssets(assets);
+        ClearEmployeeAsset(prevEmpCode, asset);
         TempData["Success"] = "Asset unassigned and returned to stock.";
         return RedirectToAction("Index");
+    }
+
+    // Mirrors an asset's specs onto the Employee record it's assigned to (the
+    // legacy single-PC fields shown on Employees Index/Details, and used as a
+    // fallback on the Handover form when no Assets record is linked). Kept in
+    // sync whenever an asset is created, edited, or assigned. Only hardware
+    // fields sourced from the asset are touched — never the employee's own
+    // details (name, department, etc.).
+    private void SyncAssetToEmployee(Dictionary<string,object?> asset)
+    {
+        var empCode = asset.GetValueOrDefault("assignedToEmp")?.ToString();
+        if (string.IsNullOrWhiteSpace(empCode)) return;
+        var emp = _db.GetEmployeeByCode(empCode);
+        if (emp == null) return;
+        void SetEmpIf(string srcKey, string destKey)
+        {
+            var v = asset.GetValueOrDefault(srcKey)?.ToString();
+            if (!string.IsNullOrWhiteSpace(v)) emp[destKey] = v;
+        }
+        var hn = asset.GetValueOrDefault("hostname")?.ToString();
+        if (string.IsNullOrWhiteSpace(hn)) hn = asset.GetValueOrDefault("assetTag")?.ToString() ?? "";
+        emp["hostname"] = hn;
+        SetEmpIf("ip", "ip");
+        SetEmpIf("mac", "mac");
+        SetEmpIf("os", "os");
+        SetEmpIf("osBuild", "osBuild");
+        SetEmpIf("brand", "manufacturer");
+        SetEmpIf("model", "model");
+        SetEmpIf("serial", "serial");
+        SetEmpIf("processor", "processor");
+        SetEmpIf("ram", "ram");
+        _db.SaveEmployee(empCode, emp);
+    }
+
+    // Undoes SyncAssetToEmployee when an asset is unassigned — but only if the
+    // employee's own record still shows THIS asset (matched by hostname or
+    // serial), so unassigning one asset never wipes out a different one.
+    private void ClearEmployeeAsset(string? empCode, Dictionary<string,object?> asset)
+    {
+        if (string.IsNullOrWhiteSpace(empCode)) return;
+        var emp = _db.GetEmployeeByCode(empCode);
+        if (emp == null) return;
+        var assetSerial = asset.GetValueOrDefault("serial")?.ToString() ?? "";
+        var assetHost = asset.GetValueOrDefault("hostname")?.ToString();
+        if (string.IsNullOrWhiteSpace(assetHost)) assetHost = asset.GetValueOrDefault("assetTag")?.ToString() ?? "";
+        bool matches = (!string.IsNullOrWhiteSpace(assetHost) && emp.GetValueOrDefault("hostname")?.ToString() == assetHost)
+                    || (!string.IsNullOrWhiteSpace(assetSerial) && emp.GetValueOrDefault("serial")?.ToString() == assetSerial);
+        if (!matches) return;
+        emp["hostname"] = ""; emp["ip"] = ""; emp["mac"] = ""; emp["os"] = ""; emp["osBuild"] = "";
+        emp["manufacturer"] = ""; emp["model"] = ""; emp["serial"] = ""; emp["processor"] = ""; emp["ram"] = "";
+        _db.SaveEmployee(empCode, emp);
     }
 
     [HttpPost]

@@ -76,11 +76,13 @@
                 <table class="table table-sm mb-0">
                     <tr><td class="text-muted" style="width:140px">Hostname</td><td class="font-monospace">@Model.GetValueOrDefault("hostname")</td></tr>
                     <tr><td class="text-muted">IP Address</td><td class="font-monospace">@Model.GetValueOrDefault("ip")</td></tr>
-                    <tr><td class="text-muted">OS</td><td>@Model.GetValueOrDefault("os")</td></tr>
+                    <tr><td class="text-muted">MAC Address</td><td class="font-monospace">@Model.GetValueOrDefault("mac")</td></tr>
+                    <tr><td class="text-muted">OS</td><td>@Model.GetValueOrDefault("os") @Model.GetValueOrDefault("osBuild")</td></tr>
+                    <tr><td class="text-muted">Manufacturer</td><td>@Model.GetValueOrDefault("manufacturer")</td></tr>
                     <tr><td class="text-muted">Model</td><td>@Model.GetValueOrDefault("model")</td></tr>
                     <tr><td class="text-muted">Serial No.</td><td class="font-monospace">@Model.GetValueOrDefault("serial")</td></tr>
+                    <tr><td class="text-muted">Processor</td><td>@Model.GetValueOrDefault("processor")</td></tr>
                     <tr><td class="text-muted">RAM</td><td>@Model.GetValueOrDefault("ram")</td></tr>
-                    <tr><td class="text-muted">Manufacturer</td><td>@Model.GetValueOrDefault("manufacturer")</td></tr>
                 </table>
             </div>
         </div>

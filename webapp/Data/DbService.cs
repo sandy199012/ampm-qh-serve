@@ -174,6 +174,15 @@ public class DbService
         return rows.Select(r => JsonConvert.DeserializeObject<Dictionary<string,object?>>(r) ?? new()).ToList();
     }
 
+    public Dictionary<string,object?>? GetEmployeeByCode(string emp)
+    {
+        var raw = QueryFirst<string>("SELECT data FROM employees WHERE emp=@e", new { e = emp });
+        return raw == null ? null : JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw);
+    }
+
+    public void SaveEmployee(string emp, Dictionary<string,object?> data)
+        => Execute("UPDATE employees SET data=@d WHERE emp=@e", new { d = JsonConvert.SerializeObject(data), e = emp });
+
     // ── Tickets ───────────────────────────────────────────────
     public List<Dictionary<string,object?>> GetTickets(string? status = null)
     {

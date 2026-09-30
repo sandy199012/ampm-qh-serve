@@ -295,6 +295,7 @@ table.items{width:100%;border-collapse:collapse;border:1px solid #E2E8F0;border-
 table.items th{background:#F8FAFC;color:#64748B;font-size:10px;letter-spacing:.4px;text-align:left;padding:7px 10px;border-bottom:2px solid #E2E8F0}
 table.items td{padding:7px 10px;font-size:11.5px;border-bottom:1px solid #F1F5F9}
 table.items tr:last-child td{border-bottom:none}
+table.items td.mono{font-family:monospace;font-size:10.5px}
 .none-row{text-align:center;color:#94A3B8;font-style:italic;padding:14px}
 
 .ack{margin-top:16px;background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:6px;padding:12px 14px;font-size:11px;color:#78350F;line-height:1.6}
@@ -336,28 +337,32 @@ table.items tr:last-child td{border-bottom:none}
 
     <div class='sec-hdr'>ASSETS ASSIGNED (").Append(hasLegacyAsset ? 1 : assignedAssets.Count).Append(@")</div>
     <table class='items'>
-      <thead><tr><th>Asset Tag</th><th>Type</th><th>Brand / Model</th><th>Serial No.</th><th>Condition</th><th>Assigned Date</th></tr></thead>
+      <thead><tr><th>Asset Tag</th><th>Type</th><th>Hostname</th><th>Brand / Model</th><th>Serial No.</th><th>MAC Address</th><th>OS</th><th>Condition</th><th>Assigned Date</th></tr></thead>
       <tbody>");
         if (assignedAssets.Any())
         {
             foreach (var a in assignedAssets)
             {
                 sb.Append("<tr><td><b>").Append(a.GetValueOrDefault("assetTag")).Append("</b></td><td>")
-                  .Append(a.GetValueOrDefault("assetType")).Append("</td><td>")
-                  .Append(a.GetValueOrDefault("brand")).Append(' ').Append(a.GetValueOrDefault("model")).Append("</td><td>")
-                  .Append(a.GetValueOrDefault("serial")).Append("</td><td>")
+                  .Append(a.GetValueOrDefault("assetType")).Append("</td><td class='mono'>")
+                  .Append(a.GetValueOrDefault("hostname")).Append("</td><td>")
+                  .Append(a.GetValueOrDefault("brand")).Append(' ').Append(a.GetValueOrDefault("model")).Append("</td><td class='mono'>")
+                  .Append(a.GetValueOrDefault("serial")).Append("</td><td class='mono'>")
+                  .Append(a.GetValueOrDefault("mac")).Append("</td><td>")
+                  .Append(a.GetValueOrDefault("os")).Append("</td><td>")
                   .Append(a.GetValueOrDefault("condition")).Append("</td><td>")
                   .Append(a.GetValueOrDefault("assignedDate")).Append("</td></tr>");
             }
         }
         else if (hasLegacyAsset)
         {
-            sb.Append("<tr><td><b>—</b></td><td>").Append(S("hostname")).Append("</td><td>")
-              .Append(S("model")).Append("</td><td>").Append(S("serial")).Append("</td><td>—</td><td>—</td></tr>");
+            sb.Append("<tr><td><b>—</b></td><td>—</td><td class='mono'>").Append(S("hostname")).Append("</td><td>")
+              .Append(S("model")).Append("</td><td class='mono'>").Append(S("serial")).Append("</td><td class='mono'>")
+              .Append(S("mac")).Append("</td><td>").Append(S("os")).Append("</td><td>—</td><td>—</td></tr>");
         }
         else
         {
-            sb.Append("<tr><td colspan='6' class='none-row'>No assets currently linked to this employee in the system</td></tr>");
+            sb.Append("<tr><td colspan='9' class='none-row'>No assets currently linked to this employee in the system</td></tr>");
         }
         sb.Append(@"</tbody>
     </table>
@@ -416,6 +421,7 @@ table.items{width:100%;border-collapse:collapse;border:1px solid #E2E8F0;border-
 table.items th{background:#F8FAFC;color:#64748B;font-size:9.5px;letter-spacing:.4px;text-align:left;padding:7px 8px;border-bottom:2px solid #E2E8F0}
 table.items td{padding:7px 8px;font-size:11px;border-bottom:1px solid #F1F5F9}
 table.items tr:last-child td{border-bottom:none}
+table.items td.mono{font-family:monospace;font-size:10px}
 .chk{display:inline-block;width:13px;height:13px;border:1.5px solid #94A3B8;border-radius:2px;vertical-align:middle;margin-right:6px}
 .none-row{text-align:center;color:#94A3B8;font-style:italic;padding:14px}
 
@@ -464,22 +470,24 @@ table.items tr:last-child td{border-bottom:none}
 
     <div class='sec-hdr'>ASSETS TO BE SUBMITTED (").Append(assignedAssets.Count).Append(@")</div>
     <table class='items'>
-      <thead><tr><th>Asset Tag</th><th>Type</th><th>Brand / Model</th><th>Serial No.</th><th>Issued Condition</th><th>Returned</th><th>Remarks</th></tr></thead>
+      <thead><tr><th>Asset Tag</th><th>Type</th><th>Hostname</th><th>Brand / Model</th><th>Serial No.</th><th>MAC Address</th><th>Issued Condition</th><th>Returned</th><th>Remarks</th></tr></thead>
       <tbody>");
         if (assignedAssets.Any())
         {
             foreach (var a in assignedAssets)
             {
                 sb.Append("<tr><td><b>").Append(a.GetValueOrDefault("assetTag")).Append("</b></td><td>")
-                  .Append(a.GetValueOrDefault("assetType")).Append("</td><td>")
-                  .Append(a.GetValueOrDefault("brand")).Append(' ').Append(a.GetValueOrDefault("model")).Append("</td><td>")
-                  .Append(a.GetValueOrDefault("serial")).Append("</td><td>")
+                  .Append(a.GetValueOrDefault("assetType")).Append("</td><td class='mono'>")
+                  .Append(a.GetValueOrDefault("hostname")).Append("</td><td>")
+                  .Append(a.GetValueOrDefault("brand")).Append(' ').Append(a.GetValueOrDefault("model")).Append("</td><td class='mono'>")
+                  .Append(a.GetValueOrDefault("serial")).Append("</td><td class='mono'>")
+                  .Append(a.GetValueOrDefault("mac")).Append("</td><td>")
                   .Append(a.GetValueOrDefault("condition")).Append("</td><td><span class='chk'></span> Yes &nbsp; <span class='chk'></span> No</td><td>&nbsp;</td></tr>");
             }
         }
         else
         {
-            sb.Append("<tr><td colspan='7' class='none-row'>No assets currently linked to this employee in the system</td></tr>");
+            sb.Append("<tr><td colspan='9' class='none-row'>No assets currently linked to this employee in the system</td></tr>");
         }
         sb.Append(@"</tbody>
     </table>
