@@ -26,6 +26,17 @@
 <form method="post" action="/ITStore/Issue/@sid">
     <div class="row g-3">
         <div class="col-md-6">
+            <label class="form-label fw-bold">Select Employee <span class="fw-normal text-muted">(auto-fills the fields below)</span></label>
+            <select id="empSelect" class="form-select" onchange="document.getElementById('empName').value=this.value; document.getElementById('empName').dispatchEvent(new Event('change'));">
+                <option value="">-- Select Employee --</option>
+                @foreach(var e in empLookup){<option value="@e.name">@e.name (@e.empId)@(string.IsNullOrEmpty(e.dept) ? "" : " — " + e.dept)</option>}
+            </select>
+            @if (!empLookup.Any())
+            {
+                <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> No employees in Employee Master yet — <a href="/Employees/Create">add one</a> or type details manually below.</div>
+            }
+        </div>
+        <div class="col-md-6">
             <label class="form-label fw-bold">Employee Name *</label>
             <input type="text" name="empName" id="empName" class="form-control" required
                    list="empList" autocomplete="off" placeholder="Type a name, select from the list"/>

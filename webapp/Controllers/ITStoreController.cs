@@ -90,6 +90,10 @@ public class ITStoreController : Controller
     public IActionResult Issue(string id)
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        ViewBag.Employees = _db.GetEmployees()
+            .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
+            .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
+            .ToList();
         var raw = _db.QueryFirst<string>("SELECT data FROM it_stock_items WHERE id=@id", new { id });
         if (raw == null) return NotFound();
         var item = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();

@@ -47,10 +47,27 @@
         <div class="card border-0 shadow-sm">
             <div class="card-header fw-bold" style="background:#059669;color:white">Assignment</div>
             <div class="card-body">
+                @{ var employees = (List<Dictionary<string,object?>>)(ViewBag.Employees ?? new List<Dictionary<string,object?>>()); }
+                <div class="mb-3"><label class="form-label small fw-bold">Select Employee <span class="fw-normal text-muted">(optional — auto-fills below)</span></label>
+                    <select id="empSelect" class="form-select" onchange="fillAssetEmp()">
+                        <option value="">-- Select Employee --</option>
+                        @foreach(var e in employees)
+                        {
+                            var nm = e.GetValueOrDefault("name")?.ToString() ?? "";
+                            var cd = e.GetValueOrDefault("emp")?.ToString() ?? "";
+                            var dp = e.GetValueOrDefault("dept")?.ToString() ?? "";
+                            <option value="@nm" data-emp="@cd" data-dept="@dp">@nm (@cd)@(string.IsNullOrEmpty(dp) ? "" : " — " + dp)</option>
+                        }
+                    </select>
+                    @if (!employees.Any())
+                    {
+                        <div class="small text-muted mt-1"><i class="bi bi-info-circle"></i> No employees in Employee Master yet — <a href="/Employees/Create">add one</a> or type details manually below.</div>
+                    }
+                </div>
                 <div class="mb-3"><label class="form-label small fw-bold">Assigned To (Name)</label><input type="text" name="assignedToName" value="@Model.GetValueOrDefault("assignedToName")" class="form-control"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Emp Code</label><input type="text" name="assignedToEmp" value="@Model.GetValueOrDefault("assignedToEmp")" class="form-control"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Department</label>
-                    <select name="assignedToDept" class="form-select">
+                    <select name="assignedToDept" id="assignedToDept" class="form-select">
                         @{var curDept = Model.GetValueOrDefault("assignedToDept")?.ToString() ?? "";}
                         <option value="">Select...</option>
                         @foreach(var d in depts)
@@ -68,3 +85,20 @@
     <a href="/Assets/Index" class="btn btn-outline-secondary px-4">Cancel</a>
 </div>
 </form>
+
+@section Scripts {
+<script>
+function fillAssetEmp() {
+    const sel = document.getElementById('empSelect');
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.value) return;
+    document.querySelector('input[name="assignedToName"]').value = opt.value;
+    document.querySelector('input[name="assignedToEmp"]').value = opt.dataset.emp || '';
+    const deptSel = document.getElementById('assignedToDept');
+    const wanted = (opt.dataset.dept || '').trim().toUpperCase();
+    for (const o of deptSel.options) {
+        if (o.value.trim().toUpperCase() === wanted) { deptSel.value = o.value; break; }
+    }
+}
+</script>
+}

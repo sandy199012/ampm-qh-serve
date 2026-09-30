@@ -49,6 +49,10 @@ public class PurchaseOrdersController : Controller
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         ViewBag.BudgetItems = _db.GetBudget();
         ViewBag.Vendors = _db.GetVendors();
+        ViewBag.Employees = _db.GetEmployees()
+            .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
+            .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
+            .ToList();
         return View();
     }
 
@@ -156,6 +160,10 @@ public class PurchaseOrdersController : Controller
         if (raw == null) return NotFound();
         ViewBag.BudgetItems = _db.GetBudget();
         ViewBag.Vendors = _db.GetVendors();
+        ViewBag.Employees = _db.GetEmployees()
+            .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
+            .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
+            .ToList();
         return View(JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new());
     }
 

@@ -42,6 +42,10 @@ public class AssetsController : Controller
     public IActionResult Create()
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        ViewBag.Employees = _db.GetEmployees()
+            .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
+            .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
+            .ToList();
         return View(new Dictionary<string,object?>());
     }
 
@@ -61,6 +65,10 @@ public class AssetsController : Controller
     public IActionResult Edit(string id)
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
+        ViewBag.Employees = _db.GetEmployees()
+            .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
+            .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
+            .ToList();
         var asset = _db.GetAssets().FirstOrDefault(a => a.GetValueOrDefault("id")?.ToString() == id);
         if (asset == null) return NotFound();
         return View(asset);
