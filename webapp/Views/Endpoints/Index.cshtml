@@ -107,10 +107,17 @@
                     <tr>
                         <th class="ps-3">Hostname</th>
                         <th>IP Address</th>
+                        <th>MAC Address</th>
                         <th>OS</th>
+                        <th>OS Build</th>
+                        <th>Architecture</th>
+                        <th>Manufacturer</th>
+                        <th>Model</th>
+                        <th>Serial Number</th>
                         <th>CPU</th>
                         <th>RAM (GB)</th>
                         <th>Disk Free</th>
+                        <th>Disk Total</th>
                         <th>User</th>
                         <th>QH Version</th>
                         <th>QH Service</th>
@@ -526,10 +533,17 @@
                 <div class="row g-3">
                     <div class="col-md-6"><label class="form-label fw-bold small">Hostname</label><input type="text" id="pcHostname" class="form-control"/></div>
                     <div class="col-md-6"><label class="form-label fw-bold small">IP Address</label><input type="text" id="pcIp" class="form-control"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">MAC Address</label><input type="text" id="pcMac" class="form-control" placeholder="AA:BB:CC:DD:EE:FF"/></div>
                     <div class="col-md-6"><label class="form-label fw-bold small">OS</label><input type="text" id="pcOs" class="form-control" placeholder="Windows 11 Pro"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">OS Build</label><input type="text" id="pcOsBuild" class="form-control" placeholder="e.g. 22631 or 23G93"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Architecture</label><input type="text" id="pcArch" class="form-control" placeholder="64-bit / arm64"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Manufacturer</label><input type="text" id="pcManufacturer" class="form-control" placeholder="Dell Inc. / Apple Inc."/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Model</label><input type="text" id="pcModel" class="form-control" placeholder="OptiPlex 7090 / MacBook Pro"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Serial Number</label><input type="text" id="pcSerial" class="form-control"/></div>
                     <div class="col-md-6"><label class="form-label fw-bold small">CPU</label><input type="text" id="pcCpu" class="form-control"/></div>
                     <div class="col-md-6"><label class="form-label fw-bold small">RAM (GB)</label><input type="text" id="pcRam" class="form-control"/></div>
                     <div class="col-md-6"><label class="form-label fw-bold small">Disk Free</label><input type="text" id="pcDisk" class="form-control" placeholder="120 GB"/></div>
+                    <div class="col-md-6"><label class="form-label fw-bold small">Disk Total</label><input type="text" id="pcDiskTotal" class="form-control" placeholder="512 GB"/></div>
                     <div class="col-md-6"><label class="form-label fw-bold small">Logged-in User</label><input type="text" id="pcUser" class="form-control"/></div>
                     <div class="col-md-6"><label class="form-label fw-bold small">Last Seen</label><input type="text" id="pcLastSeen" class="form-control" placeholder="2026-09-05"/></div>
                     <div class="col-md-6"><label class="form-label fw-bold small">Quick Heal Version</label><input type="text" id="pcQhVersion" class="form-control" placeholder="e.g. 24.00"/></div>
@@ -967,7 +981,7 @@ function renderPc() {
         if (svc === 'Running') qhOk++;
         else if (svc === 'Stopped') qhStopped++;
         else qhMissing++;
-        const hay = [p.hostname, p.ip, p.user, p.notes].join(' ').toLowerCase();
+        const hay = [p.hostname, p.ip, p.mac, p.user, p.notes, p.model, p.serial].join(' ').toLowerCase();
         if (q && !hay.includes(q)) return;
         let svcBadge = svc === 'Running' ? '<span class="badge bg-success">Running</span>'
                      : svc === 'Stopped' ? '<span class="badge bg-warning">Stopped</span>'
@@ -975,10 +989,17 @@ function renderPc() {
         rows += `<tr>
             <td class="ps-3 fw-bold font-monospace">${esc(p.hostname)}</td>
             <td class="font-monospace small">${esc(p.ip)}</td>
+            <td class="font-monospace small">${esc(p.mac)}</td>
             <td class="small">${esc(p.os)}</td>
+            <td class="small">${esc(p.osBuild)}</td>
+            <td class="small">${esc(p.arch)}</td>
+            <td class="small">${esc(p.manufacturer)}</td>
+            <td class="small">${esc(p.model)}</td>
+            <td class="small font-monospace">${esc(p.serial)}</td>
             <td class="small">${esc(p.cpu)}</td>
             <td class="small">${esc(p.ramGb)}</td>
             <td class="small">${esc(p.diskFree)}</td>
+            <td class="small">${esc(p.diskTotal)}</td>
             <td class="small">${esc(p.user)}</td>
             <td class="small">${esc(p.qhVersion)}</td>
             <td>${svcBadge}</td>
@@ -993,7 +1014,7 @@ function renderPc() {
             </td>
         </tr>`;
     });
-    body.innerHTML = rows || '<tr><td colspan="13" class="text-center text-muted py-4">No PCs added yet</td></tr>';
+    body.innerHTML = rows || '<tr><td colspan="20" class="text-center text-muted py-4">No PCs added yet</td></tr>';
     document.getElementById('pcTotal').textContent = total;
     document.getElementById('pcQhOk').textContent = qhOk;
     document.getElementById('pcQhMissing').textContent = qhMissing;
@@ -1006,10 +1027,17 @@ function openPcModal(i) {
     document.getElementById('pcModalTitle').textContent = i >= 0 ? 'Edit PC' : 'Add PC';
     document.getElementById('pcHostname').value = p.hostname || '';
     document.getElementById('pcIp').value = p.ip || '';
+    document.getElementById('pcMac').value = p.mac || '';
     document.getElementById('pcOs').value = p.os || '';
+    document.getElementById('pcOsBuild').value = p.osBuild || '';
+    document.getElementById('pcArch').value = p.arch || '';
+    document.getElementById('pcManufacturer').value = p.manufacturer || '';
+    document.getElementById('pcModel').value = p.model || '';
+    document.getElementById('pcSerial').value = p.serial || '';
     document.getElementById('pcCpu').value = p.cpu || '';
     document.getElementById('pcRam').value = p.ramGb || '';
     document.getElementById('pcDisk').value = p.diskFree || '';
+    document.getElementById('pcDiskTotal').value = p.diskTotal || '';
     document.getElementById('pcUser').value = p.user || '';
     document.getElementById('pcLastSeen').value = p.lastSeen || '';
     document.getElementById('pcQhVersion').value = p.qhVersion || '';
@@ -1028,10 +1056,17 @@ function savePc() {
     const rec = Object.assign({}, (i >= 0 ? pcs[i] : {}), {
         hostname,
         ip: document.getElementById('pcIp').value.trim(),
+        mac: document.getElementById('pcMac').value.trim(),
         os: document.getElementById('pcOs').value.trim(),
+        osBuild: document.getElementById('pcOsBuild').value.trim(),
+        arch: document.getElementById('pcArch').value.trim(),
+        manufacturer: document.getElementById('pcManufacturer').value.trim(),
+        model: document.getElementById('pcModel').value.trim(),
+        serial: document.getElementById('pcSerial').value.trim(),
         cpu: document.getElementById('pcCpu').value.trim(),
         ramGb: document.getElementById('pcRam').value.trim(),
         diskFree: document.getElementById('pcDisk').value.trim(),
+        diskTotal: document.getElementById('pcDiskTotal').value.trim(),
         user: document.getElementById('pcUser').value.trim(),
         lastSeen: document.getElementById('pcLastSeen').value.trim(),
         qhVersion: document.getElementById('pcQhVersion').value.trim(),

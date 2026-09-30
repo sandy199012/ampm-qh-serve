@@ -105,10 +105,17 @@ public class EndpointsController : Controller
         }
         rec["hostname"] = hostname;
         SetIf("ip", "ip");
+        SetIf("mac", "mac");
         SetIf("os", "os");
+        SetIf("osBuild", "osBuild");
+        SetIf("arch", "arch");
+        SetIf("manufacturer", "manufacturer");
+        SetIf("model", "model");
+        SetIf("serial", "serial");
         SetIf("cpu", "cpu");
         SetIf("ramGb", "ramGb");
         SetIf("diskFree", "diskFree");
+        SetIf("diskTotal", "diskTotal");
         SetIf("user", "user");
         // Installed-software list (array of {name, version}) — collected by the
         // agent from the Windows Uninstall registry keys. Stored as-is; the
@@ -183,10 +190,17 @@ public class EndpointsController : Controller
             void SetIf(string csvKey, string dataKey) { if (row.TryGetValue(csvKey, out var v) && !string.IsNullOrWhiteSpace(v)) rec[dataKey] = v; }
             rec["hostname"] = hostname;
             SetIf("ip address", "ip");
+            SetIf("mac address", "mac");
             SetIf("os", "os");
+            SetIf("os build", "osBuild");
+            SetIf("architecture", "arch");
+            SetIf("manufacturer", "manufacturer");
+            SetIf("model", "model");
+            SetIf("serial number", "serial");
             SetIf("cpu", "cpu");
             SetIf("ram gb", "ramGb");
             SetIf("disk free", "diskFree");
+            SetIf("disk total", "diskTotal");
             SetIf("user", "user");
             SetIf("qh version", "qhVersion");
             SetIf("qh service", "qhService");
@@ -497,15 +511,22 @@ public class EndpointsController : Controller
     {
         var pcs = _db.KGetObj<List<Dictionary<string,object?>>>("pc_inventory") ?? new();
         var csv = new System.Text.StringBuilder();
-        csv.AppendLine("Hostname,IP Address,OS,CPU,RAM GB,Disk Free,User,QH Version,QH Service,License Key,Last Seen,Notes");
+        csv.AppendLine("Hostname,IP Address,MAC Address,OS,OS Build,Architecture,Manufacturer,Model,Serial Number,CPU,RAM GB,Disk Free,Disk Total,User,QH Version,QH Service,License Key,Last Seen,Notes");
         foreach (var p in pcs)
             csv.AppendLine(string.Join(",",
                 CsvE(p.GetValueOrDefault("hostname")?.ToString()),
                 CsvE(p.GetValueOrDefault("ip")?.ToString()),
+                CsvE(p.GetValueOrDefault("mac")?.ToString()),
                 CsvE(p.GetValueOrDefault("os")?.ToString()),
+                CsvE(p.GetValueOrDefault("osBuild")?.ToString()),
+                CsvE(p.GetValueOrDefault("arch")?.ToString()),
+                CsvE(p.GetValueOrDefault("manufacturer")?.ToString()),
+                CsvE(p.GetValueOrDefault("model")?.ToString()),
+                CsvE(p.GetValueOrDefault("serial")?.ToString()),
                 CsvE(p.GetValueOrDefault("cpu")?.ToString()),
                 CsvE(p.GetValueOrDefault("ramGb")?.ToString()),
                 CsvE(p.GetValueOrDefault("diskFree")?.ToString()),
+                CsvE(p.GetValueOrDefault("diskTotal")?.ToString()),
                 CsvE(p.GetValueOrDefault("user")?.ToString()),
                 CsvE(p.GetValueOrDefault("qhVersion")?.ToString()),
                 CsvE(p.GetValueOrDefault("qhService")?.ToString()),
