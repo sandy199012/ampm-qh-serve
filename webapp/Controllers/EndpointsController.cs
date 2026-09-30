@@ -138,6 +138,21 @@ public class EndpointsController : Controller
         // control from the Assets screen (Sandy assigns the asset to an
         // employee himself).
         var assets = _db.GetAssets();
+        MergePcIntoAsset(rec, assets);
+        _db.SaveAssets(assets);
+
+        return Json(new { ok = true, hostname, updated = existing != null });
+    }
+
+    // Shared by ReportPc (one machine, live) and SyncPcToAssets (all machines,
+    // on demand) — upserts an Asset record from a pc_inventory record, matched
+    // by hostname. Only hardware/spec fields are touched; assignment fields
+    // stay under manual control from the Assets screen.
+    private void MergePcIntoAsset(Dictionary<string,object?> pcRec, List<Dictionary<string,object?>> assets)
+    {
+        var hostname = pcRec.GetValueOrDefault("hostname")?.ToString()?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(hostname)) return;
+
         var asset = assets.FirstOrDefault(a =>
             string.Equals(a.GetValueOrDefault("hostname")?.ToString(), hostname, StringComparison.OrdinalIgnoreCase));
         if (asset == null)
@@ -154,7 +169,7 @@ public class EndpointsController : Controller
         asset["hostname"] = hostname;
         void SetAssetIf(string srcKey, string destKey)
         {
-            var v = data.GetValueOrDefault(srcKey)?.ToString();
+            var v = pcRec.GetValueOrDefault(srcKey)?.ToString();
             if (!string.IsNullOrWhiteSpace(v)) asset[destKey] = v;
         }
         SetAssetIf("ip", "ip");
@@ -169,10 +184,24 @@ public class EndpointsController : Controller
         SetAssetIf("ramGb", "ram");
         SetAssetIf("diskFree", "diskFree");
         SetAssetIf("diskTotal", "storage");
-        asset["lastSeen"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
-        _db.SaveAssets(assets);
+        asset["lastSeen"] = pcRec.GetValueOrDefault("lastSeen")?.ToString() ?? IstTime.Now.ToString("yyyy-MM-dd HH:mm");
+    }
 
-        return Json(new { ok = true, hostname, updated = existing != null });
+    // Manual "Sync to Assets" button on the PC Inventory tab — backfills Asset
+    // Management from whatever is already in PC Inventory right now. Needed
+    // because ReportPc only syncs a machine the moment its agent reports; any
+    // PC/Mac that was already in PC Inventory before this feature existed (or
+    // whose agent hasn't run again since) won't have an Asset record yet
+    // without this.
+    [HttpPost("/Endpoints/SyncPcToAssets")]
+    public IActionResult SyncPcToAssets()
+    {
+        var pcs = _db.KGetObj<List<Dictionary<string,object?>>>("pc_inventory") ?? new();
+        var assets = _db.GetAssets();
+        foreach (var pc in pcs) MergePcIntoAsset(pc, assets);
+        _db.SaveAssets(assets);
+        TempData["Success"] = $"Synced {pcs.Count} PC(s)/Mac(s) from PC Inventory into Asset Management.";
+        return RedirectToAction("Index");
     }
 
     // Quick-start: pull hostname/IP/OS already on file in Employees into PC Inventory
