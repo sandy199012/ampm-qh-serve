@@ -31,13 +31,17 @@ public class AssetsController : Controller
                 a.GetValueOrDefault("brand")?.ToString()?.ToLower().Contains(s)==true ||
                 a.GetValueOrDefault("model")?.ToString()?.ToLower().Contains(s)==true ||
                 a.GetValueOrDefault("assignedToName")?.ToString()?.ToLower().Contains(s)==true ||
-                a.GetValueOrDefault("serial")?.ToString()?.ToLower().Contains(s)==true
+                a.GetValueOrDefault("serial")?.ToString()?.ToLower().Contains(s)==true ||
+                a.GetValueOrDefault("ip")?.ToString()?.ToLower().Contains(s)==true ||
+                a.GetValueOrDefault("hostname")?.ToString()?.ToLower().Contains(s)==true
             ).ToList();
         }
         if (!string.IsNullOrEmpty(type))
             assets = assets.Where(a => a.GetValueOrDefault("assetType")?.ToString() == type).ToList();
         ViewBag.Search = search;
         ViewBag.TypeFilter = type;
+        // Last network-printer scan summary (written by EndpointsController.ReportPrinters)
+        ViewBag.PrinterScanInfo = _db.KGetObj<Dictionary<string,object?>>("printer_scan_last");
         ViewBag.Types = _db.GetAssets().Select(a => a.GetValueOrDefault("assetType")?.ToString() ?? "").Where(t => !string.IsNullOrEmpty(t)).Distinct().OrderBy(t => t).ToList();
         return View(assets);
     }
@@ -50,6 +54,9 @@ public class AssetsController : Controller
             .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
             .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
             .ToList();
+        // Printers have their own tag series (PRN-0001, PRN-0002 ...) — the form
+        // pre-fills this when "Printer" is chosen as the asset type.
+        ViewBag.NextPrinterTag = AssetTags.NextTag(_db.GetAssets(), AssetTags.PrinterPrefix);
         return View(new Dictionary<string,object?>());
     }
 
@@ -59,10 +66,22 @@ public class AssetsController : Controller
         var asset = new Dictionary<string,object?> { ["id"] = Guid.NewGuid().ToString("N")[..8] };
         foreach (var key in form.Keys) asset[key] = form[key].ToString();
         var assets = _db.GetAssets();
+        if (asset.GetValueOrDefault("assetType")?.ToString() == "Printer")
+        {
+            // Blank tag, or a tag that already exists, -> next free PRN- number.
+            var tag = asset.GetValueOrDefault("assetTag")?.ToString()?.Trim() ?? "";
+            bool taken = assets.Any(a => string.Equals(a.GetValueOrDefault("assetTag")?.ToString(), tag, StringComparison.OrdinalIgnoreCase));
+            if (string.IsNullOrWhiteSpace(tag) || taken)
+                asset["assetTag"] = AssetTags.NextTag(assets, AssetTags.PrinterPrefix);
+            if (string.IsNullOrWhiteSpace(asset.GetValueOrDefault("source")?.ToString()))
+                asset["source"] = "Manual";
+            if (!string.IsNullOrWhiteSpace(asset.GetValueOrDefault("assignedToName")?.ToString()))
+                asset["assignedDate"] = IstTime.Today.ToString("yyyy-MM-dd");
+        }
         assets.Add(asset);
         SaveAssets(assets);
         SyncAssetToEmployee(asset);
-        TempData["Success"] = $"Asset {form["assetTag"]} added!";
+        TempData["Success"] = $"Asset {asset.GetValueOrDefault("assetTag")} added!";
         return RedirectToAction("Index");
     }
 
@@ -134,6 +153,7 @@ public class AssetsController : Controller
     // details (name, department, etc.).
     private void SyncAssetToEmployee(Dictionary<string,object?> asset)
     {
+        if (AssetTags.IsPeripheral(asset)) return;   // printer/monitor/UPS never overwrite the employee's PC fields
         var empCode = asset.GetValueOrDefault("assignedToEmp")?.ToString();
         if (string.IsNullOrWhiteSpace(empCode)) return;
         var emp = _db.GetEmployeeByCode(empCode);
@@ -163,6 +183,7 @@ public class AssetsController : Controller
     // serial), so unassigning one asset never wipes out a different one.
     private void ClearEmployeeAsset(string? empCode, Dictionary<string,object?> asset)
     {
+        if (AssetTags.IsPeripheral(asset)) return;
         if (string.IsNullOrWhiteSpace(empCode)) return;
         var emp = _db.GetEmployeeByCode(empCode);
         if (emp == null) return;
@@ -193,6 +214,23 @@ public class AssetsController : Controller
         var asset = _db.GetAssets().FirstOrDefault(a => a.GetValueOrDefault("id")?.ToString() == id);
         if (asset == null) return NotFound();
         string S(string k) => asset.GetValueOrDefault(k)?.ToString() ?? "";
+
+        // Spec rows differ by asset type: a printer has no CPU/RAM/OS, it has a
+        // printer type, connection and (for network printers) an IP address.
+        string specRows;
+        if (S("assetType") == "Printer")
+        {
+            specRows = $"      <tr><td class='k'>Printer Type</td><td class='v'>{S("printerType")}</td></tr>\n"
+                     + $"      <tr><td class='k'>Connection</td><td class='v'>{S("connection")}</td></tr>\n"
+                     + $"      <tr><td class='k'>IP Address</td><td class='v'>{S("ip")}</td></tr>\n"
+                     + $"      <tr><td class='k'>Toner / Cartridge</td><td class='v'>{S("tonerModel")}</td></tr>";
+        }
+        else
+        {
+            specRows = $"      <tr><td class='k'>Processor</td><td class='v'>{S("processor")}</td></tr>\n"
+                     + $"      <tr><td class='k'>RAM / Storage</td><td class='v'>{S("ram")} GB / {S("storage")} GB</td></tr>\n"
+                     + $"      <tr><td class='k'>OS</td><td class='v'>{S("os")}</td></tr>";
+        }
 
         var sb = new System.Text.StringBuilder();
         sb.Append(@"<!DOCTYPE html><html><head><meta charset='UTF-8'>
@@ -246,9 +284,7 @@ table.kv td.v{color:#0F172A}
       <tr><td class='k'>Type</td><td class='v'>").Append(S("assetType")).Append(@"</td></tr>
       <tr><td class='k'>Brand / Model</td><td class='v'>").Append(S("brand")).Append(' ').Append(S("model")).Append(@"</td></tr>
       <tr><td class='k'>Serial No.</td><td class='v'>").Append(S("serial")).Append(@"</td></tr>
-      <tr><td class='k'>Processor</td><td class='v'>").Append(S("processor")).Append(@"</td></tr>
-      <tr><td class='k'>RAM / Storage</td><td class='v'>").Append(S("ram")).Append(@" GB / ").Append(S("storage")).Append(@" GB</td></tr>
-      <tr><td class='k'>OS</td><td class='v'>").Append(S("os")).Append(@"</td></tr>
+").Append(specRows).Append(@"
       <tr><td class='k'>Condition</td><td class='v'>").Append(S("condition")).Append(@"</td></tr>
     </table>
 
@@ -291,16 +327,69 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
 </style></head><body>
 <table style='margin-bottom:12px'><tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — ASSET STOCK REPORT</td></tr>
 <tr><td style='padding:5px;font-size:10px'>Generated: {IstTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
-<table><thead><tr><th>#</th><th>Asset Tag</th><th>Type</th><th>Hostname</th><th>Brand</th><th>Model</th><th>Serial Number</th><th>MAC Address</th><th>IP Address</th><th>OS</th><th>OS Build</th><th>Architecture</th><th>CPU</th><th>RAM (GB)</th><th>Disk Free</th><th>Storage (Total)</th><th>Condition</th><th>Assigned To</th><th>Emp Code</th><th>Department</th><th>Assigned Date</th><th>Location</th><th>Last Seen</th></tr></thead><tbody>");
+<table><thead><tr><th>#</th><th>Asset Tag</th><th>Type</th><th>Hostname</th><th>Brand</th><th>Model</th><th>Serial Number</th><th>MAC Address</th><th>IP Address</th><th>OS</th><th>OS Build</th><th>Architecture</th><th>CPU</th><th>RAM (GB)</th><th>Disk Free</th><th>Storage (Total)</th><th>Condition</th><th>Assigned To</th><th>Emp Code</th><th>Department</th><th>Assigned Date</th><th>Location</th><th>Last Seen</th><th>Printer Type</th><th>Connection</th><th>Toner / Cartridge</th><th>Page Count</th><th>Source</th></tr></thead><tbody>");
         int sno = 0;
         foreach (var a in assets)
         {
             sno++;
             bool assigned = !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToName")?.ToString());
             string cls = assigned ? "green" : "amber";
-            sb.Append($"<tr><td style='text-align:center'>{sno}</td><td><b>{a.GetValueOrDefault("assetTag")}</b></td><td>{a.GetValueOrDefault("assetType")}</td><td>{a.GetValueOrDefault("hostname")}</td><td>{a.GetValueOrDefault("brand")}</td><td>{a.GetValueOrDefault("model")}</td><td>{a.GetValueOrDefault("serial")}</td><td>{a.GetValueOrDefault("mac")}</td><td>{a.GetValueOrDefault("ip")}</td><td>{a.GetValueOrDefault("os")}</td><td>{a.GetValueOrDefault("osBuild")}</td><td>{a.GetValueOrDefault("arch")}</td><td>{a.GetValueOrDefault("processor")}</td><td>{a.GetValueOrDefault("ram")}</td><td>{a.GetValueOrDefault("diskFree")}</td><td>{a.GetValueOrDefault("storage")}</td><td>{a.GetValueOrDefault("condition")}</td><td class='{cls}'>{(assigned ? a.GetValueOrDefault("assignedToName") : "Unassigned")}</td><td>{a.GetValueOrDefault("assignedToEmp")}</td><td>{a.GetValueOrDefault("assignedToDept")}</td><td>{a.GetValueOrDefault("assignedDate")}</td><td>{a.GetValueOrDefault("location")}</td><td>{a.GetValueOrDefault("lastSeen")}</td></tr>");
+            sb.Append($"<tr><td style='text-align:center'>{sno}</td><td><b>{a.GetValueOrDefault("assetTag")}</b></td><td>{a.GetValueOrDefault("assetType")}</td><td>{a.GetValueOrDefault("hostname")}</td><td>{a.GetValueOrDefault("brand")}</td><td>{a.GetValueOrDefault("model")}</td><td>{a.GetValueOrDefault("serial")}</td><td>{a.GetValueOrDefault("mac")}</td><td>{a.GetValueOrDefault("ip")}</td><td>{a.GetValueOrDefault("os")}</td><td>{a.GetValueOrDefault("osBuild")}</td><td>{a.GetValueOrDefault("arch")}</td><td>{a.GetValueOrDefault("processor")}</td><td>{a.GetValueOrDefault("ram")}</td><td>{a.GetValueOrDefault("diskFree")}</td><td>{a.GetValueOrDefault("storage")}</td><td>{a.GetValueOrDefault("condition")}</td><td class='{cls}'>{(assigned ? a.GetValueOrDefault("assignedToName") : "Unassigned")}</td><td>{a.GetValueOrDefault("assignedToEmp")}</td><td>{a.GetValueOrDefault("assignedToDept")}</td><td>{a.GetValueOrDefault("assignedDate")}</td><td>{a.GetValueOrDefault("location")}</td><td>{a.GetValueOrDefault("lastSeen")}</td><td>{a.GetValueOrDefault("printerType")}</td><td>{a.GetValueOrDefault("connection")}</td><td>{a.GetValueOrDefault("tonerModel")}</td><td>{a.GetValueOrDefault("pageCount")}</td><td>{a.GetValueOrDefault("source")}</td></tr>");
         }
         sb.Append("</tbody></table></body></html>");
         return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Assets_{IstTime.Now:yyyyMMdd}.xls");
+    }
+
+    // Zips the network-printer scanner scripts (kept under wwwroot/tools) and
+    // serves them as one download. Done in code rather than as plain static
+    // files because ASP.NET's static-file middleware refuses unknown extensions
+    // like .ps1/.bat, and a single ZIP is easier for the user anyway.
+    [HttpGet("/Assets/ScannerDownload")]
+    public IActionResult ScannerDownload([FromServices] IWebHostEnvironment env)
+    {
+        var dir = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "tools");
+        if (!Directory.Exists(dir)) return NotFound("Scanner files are not deployed on the server yet.");
+        using var ms = new MemoryStream();
+        using (var zip = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, true))
+        {
+            foreach (var f in Directory.GetFiles(dir, "AMPM_Printer_Scanner*"))
+            {
+                var entry = zip.CreateEntry(Path.GetFileName(f));
+                using var es = entry.Open();
+                using var fs = System.IO.File.OpenRead(f);
+                fs.CopyTo(es);
+            }
+        }
+        return File(ms.ToArray(), "application/zip", "AMPM_Printer_Scanner.zip");
+    }
+}
+
+// Asset-tag helpers shared by AssetsController (manual add) and
+// EndpointsController (auto-discovered printers).
+public static class AssetTags
+{
+    public const string PrinterPrefix = "PRN-";
+
+    // Next free tag for a prefix series: highest existing number + 1,
+    // zero-padded to 4 digits (PRN-0001, PRN-0002, ...).
+    public static string NextTag(List<Dictionary<string,object?>> assets, string prefix)
+    {
+        int max = 0;
+        foreach (var a in assets)
+        {
+            var t = a.GetValueOrDefault("assetTag")?.ToString()?.Trim() ?? "";
+            if (t.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(t.Substring(prefix.Length), out var n) && n > max)
+                max = n;
+        }
+        return prefix + (max + 1).ToString("D4");
+    }
+
+    // Things that are not "a person's PC": they must never overwrite the
+    // employee record's hostname/IP/OS/CPU fields when assigned.
+    public static bool IsPeripheral(Dictionary<string,object?> asset)
+    {
+        var t = asset.GetValueOrDefault("assetType")?.ToString() ?? "";
+        return t == "Printer" || t == "Monitor" || t == "UPS";
     }
 }

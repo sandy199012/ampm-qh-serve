@@ -42,6 +42,19 @@ public class ModulePermissionFilter : IActionFilter
         if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-pc", StringComparison.OrdinalIgnoreCase))
             return;
 
+        // Same idea for phones/tablets: the Helpdesk Flutter app calls this
+        // silently after login to report basic device info into the Mobile
+        // Devices list — no browser/cookie session here either, it verifies
+        // the same shared key instead (EndpointsController.ReportMobile).
+        if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-mobile", StringComparison.OrdinalIgnoreCase))
+            return;
+
+        // Network-printer scanner (AMPM_Printer_Scanner.ps1, run inside the office
+        // LAN) pushes discovered printers here — shared key, no cookie session
+        // (EndpointsController.ReportPrinters).
+        if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-printers", StringComparison.OrdinalIgnoreCase))
+            return;
+
         if (!_auth.IsLoggedIn(ctx))
         {
             context.Result = new RedirectToActionResult("Login", "Account", null);

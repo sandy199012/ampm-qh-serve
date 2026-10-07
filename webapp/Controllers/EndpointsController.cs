@@ -20,6 +20,7 @@ public class EndpointsController : Controller
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         var endpoints = _db.KGetObj<List<Dictionary<string,object?>>>("endpoints") ?? DefaultEndpoints();
         ViewBag.PcInventory = _db.KGetObj<List<Dictionary<string,object?>>>("pc_inventory") ?? new();
+        ViewBag.MobileInventory = _db.KGetObj<List<Dictionary<string,object?>>>("mobile_inventory") ?? new();
         ViewBag.Licenses = _db.KGetObj<List<Dictionary<string,object?>>>("qh_licenses") ?? new();
         ViewBag.SoftwareRegister = _db.KGetObj<List<Dictionary<string,object?>>>("software_register") ?? new();
         ViewBag.OnlineSubscriptions = _db.KGetObj<List<Dictionary<string,object?>>>("online_subscriptions") ?? new();
@@ -142,6 +143,158 @@ public class EndpointsController : Controller
         _db.SaveAssets(assets);
 
         return Json(new { ok = true, hostname, updated = existing != null });
+    }
+
+    // Called by the Helpdesk Flutter app (lib/services/device_report_service.dart)
+    // right after login on every app open — reports the phone/tablet's basic
+    // hardware info so it shows up here instead of Sandy tracking mobiles/iPads
+    // separately. No serial number/IMEI here (a normal app cannot read those on
+    // modern Android/iOS without MDM enrollment) — deviceId is a random ID the
+    // app generates once and keeps in local storage, just used to recognize
+    // "the same phone reporting again" across app opens. Same no-cookie/shared-key
+    // pattern as ReportPc above (see the matching exemption in ModulePermissionFilter.cs).
+    [HttpPost("/api/endpoints/report-mobile")]
+    public IActionResult ReportMobile([FromBody] Dictionary<string,object?> data)
+    {
+        if (data == null || data.GetValueOrDefault("key")?.ToString() != AgentKey)
+            return Unauthorized(new { ok = false, error = "Invalid or missing key" });
+
+        var deviceId = data.GetValueOrDefault("deviceId")?.ToString()?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(deviceId))
+            return BadRequest(new { ok = false, error = "deviceId missing" });
+
+        var devices = _db.KGetObj<List<Dictionary<string,object?>>>("mobile_inventory") ?? new();
+        var existing = devices.FirstOrDefault(d =>
+            string.Equals(d.GetValueOrDefault("deviceId")?.ToString(), deviceId, StringComparison.OrdinalIgnoreCase));
+        var rec = existing ?? new Dictionary<string,object?>();
+
+        void SetIf(string srcKey, string dataKey)
+        {
+            var v = data.GetValueOrDefault(srcKey)?.ToString();
+            if (!string.IsNullOrWhiteSpace(v)) rec[dataKey] = v;
+        }
+        rec["deviceId"] = deviceId;
+        SetIf("model", "model");
+        SetIf("manufacturer", "manufacturer");
+        SetIf("os", "os");
+        SetIf("osBuild", "osBuild");
+        SetIf("battery", "battery");
+        SetIf("user", "user");
+        SetIf("empId", "empId");
+        SetIf("empName", "empName");
+        rec["lastSeen"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
+
+        if (existing == null) devices.Add(rec);
+        _db.KSet("mobile_inventory", devices);
+
+        return Json(new { ok = true, deviceId, updated = existing != null });
+    }
+
+    // Called by AMPM_Printer_Scanner.ps1 (run on an office PC inside the LAN, by
+    // hand or by a daily scheduled task). The website itself cannot reach the
+    // office network, so the scanner finds the printers (port probe + SNMP) and
+    // pushes the list here. Printers are upserted straight into Asset Stock
+    // (assetType "Printer"), each NEW one getting the next PRN-#### tag.
+    // Matching an already-known printer: serial -> MAC -> IP. An existing record
+    // only has its network/status fields refreshed (ip, mac, hostname, pageCount,
+    // lastSeen; brand/model/serial only when blank) — assignment, condition,
+    // location and every manually-typed field are never touched.
+    // Same no-cookie/shared-key pattern as ReportPc (see the matching exemption
+    // in Filters/ModulePermissionFilter.cs).
+    [HttpPost("/api/endpoints/report-printers")]
+    public IActionResult ReportPrinters([FromBody] PrinterReportDto data)
+    {
+        if (data == null || data.Key != AgentKey)
+            return Unauthorized(new { ok = false, error = "Invalid or missing key" });
+
+        var list = data.Printers ?? new List<PrinterItemDto>();
+        var assets = _db.GetAssets();
+        int added = 0, updated = 0;
+        var now = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
+
+        static string NormMac(string? m) => new string((m ?? "").Where(Uri.IsHexDigit).ToArray()).ToUpperInvariant();
+        static string Clean(string? v) => (v ?? "").Trim();
+
+        foreach (var p in list)
+        {
+            var ip = Clean(p.Ip);
+            if (string.IsNullOrWhiteSpace(ip)) continue;
+            var mac = NormMac(p.Mac);
+            var serial = Clean(p.Serial);
+
+            var printers = assets.Where(a => a.GetValueOrDefault("assetType")?.ToString() == "Printer").ToList();
+            var rec =
+                (serial.Length > 3 ? printers.FirstOrDefault(a => string.Equals(Clean(a.GetValueOrDefault("serial")?.ToString()), serial, StringComparison.OrdinalIgnoreCase)) : null)
+                ?? (mac.Length == 12 ? printers.FirstOrDefault(a => NormMac(a.GetValueOrDefault("mac")?.ToString()) == mac) : null)
+                ?? printers.FirstOrDefault(a => Clean(a.GetValueOrDefault("ip")?.ToString()) == ip);
+
+            if (rec == null)
+            {
+                rec = new Dictionary<string,object?>
+                {
+                    ["id"] = Guid.NewGuid().ToString("N")[..8],
+                    ["assetTag"] = AssetTags.NextTag(assets, AssetTags.PrinterPrefix),
+                    ["assetType"] = "Printer",
+                    ["brand"] = Clean(p.Brand),
+                    ["model"] = Clean(p.Model),
+                    ["serial"] = serial,
+                    ["printerType"] = GuessPrinterType(p.Brand, p.Model),
+                    ["connection"] = "Network (LAN)",
+                    ["condition"] = "Good",
+                    ["source"] = "Auto-discovered",
+                    ["firstSeen"] = now,
+                };
+                assets.Add(rec);
+                added++;
+            }
+            else
+            {
+                void FillIfBlank(string key, string? val)
+                {
+                    if (string.IsNullOrWhiteSpace(rec!.GetValueOrDefault(key)?.ToString()) && !string.IsNullOrWhiteSpace(val))
+                        rec[key] = val.Trim();
+                }
+                FillIfBlank("brand", p.Brand);
+                FillIfBlank("model", p.Model);
+                FillIfBlank("serial", p.Serial);
+                if (string.IsNullOrWhiteSpace(rec.GetValueOrDefault("connection")?.ToString())) rec["connection"] = "Network (LAN)";
+                if (string.IsNullOrWhiteSpace(rec.GetValueOrDefault("printerType")?.ToString()))
+                    rec["printerType"] = GuessPrinterType(rec.GetValueOrDefault("brand")?.ToString(), rec.GetValueOrDefault("model")?.ToString());
+                updated++;
+            }
+
+            // Live network fields — always refreshed from the scan.
+            rec["ip"] = ip;
+            if (mac.Length == 12) rec["mac"] = string.Join(":", Enumerable.Range(0, 6).Select(i => mac.Substring(i * 2, 2)));
+            if (!string.IsNullOrWhiteSpace(p.Hostname)) rec["hostname"] = Clean(p.Hostname);
+            if (!string.IsNullOrWhiteSpace(p.PageCount)) rec["pageCount"] = Clean(p.PageCount);
+            rec["lastSeen"] = now;
+        }
+
+        _db.SaveAssets(assets);
+        _db.KSet("printer_scan_last", new Dictionary<string,object?>
+        {
+            ["time"] = now,
+            ["found"] = list.Count,
+            ["added"] = added,
+            ["updated"] = updated,
+            ["scannedFrom"] = Clean(data.ScannedFrom),
+            ["subnets"] = Clean(data.Subnets),
+        });
+        return Json(new { ok = true, found = list.Count, added, updated });
+    }
+
+    // Best-effort guess from brand/model text — only used to pre-fill the
+    // "Printer Type" box; Sandy can correct it on the Edit screen.
+    private static string GuessPrinterType(string? brand, string? model)
+    {
+        var t = ((brand ?? "") + " " + (model ?? "")).ToLowerInvariant();
+        if (t.Contains("zebra") || t.Contains("tsc ") || t.Contains("label")) return "Thermal / Label";
+        if (t.Contains("mfp") || t.Contains("mfc") || t.Contains("dcp-") || t.Contains("workcentre") || t.Contains("bizhub")
+            || t.Contains("imagerunner") || t.Contains("ir-adv") || t.Contains("altalink") || t.Contains("multifunction")) return "Multifunction (MFP)";
+        if (t.Contains("inkjet") || t.Contains("deskjet") || t.Contains("officejet") || t.Contains("ecotank") || t.Contains("pixma")) return "Inkjet";
+        if (t.Contains("laser") || t.Contains("hl-") || t.Contains("lbp")) return "Laser";
+        return "";
     }
 
     // Shared by ReportPc (one machine, live) and SyncPcToAssets (all machines,
@@ -959,4 +1112,27 @@ public class EndpointsController : Controller
         new() { ["name"]="Google", ["url"]="https://www.google.com", ["category"]="External", ["enabled"]=true },
         new() { ["name"]="Supabase", ["url"]="https://supabase.com", ["category"]="Cloud", ["enabled"]=true },
     };
+}
+
+// Request body for /api/endpoints/report-printers. A typed class (instead of
+// Dictionary<string,object?>) so the "printers" array binds into real objects
+// rather than JsonElement blobs. The scanner script sends every value as text.
+public class PrinterReportDto
+{
+    public string? Key { get; set; }
+    public string? ScannedFrom { get; set; }
+    public string? Subnets { get; set; }
+    public List<PrinterItemDto>? Printers { get; set; }
+}
+
+public class PrinterItemDto
+{
+    public string? Ip { get; set; }
+    public string? Mac { get; set; }
+    public string? Hostname { get; set; }
+    public string? Brand { get; set; }
+    public string? Model { get; set; }
+    public string? Serial { get; set; }
+    public string? PageCount { get; set; }
+    public string? Ports { get; set; }
 }

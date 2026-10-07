@@ -6,6 +6,7 @@
     var softwareRegister = (List<Dictionary<string,object?>>)ViewBag.SoftwareRegister;
     var onlineSubs = (List<Dictionary<string,object?>>)ViewBag.OnlineSubscriptions;
     var itSpendLog = (List<Dictionary<string,object?>>)ViewBag.ITSpendLog;
+    var mobileInv = (List<Dictionary<string,object?>>)ViewBag.MobileInventory;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -15,6 +16,7 @@
 <ul class="nav nav-tabs mb-3" id="epTabs">
     <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-uptime" type="button">🌐 Uptime Monitor</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-pc" type="button">💻 PC Inventory &amp; Antivirus</button></li>
+    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-mobile" type="button">📱 Mobile Devices</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-lic" type="button">🔑 License Manager</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-swreg" type="button">🗂️ IT Software Register</button></li>
     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-onlinesub" type="button">💳 Online Subscriptions</button></li>
@@ -134,6 +136,56 @@
             </table>
         </div>
     </div>
+</div>
+
+<!-- ══════════════ TAB 2b: MOBILE DEVICES (phones/tablets — Android/iOS) ══════════════ -->
+<div class="tab-pane fade" id="tab-mobile">
+
+    <div class="alert alert-info py-2 mb-3">
+        <i class="bi bi-info-circle"></i> Reported automatically by the Helpdesk mobile app every time an employee opens it and logs in — no manual entry needed.
+        Serial number/IMEI are not shown here: neither Android nor iOS lets a normal app read those without enrolling the device in an MDM (Mobile Device Management) solution, which is a separate setup from this website.
+    </div>
+
+    @if (!mobileInv.Any())
+    {
+        <div class="alert alert-light border text-muted">No phones/tablets have reported in yet. They'll appear here automatically once employees open the Helpdesk app (rebuild required for this feature — see setup notes).</div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Employee</th>
+                        <th>Employee Code</th>
+                        <th>Model</th>
+                        <th>Manufacturer</th>
+                        <th>OS</th>
+                        <th>OS Build</th>
+                        <th>Battery</th>
+                        <th>Logged-in User</th>
+                        <th>Last Seen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var d in mobileInv.OrderByDescending(x => x.GetValueOrDefault("lastSeen")?.ToString()))
+                    {
+                        <tr>
+                            <td>@d.GetValueOrDefault("empName")</td>
+                            <td class="font-monospace">@d.GetValueOrDefault("empId")</td>
+                            <td>@d.GetValueOrDefault("model")</td>
+                            <td>@d.GetValueOrDefault("manufacturer")</td>
+                            <td>@d.GetValueOrDefault("os")</td>
+                            <td>@d.GetValueOrDefault("osBuild")</td>
+                            <td>@(string.IsNullOrEmpty(d.GetValueOrDefault("battery")?.ToString()) ? "" : d.GetValueOrDefault("battery") + "%")</td>
+                            <td>@d.GetValueOrDefault("user")</td>
+                            <td>@d.GetValueOrDefault("lastSeen")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
 </div>
 
 <!-- ══════════════ TAB 3: LICENSE MANAGER ══════════════ -->

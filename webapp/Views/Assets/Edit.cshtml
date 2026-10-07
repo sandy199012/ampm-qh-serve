@@ -1,5 +1,6 @@
 @model Dictionary<string,object?>
 @{ViewData["Title"] = "Edit Asset";
+  var isPrinter = (Model.GetValueOrDefault("assetType")?.ToString() ?? "") == "Printer";
   var aid = Model.GetValueOrDefault("id")?.ToString() ?? "";
   string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","DESIGN - ACCESSORIES","PRODUCTION - APPAREL","PRODUCTION - LEATHER","PRODUCTION - MTO","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING","SAMPLING - APPAREL","FABRIC STORE","RESEARCH & DEVELOPMENT","TRUNK SHOW","ACCESSORIES STORE"};}
 
@@ -15,7 +16,7 @@
             <div class="card-body">
                 <div class="mb-3"><label class="form-label small fw-bold">Asset Tag</label><input type="text" name="assetTag" value="@Model.GetValueOrDefault("assetTag")" class="form-control" readonly/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Asset Type</label>
-                    <select name="assetType" class="form-select">
+                    <select name="assetType" id="assetType" class="form-select" onchange="onTypeChange()">
                         @{var curType = Model.GetValueOrDefault("assetType")?.ToString() ?? "";}
                         @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","Server","UPS","Other"})
                         {if(curType==t){<option selected>@t</option>}else{<option>@t</option>}}
@@ -35,13 +36,43 @@
         </div>
     </div>
     <div class="col-md-6">
-        <div class="card border-0 shadow-sm mb-3">
+        <div class="card border-0 shadow-sm mb-3" id="printerCard" style="@(isPrinter ? "" : "display:none")">
+            <div class="card-header fw-bold" style="background:#0F766E;color:white"><i class="bi bi-printer"></i> Printer Details@if(!string.IsNullOrEmpty(Model.GetValueOrDefault("source")?.ToString())){<span class="badge bg-light text-dark ms-2 fw-normal">@Model.GetValueOrDefault("source")</span>}</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Printer Type</label>
+                    <select name="printerType" class="form-select" disabled="@(!isPrinter)">
+                        @{var curPt = Model.GetValueOrDefault("printerType")?.ToString() ?? "";}
+                        <option value="">Select...</option>
+                        @foreach(var pt in new[]{"Laser","Inkjet","Multifunction (MFP)","Thermal / Label","Dot Matrix","Plotter","Other"})
+                        {if(curPt==pt){<option selected>@pt</option>}else{<option>@pt</option>}}
+                    </select>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Connection</label>
+                    <select name="connection" class="form-select" disabled="@(!isPrinter)">
+                        @{var curCn = Model.GetValueOrDefault("connection")?.ToString() ?? "";}
+                        @foreach(var cn in new[]{"Network (LAN)","Wi-Fi","USB"})
+                        {if(curCn==cn){<option selected>@cn</option>}else{<option>@cn</option>}}
+                    </select>
+                </div>
+                <div class="row g-2">
+                    <div class="col-6 mb-3"><label class="form-label small fw-bold">IP Address</label><input type="text" name="ip" value="@Model.GetValueOrDefault("ip")" class="form-control" disabled="@(!isPrinter)"/></div>
+                    <div class="col-6 mb-3"><label class="form-label small fw-bold">MAC Address</label><input type="text" name="mac" value="@Model.GetValueOrDefault("mac")" class="form-control" disabled="@(!isPrinter)"/></div>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Hostname / Print Server Name</label><input type="text" name="hostname" value="@Model.GetValueOrDefault("hostname")" class="form-control" disabled="@(!isPrinter)"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Toner / Cartridge Model</label><input type="text" name="tonerModel" value="@Model.GetValueOrDefault("tonerModel")" class="form-control" disabled="@(!isPrinter)"/></div>
+                @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("pageCount")?.ToString()))
+                {
+                    <div class="small text-muted">Page count (last scan): <b>@Model.GetValueOrDefault("pageCount")</b> &nbsp;|&nbsp; Last seen: @Model.GetValueOrDefault("lastSeen")</div>
+                }
+            </div>
+        </div>
+        <div class="card border-0 shadow-sm mb-3" id="specCard" style="@(isPrinter ? "display:none" : "")">
             <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Specifications</div>
             <div class="card-body">
-                <div class="mb-3"><label class="form-label small fw-bold">Processor</label><input type="text" name="processor" value="@Model.GetValueOrDefault("processor")" class="form-control"/></div>
-                <div class="mb-3"><label class="form-label small fw-bold">RAM (GB)</label><input type="text" name="ram" value="@Model.GetValueOrDefault("ram")" class="form-control"/></div>
-                <div class="mb-3"><label class="form-label small fw-bold">Storage (GB)</label><input type="text" name="storage" value="@Model.GetValueOrDefault("storage")" class="form-control"/></div>
-                <div class="mb-3"><label class="form-label small fw-bold">OS</label><input type="text" name="os" value="@Model.GetValueOrDefault("os")" class="form-control"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Processor</label><input type="text" name="processor" value="@Model.GetValueOrDefault("processor")" class="form-control" disabled="@isPrinter"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">RAM (GB)</label><input type="text" name="ram" value="@Model.GetValueOrDefault("ram")" class="form-control" disabled="@isPrinter"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Storage (GB)</label><input type="text" name="storage" value="@Model.GetValueOrDefault("storage")" class="form-control" disabled="@isPrinter"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">OS</label><input type="text" name="os" value="@Model.GetValueOrDefault("os")" class="form-control" disabled="@isPrinter"/></div>
             </div>
         </div>
         <div class="card border-0 shadow-sm">
@@ -88,6 +119,17 @@
 
 @section Scripts {
 <script>
+function toggleCard(id, show) {
+    const c = document.getElementById(id);
+    c.style.display = show ? '' : 'none';
+    // Inputs in a hidden card are disabled so they are NOT posted (existing values stay untouched).
+    c.querySelectorAll('input,select,textarea').forEach(i => i.disabled = !show);
+}
+function onTypeChange() {
+    const isPrn = document.getElementById('assetType').value === 'Printer';
+    toggleCard('printerCard', isPrn);
+    toggleCard('specCard', !isPrn);
+}
 function fillAssetEmp() {
     const sel = document.getElementById('empSelect');
     const opt = sel.options[sel.selectedIndex];
