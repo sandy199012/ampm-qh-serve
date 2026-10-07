@@ -79,13 +79,14 @@
                     <td class="ps-3 font-monospace fw-bold text-primary small">@tag</td>
                     <td><span class="badge bg-light text-dark border">@a.GetValueOrDefault("assetType")</span></td>
                     <td class="small"><strong>@a.GetValueOrDefault("brand")</strong> @a.GetValueOrDefault("model")
-                        @if(isPrinter && a.GetValueOrDefault("source")?.ToString() == "Auto-discovered"){<br/><span class="badge bg-info-subtle text-info-emphasis fw-normal">auto-discovered</span>}</td>
+                        @if(isPrinter && (a.GetValueOrDefault("source")?.ToString() ?? "").StartsWith("Auto-discovered")){<br/><span class="badge bg-info-subtle text-info-emphasis fw-normal">auto-discovered</span>}</td>
                     @if (isPrinter)
                     {
                         <td class="small text-muted" colspan="4">
                             <i class="bi bi-printer"></i>
                             @a.GetValueOrDefault("printerType")
                             @if(!string.IsNullOrEmpty(a.GetValueOrDefault("connection")?.ToString())){<span>&middot; @a.GetValueOrDefault("connection")</span>}
+                            @if(!string.IsNullOrEmpty(a.GetValueOrDefault("connectedPc")?.ToString())){<span>&middot; on PC <b>@a.GetValueOrDefault("connectedPc")</b></span>}
                             @if(!string.IsNullOrEmpty(a.GetValueOrDefault("ip")?.ToString())){<span>&middot; <span class="font-monospace">@a.GetValueOrDefault("ip")</span></span>}
                             @if(!string.IsNullOrEmpty(a.GetValueOrDefault("tonerModel")?.ToString())){<span>&middot; Toner: @a.GetValueOrDefault("tonerModel")</span>}
                             @if(!string.IsNullOrEmpty(a.GetValueOrDefault("pageCount")?.ToString())){<span>&middot; Pages: @a.GetValueOrDefault("pageCount")</span>}

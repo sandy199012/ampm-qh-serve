@@ -60,6 +60,10 @@
                 </div>
                 <div class="mb-3"><label class="form-label small fw-bold">Hostname / Print Server Name</label><input type="text" name="hostname" value="@Model.GetValueOrDefault("hostname")" class="form-control" disabled="@(!isPrinter)"/></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Toner / Cartridge Model</label><input type="text" name="tonerModel" value="@Model.GetValueOrDefault("tonerModel")" class="form-control" disabled="@(!isPrinter)"/></div>
+                @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("connectedPc")?.ToString()))
+                {
+                    <div class="small text-muted mb-1">USB printer connected to PC: <b>@Model.GetValueOrDefault("connectedPc")</b> (port @Model.GetValueOrDefault("usbPort"))</div>
+                }
                 @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("pageCount")?.ToString()))
                 {
                     <div class="small text-muted">Page count (last scan): <b>@Model.GetValueOrDefault("pageCount")</b> &nbsp;|&nbsp; Last seen: @Model.GetValueOrDefault("lastSeen")</div>

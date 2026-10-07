@@ -110,6 +110,20 @@ foreach ($p in $regPaths) {
 }
 $software = $software | Sort-Object name -Unique
 
+# USB printers plugged into this PC - network printers are found by the separate
+# AMPM_Printer_Scanner, but a USB printer has no IP so only the PC it is attached
+# to can report it. Virtual printers (PDF/XPS/OneNote/Fax) and printers Windows
+# currently shows as offline (unplugged/switched off) are skipped.
+$usbPrinters = @()
+try {
+    $virtual = 'PDF|XPS|OneNote|Fax|Snagit|Send To|Microsoft Print'
+    foreach ($pr in (Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue)) {
+        if ($pr.PortName -match '^(USB|DOT4)' -and $pr.Name -notmatch $virtual -and -not $pr.WorkOffline) {
+            $usbPrinters += [PSCustomObject]@{ name = "$($pr.Name)"; driver = "$($pr.DriverName)"; port = "$($pr.PortName)" }
+        }
+    }
+} catch {}
+
 $payload = @{
     key          = $agentKey
     hostname     = $env:COMPUTERNAME
@@ -127,6 +141,7 @@ $payload = @{
     diskTotal    = "$diskTotal"
     user         = $env:USERNAME
     software     = $software
+    usbPrinters  = @($usbPrinters)
 } | ConvertTo-Json -Depth 4
 
 if (-not $Silent) {
@@ -148,13 +163,14 @@ if (-not $Silent) {
     Write-Host " Disk Total   : $diskTotal GB"
     Write-Host " User         : $env:USERNAME"
     Write-Host " Software     : $($software.Count) programs found"
+    Write-Host " USB Printers : $($usbPrinters.Count) found$(if ($usbPrinters.Count) { ' (' + (($usbPrinters | ForEach-Object { $_.name }) -join ', ') + ')' })"
     Write-Host ""
 }
 
 try {
     $resp = Invoke-RestMethod -Uri $serverUrl -Method Post -Body $payload -ContentType 'application/json' -TimeoutSec 25
     if ($resp.ok -eq $true) {
-        Log "OK - sent (serial=$serial, $($software.Count) software entries)"
+        Log "OK - sent (serial=$serial, $($software.Count) software entries, $($usbPrinters.Count) USB printer(s))"
         if (-not $Silent) { Write-Host " DONE - sent to the website's PC Inventory." -ForegroundColor Green }
     } else {
         Log "Server rejected: $($resp | ConvertTo-Json -Compress)"

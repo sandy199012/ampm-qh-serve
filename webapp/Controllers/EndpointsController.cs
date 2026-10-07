@@ -140,9 +140,107 @@ public class EndpointsController : Controller
         // employee himself).
         var assets = _db.GetAssets();
         MergePcIntoAsset(rec, assets);
+
+        // USB printers plugged into this PC (the agent lists Windows printers on
+        // USB/DOT4 ports) -> Asset Stock as Printer assets with their own PRN tag.
+        // Optional field: older agent versions simply do not send it.
+        int usbNew = 0;
+        if (data.TryGetValue("usbPrinters", out var usbRaw)
+            && usbRaw is System.Text.Json.JsonElement usbArr
+            && usbArr.ValueKind == System.Text.Json.JsonValueKind.Array)
+            usbNew = MergeUsbPrinters(usbArr, hostname, assets);
+
         _db.SaveAssets(assets);
 
-        return Json(new { ok = true, hostname, updated = existing != null });
+        return Json(new { ok = true, hostname, updated = existing != null, usbPrintersAdded = usbNew });
+    }
+
+    // USB printers have no IP, so the network scanner cannot see them — the PC
+    // they are plugged into reports them instead (AMPM_PC_Agent.ps1, field
+    // "usbPrinters": [{name, driver, port}]). Identity = this PC + printer name.
+    // A NEW printer gets the next PRN-#### tag and, if the host PC is already
+    // assigned to an employee in Asset Stock, is created under that same
+    // employee/department/location (Sandy can still change it). An existing one
+    // only gets lastSeen/port refreshed — assignment is never touched again.
+    private int MergeUsbPrinters(System.Text.Json.JsonElement arr, string pcHostname, List<Dictionary<string,object?>> assets)
+    {
+        var now = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
+        var pcAsset = assets.FirstOrDefault(a =>
+            a.GetValueOrDefault("assetType")?.ToString() != "Printer" &&
+            string.Equals(a.GetValueOrDefault("hostname")?.ToString(), pcHostname, StringComparison.OrdinalIgnoreCase));
+        int added = 0;
+
+        foreach (var it in arr.EnumerateArray())
+        {
+            if (it.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
+            string Get(string n) => it.TryGetProperty(n, out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String
+                ? (v.GetString() ?? "").Trim() : "";
+            var name = Get("name");
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            var driver = Get("driver");
+            var port = Get("port");
+
+            var rec = assets.FirstOrDefault(a =>
+                a.GetValueOrDefault("assetType")?.ToString() == "Printer" &&
+                a.GetValueOrDefault("connection")?.ToString() == "USB" &&
+                string.Equals(a.GetValueOrDefault("connectedPc")?.ToString(), pcHostname, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(a.GetValueOrDefault("printerName")?.ToString(), name, StringComparison.OrdinalIgnoreCase));
+
+            if (rec == null)
+            {
+                var text = string.IsNullOrWhiteSpace(driver) ? name : driver;
+                var brand = GuessBrand(text);
+                var model = text;
+                if (brand.Length > 0 && model.StartsWith(brand + " ", StringComparison.OrdinalIgnoreCase))
+                    model = model.Substring(brand.Length + 1).Trim();
+                rec = new Dictionary<string,object?>
+                {
+                    ["id"] = Guid.NewGuid().ToString("N")[..8],
+                    ["assetTag"] = AssetTags.NextTag(assets, AssetTags.PrinterPrefix),
+                    ["assetType"] = "Printer",
+                    ["brand"] = brand,
+                    ["model"] = model,
+                    ["serial"] = "",
+                    ["printerType"] = GuessPrinterType(brand, text),
+                    ["connection"] = "USB",
+                    ["printerName"] = name,
+                    ["connectedPc"] = pcHostname,
+                    ["condition"] = "Good",
+                    ["source"] = "Auto-discovered",
+                    ["firstSeen"] = now,
+                    ["location"] = pcAsset?.GetValueOrDefault("location")?.ToString() ?? "",
+                };
+                var empName = pcAsset?.GetValueOrDefault("assignedToName")?.ToString();
+                var empCode = pcAsset?.GetValueOrDefault("assignedToEmp")?.ToString();
+                if (!string.IsNullOrWhiteSpace(empName) || !string.IsNullOrWhiteSpace(empCode))
+                {
+                    rec["assignedToName"] = empName ?? "";
+                    rec["assignedToEmp"] = empCode ?? "";
+                    rec["assignedToDept"] = pcAsset?.GetValueOrDefault("assignedToDept")?.ToString() ?? "";
+                    rec["assignedDate"] = IstTime.Today.ToString("yyyy-MM-dd");
+                }
+                assets.Add(rec);
+                added++;
+            }
+            rec["usbPort"] = port;
+            rec["lastSeen"] = now;
+        }
+        return added;
+    }
+
+    private static string GuessBrand(string text)
+    {
+        var t = (text ?? "").ToLowerInvariant() + " ";
+        var map = new (string key, string name)[]
+        {
+            ("hewlett", "HP"), ("hp ", "HP"), ("laserjet", "HP"), ("brother", "Brother"), ("canon", "Canon"),
+            ("epson", "Epson"), ("samsung", "Samsung"), ("fuji", "Fuji Xerox"), ("xerox", "Xerox"), ("ricoh", "Ricoh"),
+            ("kyocera", "Kyocera"), ("lexmark", "Lexmark"), ("konica", "Konica Minolta"), ("minolta", "Konica Minolta"),
+            ("sharp", "Sharp"), ("oki ", "OKI"), ("zebra", "Zebra"), ("tsc ", "TSC"), ("pantum", "Pantum"),
+            ("toshiba", "Toshiba"), ("panasonic", "Panasonic"), ("dell", "Dell"),
+        };
+        foreach (var (key, name) in map) if (t.Contains(key)) return name;
+        return "";
     }
 
     // Called by the Helpdesk Flutter app (lib/services/device_report_service.dart)
