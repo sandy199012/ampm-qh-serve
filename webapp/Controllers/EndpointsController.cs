@@ -77,7 +77,21 @@ public class EndpointsController : Controller
 
     // Shared key so only AMPM's own PC-inventory agent script can write here —
     // change this (and the matching value in AMPM_PC_Agent.ps1) any time it needs rotating.
-    const string AgentKey = "AMPM-AGENT-2026";
+    // Keys come from Render environment variables (AMPM_AGENT_KEY for the PC agent /
+    // network scanner, AMPM_MOBILE_KEY for the mobile app). Until they are set the old
+    // built-in values keep working so nothing breaks during the switch-over.
+    static string AgentKey => Environment.GetEnvironmentVariable("AMPM_AGENT_KEY") is { Length: > 7 } k ? k : "AMPM-AGENT-2026";
+    static string MobileKey => Environment.GetEnvironmentVariable("AMPM_MOBILE_KEY") is { Length: > 7 } k ? k : "AMPM-AGENT-2026";
+    public static string CurrentAgentKey => AgentKey;
+
+    // Constant-time comparison so the key cannot be guessed byte-by-byte from response timing.
+    static bool KeyOk(string? given, string expected)
+    {
+        var a = System.Text.Encoding.UTF8.GetBytes(given ?? "");
+        var b = System.Text.Encoding.UTF8.GetBytes(expected);
+        return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+            System.Security.Cryptography.SHA256.HashData(a), System.Security.Cryptography.SHA256.HashData(b));
+    }
 
     // Called by AMPM_PC_Agent.ps1/.bat — run once (or on a schedule) on any office
     // PC, it collects that PC's own hostname/IP/OS/CPU/RAM/disk and pushes it here,
@@ -87,7 +101,7 @@ public class EndpointsController : Controller
     [HttpPost("/api/endpoints/report-pc")]
     public IActionResult ReportPc([FromBody] Dictionary<string,object?> data)
     {
-        if (data == null || data.GetValueOrDefault("key")?.ToString() != AgentKey)
+        if (data == null || !KeyOk(data.GetValueOrDefault("key")?.ToString(), AgentKey))
             return Unauthorized(new { ok = false, error = "Invalid or missing key" });
 
         var hostname = data.GetValueOrDefault("hostname")?.ToString()?.Trim() ?? "";
@@ -166,17 +180,17 @@ public class EndpointsController : Controller
     [HttpPost("/api/endpoints/report-network")]
     public IActionResult ReportNetwork([FromBody] NetworkReportDto data)
     {
-        if (data == null || data.Key != AgentKey)
+        if (data == null || !KeyOk(data.Key, AgentKey))
             return Unauthorized(new { ok = false, error = "Invalid or missing key" });
 
-        var list = data.Devices ?? new List<NetDeviceDto>();
+        var list = (data.Devices ?? new List<NetDeviceDto>()).Take(300).ToList();
         var assets = _db.GetAssets();
         int added = 0, updated = 0;
         var now = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
         var allowed = new HashSet<string>(AssetTags.NetworkTypes);
 
         static string NormMac(string? m) => new string((m ?? "").Where(Uri.IsHexDigit).ToArray()).ToUpperInvariant();
-        static string Clean(string? v) => (v ?? "").Trim();
+        static string Clean(string? v) { v = (v ?? "").Trim(); return v.Length > 200 ? v.Substring(0, 200) : v; }
 
         foreach (var d in list)
         {
@@ -260,11 +274,15 @@ public class EndpointsController : Controller
             string.Equals(a.GetValueOrDefault("hostname")?.ToString(), pcHostname, StringComparison.OrdinalIgnoreCase));
         int added = 0;
 
-        foreach (var it in arr.EnumerateArray())
+        foreach (var it in arr.EnumerateArray().Take(20))
         {
             if (it.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
-            string Get(string n) => it.TryGetProperty(n, out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String
-                ? (v.GetString() ?? "").Trim() : "";
+            string Get(string n)
+            {
+                var t = it.TryGetProperty(n, out var v) && v.ValueKind == System.Text.Json.JsonValueKind.String
+                    ? (v.GetString() ?? "").Trim() : "";
+                return t.Length > 200 ? t.Substring(0, 200) : t;
+            }
             var name = Get("name");
             if (string.IsNullOrWhiteSpace(name)) continue;
             var driver = Get("driver");
@@ -349,7 +367,7 @@ public class EndpointsController : Controller
     [HttpPost("/api/endpoints/report-mobile")]
     public IActionResult ReportMobile([FromBody] Dictionary<string,object?> data)
     {
-        if (data == null || data.GetValueOrDefault("key")?.ToString() != AgentKey)
+        if (data == null || !KeyOk(data.GetValueOrDefault("key")?.ToString(), MobileKey))
             return Unauthorized(new { ok = false, error = "Invalid or missing key" });
 
         var deviceId = data.GetValueOrDefault("deviceId")?.ToString()?.Trim() ?? "";
@@ -397,16 +415,16 @@ public class EndpointsController : Controller
     [HttpPost("/api/endpoints/report-printers")]
     public IActionResult ReportPrinters([FromBody] PrinterReportDto data)
     {
-        if (data == null || data.Key != AgentKey)
+        if (data == null || !KeyOk(data.Key, AgentKey))
             return Unauthorized(new { ok = false, error = "Invalid or missing key" });
 
-        var list = data.Printers ?? new List<PrinterItemDto>();
+        var list = (data.Printers ?? new List<PrinterItemDto>()).Take(300).ToList();
         var assets = _db.GetAssets();
         int added = 0, updated = 0;
         var now = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
 
         static string NormMac(string? m) => new string((m ?? "").Where(Uri.IsHexDigit).ToArray()).ToUpperInvariant();
-        static string Clean(string? v) => (v ?? "").Trim();
+        static string Clean(string? v) { v = (v ?? "").Trim(); return v.Length > 200 ? v.Substring(0, 200) : v; }
 
         foreach (var p in list)
         {

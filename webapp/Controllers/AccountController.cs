@@ -11,27 +11,64 @@ public class AccountController : Controller
     [HttpGet]
     public IActionResult Login() => View();
 
+    // Client address as seen by the app. Render puts the real client address at
+    // the END of X-Forwarded-For (anything before it can be typed by the caller),
+    // so take the last entry.
+    string ClientIp()
+    {
+        var xff = Request.Headers["X-Forwarded-For"].ToString();
+        if (!string.IsNullOrWhiteSpace(xff))
+        {
+            var last = xff.Split(',').Select(x => x.Trim()).LastOrDefault(x => x.Length > 0);
+            if (!string.IsNullOrEmpty(last)) return last;
+        }
+        return HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    }
+
     [HttpPost]
     public IActionResult Login(string username, string password)
     {
-        var user = _auth.Login(username, password);
-        if (user == null)
+        var ip = ClientIp();
+        if (LoginThrottle.IsLocked(ip, username ?? ""))
         {
-            ViewBag.Error = "Invalid username or password!";
+            ViewBag.Error = "Too many failed attempts. Please wait 15 minutes and try again.";
             return View();
         }
 
-        var opts = new CookieOptions {
-            Expires = DateTimeOffset.UtcNow.AddHours(8),
-            HttpOnly = false,  // JS readable for checks
+        var user = _auth.Login(username ?? "", password ?? "");
+        if (user == null)
+        {
+            LoginThrottle.Fail(ip, username ?? "");
+            ViewBag.Error = "Invalid username or password!";
+            return View();
+        }
+        LoginThrottle.Success(ip, username ?? "");
+
+        bool https = Request.IsHttps || string.Equals(Request.Headers["X-Forwarded-Proto"].ToString(), "https", StringComparison.OrdinalIgnoreCase);
+        var life = TimeSpan.FromHours(8);
+
+        // The real login: a signed cookie that cannot be forged or extended
+        // (see AuthService.IssueSessionToken). HttpOnly so page scripts can't read it.
+        Response.Cookies.Append(AuthService.SessionCookie, AuthService.IssueSessionToken(user.Username, life), new CookieOptions {
+            Expires = DateTimeOffset.UtcNow.Add(life),
+            HttpOnly = true,
             SameSite = SameSiteMode.Lax,
-            Secure = false,    // Works on both HTTP and HTTPS
+            Secure = https,
+            Path = "/"
+        });
+
+        // Display-only cookies (name shown in "created by" / "raised by" labels).
+        // Nothing grants access based on these any more.
+        var opts = new CookieOptions {
+            Expires = DateTimeOffset.UtcNow.Add(life),
+            HttpOnly = true,
+            SameSite = SameSiteMode.Lax,
+            Secure = https,
             Path = "/"
         };
-
-        Response.Cookies.Append("ampm_user", user.Username, opts);
         Response.Cookies.Append("ampm_name", user.Name, opts);
         Response.Cookies.Append("ampm_role", user.Role, opts);
+        Response.Cookies.Delete("ampm_user");   // old forgeable login cookie
 
         // Admins/superadmins land on the full dashboard as before; everyone
         // else goes straight to their own self-service Helpdesk portal.
@@ -41,6 +78,7 @@ public class AccountController : Controller
 
     public IActionResult Logout()
     {
+        Response.Cookies.Delete(AuthService.SessionCookie);
         Response.Cookies.Delete("ampm_user");
         Response.Cookies.Delete("ampm_name");
         Response.Cookies.Delete("ampm_role");

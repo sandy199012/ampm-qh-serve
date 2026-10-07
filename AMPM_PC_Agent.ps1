@@ -10,6 +10,13 @@ $ErrorActionPreference = 'SilentlyContinue'
 
 $serverUrl = 'https://ampm-qh-serve-1.onrender.com/api/endpoints/report-pc'
 $agentKey  = 'AMPM-AGENT-2026'
+# Private key: if a file named ampm_agent.key (just the key, one line) sits next to
+# this script, that key is used instead of the built-in one above.
+$keyFile = Join-Path $PSScriptRoot 'ampm_agent.key'
+if (Test-Path $keyFile) {
+    $k = (Get-Content -Path $keyFile -TotalCount 1 -ErrorAction SilentlyContinue)
+    if ($k -and $k.Trim().Length -gt 7) { $agentKey = $k.Trim() }
+}
 $logFile   = Join-Path $PSScriptRoot 'ampm_agent_log.txt'
 
 function Log($msg) {

@@ -39,6 +39,22 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 var app = builder.Build();
 app.Services.GetRequiredService<DbService>().Init();
 
+// Basic browser-side hardening for every response.
+app.Use(async (ctx, next) =>
+{
+    var h = ctx.Response.Headers;
+    h["X-Content-Type-Options"] = "nosniff";            // browser must not guess file types
+    h["X-Frame-Options"] = "SAMEORIGIN";                // other sites cannot frame this app (clickjacking)
+    h["Referrer-Policy"] = "same-origin";               // internal URLs never leak to other sites
+    h["X-Robots-Tag"] = "noindex, nofollow";            // keep the app out of search engines
+    if (ctx.Request.IsHttps || string.Equals(ctx.Request.Headers["X-Forwarded-Proto"].ToString(), "https", StringComparison.OrdinalIgnoreCase))
+        h["Strict-Transport-Security"] = "max-age=15552000"; // always use HTTPS
+    await next();
+});
+
+if (!AuthService.SessionSecretFromEnv)
+    Console.WriteLine("WARNING: SESSION_SECRET is not set - logins will not survive a restart. Set a long random SESSION_SECRET in the server environment.");
+
 app.UseStaticFiles();
 app.UseRouting();
 // The "default" route below maps a bare "/{Controller}" URL (action omitted)

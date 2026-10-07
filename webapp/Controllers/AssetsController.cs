@@ -370,10 +370,22 @@ td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
             {
                 var entry = zip.CreateEntry(Path.GetFileName(f));
                 using var es = entry.Open();
-                using var fs = System.IO.File.OpenRead(f);
-                fs.CopyTo(es);
+                if (f.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase))
+                {
+                    // The agent key is never stored in the repo: it is put into the script
+                    // here, at download time, for a logged-in user with Assets access only.
+                    var text = System.IO.File.ReadAllText(f).Replace("__AMPM_AGENT_KEY__", EndpointsController.CurrentAgentKey);
+                    var bytes = new System.Text.UTF8Encoding(false).GetBytes(text);
+                    es.Write(bytes, 0, bytes.Length);
+                }
+                else
+                {
+                    using var fs = System.IO.File.OpenRead(f);
+                    fs.CopyTo(es);
+                }
             }
         }
+        Response.Headers["Cache-Control"] = "no-store";
         return File(ms.ToArray(), "application/zip", "AMPM_Printer_Scanner.zip");
     }
 }

@@ -36,7 +36,20 @@ $ErrorActionPreference = 'SilentlyContinue'
 $serverBase = 'https://ampm-qh-serve-1.onrender.com'
 $serverUrl  = "$serverBase/api/endpoints/report-printers"
 $netUrl     = "$serverBase/api/endpoints/report-network"
-$agentKey  = 'AMPM-AGENT-2026'
+$agentKey  = '__AMPM_AGENT_KEY__'   # filled in automatically when you download this from the website
+
+# SNMP community used to read device info. 'public' is the factory default; if you
+# set a private community on your switches/printers, put the same word here.
+$snmpCommunity = 'public'
+
+if ($agentKey -like '__AMPM*') {
+    Write-Host ''
+    Write-Host ' This copy has no access key.' -ForegroundColor Yellow
+    Write-Host ' Please download the scanner again from the website:' -ForegroundColor Yellow
+    Write-Host '   Asset Stock -> Scan Network -> Download scanner' -ForegroundColor Yellow
+    if (-not $Silent) { Read-Host 'Press Enter to close' }
+    exit 1
+}
 
 # Extra subnets to scan besides this PC's own network, written as the first
 # three numbers, e.g.  $extraSubnets = @('192.168.2', '10.0.5')
@@ -289,7 +302,7 @@ function Get-Snmp([string]$ip, [string]$oid, [int]$timeoutMs = 700) {
         $udp.Client.ReceiveTimeout = $timeoutMs
         $udp.Client.SendTimeout = $timeoutMs
         $udp.Connect($ip, 161)
-        $pkt = Build-SnmpGet 'public' $oid
+        $pkt = Build-SnmpGet $snmpCommunity $oid
         [void]$udp.Send($pkt, $pkt.Length)
         $ep = New-Object System.Net.IPEndPoint -ArgumentList ([System.Net.IPAddress]::Any), 0
         $resp = $udp.Receive([ref]$ep)
@@ -342,11 +355,11 @@ function Find-NetBrand([string]$text) {
 # One plain HTTP GET (port 80 only - https is skipped on purpose so that
 # certificate checks are never switched off) to read Server header, login
 # realm (Hikvision puts the model there, Dahua the serial) and page title.
-function Get-HttpInfo([string]$ip) {
+function Get-HttpInfo([string]$ip, [string]$path = '/') {
     $info = @{ Server = ''; Realm = ''; Title = ''; Status = 0 }
     $resp = $null
     try {
-        $req = [System.Net.HttpWebRequest]::Create("http://$ip/")
+        $req = [System.Net.HttpWebRequest]::Create("http://$ip$path")
         $req.Method = 'GET'
         $req.Timeout = 2500
         $req.ReadWriteTimeout = 2500
@@ -484,6 +497,19 @@ foreach ($ip in $candidates) {
     $http = @{ Server = ''; Realm = ''; Title = ''; Status = 0 }
     if ($open -contains 80) { $http = Get-HttpInfo $ip }
 
+    # Newer Hikvision / Dahua recorders show a plain web page on "/" (no model in
+    # it). Their API paths answer "401 login required" WITHOUT any password, and
+    # that answer carries the model (Hikvision) or serial number (Dahua) in the
+    # login realm - which is what tells an NVR from a camera.
+    if (($open -contains 80) -and ($strongCam -or ($open -contains 8000)) -and -not $http.Realm) {
+        $h2 = Get-HttpInfo $ip '/ISAPI/System/deviceInfo'
+        if ($h2.Realm) { $http.Realm = $h2.Realm }
+        else {
+            $h3 = Get-HttpInfo $ip '/cgi-bin/magicBox.cgi?action=getSystemInfo'
+            if ($h3.Realm) { $http.Realm = $h3.Realm }
+        }
+    }
+
     $services = [long]0
     $hasSnmp = [bool]$sysDescr
     if ($hasSnmp) {
@@ -492,6 +518,7 @@ foreach ($ip in $candidates) {
     }
     $text = "$($http.Server) $($http.Realm) $($http.Title) $sysDescr $sysName"
     $cat = Get-NetCategory $open $text $hasSnmp $services
+    Log ("  host {0} ports={1} snmp={2} server='{3}' realm='{4}' title='{5}' -> {6}" -f $ip, ($open -join ','), $(if ($hasSnmp) { 'yes' } else { 'no' }), $http.Server, $http.Realm, $http.Title, $(if ($cat) { $cat } else { 'NOT RECOGNISED' }))
     if (-not $cat) { continue }
 
     $ifNum = ''; $entModel = ''; $entSerial = ''
@@ -533,6 +560,9 @@ foreach ($ip in $candidates) {
 }
 
 Log "Scan finished - $($found.Count) printer(s), $($netFound.Count) network device(s) found"
+$typeCount = @{}
+foreach ($nf in $netFound) { $typeCount[[string]$nf.category] = 1 + [int]$typeCount[[string]$nf.category] }
+Log ("  network device types: " + ((@($typeCount.Keys | Sort-Object | ForEach-Object { "$($typeCount[$_]) $_" })) -join ', '))
 
 if (-not $Silent) {
     Write-Host ''
