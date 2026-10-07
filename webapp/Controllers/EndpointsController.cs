@@ -155,6 +155,96 @@ public class EndpointsController : Controller
         return Json(new { ok = true, hostname, updated = existing != null, usbPrintersAdded = usbNew });
     }
 
+    // Called by AMPM_Printer_Scanner.ps1 (second request of the same scan): the
+    // switches, WiFi access points/routers, NVR/DVR recorders and IP cameras it
+    // recognised. Upserted into Asset Stock as assets of type "Network Switch" /
+    // "WiFi Device" / "NVR" / "Camera" (shown in the "Network Devices" tab), each
+    // NEW one getting the next tag of its own series (SW-, WIFI-, NVR-, CAM-).
+    // Match: serial -> MAC -> IP. Existing records only get ip/mac/hostname/
+    // lastSeen refreshed (+ brand/model/serial/ports when blank); the category
+    // is never changed once set, so a type Sandy corrected by hand stays.
+    [HttpPost("/api/endpoints/report-network")]
+    public IActionResult ReportNetwork([FromBody] NetworkReportDto data)
+    {
+        if (data == null || data.Key != AgentKey)
+            return Unauthorized(new { ok = false, error = "Invalid or missing key" });
+
+        var list = data.Devices ?? new List<NetDeviceDto>();
+        var assets = _db.GetAssets();
+        int added = 0, updated = 0;
+        var now = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
+        var allowed = new HashSet<string>(AssetTags.NetworkTypes);
+
+        static string NormMac(string? m) => new string((m ?? "").Where(Uri.IsHexDigit).ToArray()).ToUpperInvariant();
+        static string Clean(string? v) => (v ?? "").Trim();
+
+        foreach (var d in list)
+        {
+            var ip = Clean(d.Ip);
+            var cat = Clean(d.Category);
+            if (string.IsNullOrWhiteSpace(ip) || !allowed.Contains(cat)) continue;
+            var mac = NormMac(d.Mac);
+            var serial = Clean(d.Serial);
+
+            var existingNet = assets.Where(a => AssetTags.IsNetworkType(a.GetValueOrDefault("assetType")?.ToString())).ToList();
+            var rec =
+                (serial.Length > 3 ? existingNet.FirstOrDefault(a => string.Equals(Clean(a.GetValueOrDefault("serial")?.ToString()), serial, StringComparison.OrdinalIgnoreCase)) : null)
+                ?? (mac.Length == 12 ? existingNet.FirstOrDefault(a => NormMac(a.GetValueOrDefault("mac")?.ToString()) == mac) : null)
+                ?? existingNet.FirstOrDefault(a => Clean(a.GetValueOrDefault("ip")?.ToString()) == ip);
+
+            if (rec == null)
+            {
+                rec = new Dictionary<string,object?>
+                {
+                    ["id"] = Guid.NewGuid().ToString("N")[..8],
+                    ["assetTag"] = AssetTags.NextTag(assets, AssetTags.PrefixFor(cat)!),
+                    ["assetType"] = cat,
+                    ["brand"] = Clean(d.Brand),
+                    ["model"] = Clean(d.Model),
+                    ["serial"] = serial,
+                    ["condition"] = "Good",
+                    ["source"] = "Auto-discovered",
+                    ["firstSeen"] = now,
+                    ["location"] = "",
+                };
+                assets.Add(rec);
+                added++;
+            }
+            else
+            {
+                void FillIfBlank(string key, string? val)
+                {
+                    if (string.IsNullOrWhiteSpace(rec!.GetValueOrDefault(key)?.ToString()) && !string.IsNullOrWhiteSpace(val))
+                        rec[key] = val.Trim();
+                }
+                FillIfBlank("brand", d.Brand);
+                FillIfBlank("model", d.Model);
+                FillIfBlank("serial", d.Serial);
+                updated++;
+            }
+
+            rec["ip"] = ip;
+            if (mac.Length == 12) rec["mac"] = string.Join(":", Enumerable.Range(0, 6).Select(i => mac.Substring(i * 2, 2)));
+            if (!string.IsNullOrWhiteSpace(d.Hostname)) rec["hostname"] = Clean(d.Hostname);
+            if (!string.IsNullOrWhiteSpace(d.PortCount)) rec["portCount"] = Clean(d.PortCount);
+            if (!string.IsNullOrWhiteSpace(d.Descr)) rec["descr"] = Clean(d.Descr);
+            if (!string.IsNullOrWhiteSpace(d.Ports)) rec["openPorts"] = Clean(d.Ports);
+            rec["lastSeen"] = now;
+        }
+
+        _db.SaveAssets(assets);
+        _db.KSet("network_scan_last", new Dictionary<string,object?>
+        {
+            ["time"] = now,
+            ["found"] = list.Count,
+            ["added"] = added,
+            ["updated"] = updated,
+            ["scannedFrom"] = Clean(data.ScannedFrom),
+            ["subnets"] = Clean(data.Subnets),
+        });
+        return Json(new { ok = true, found = list.Count, added, updated });
+    }
+
     // USB printers have no IP, so the network scanner cannot see them — the PC
     // they are plugged into reports them instead (AMPM_PC_Agent.ps1, field
     // "usbPrinters": [{name, driver, port}]). Identity = this PC + printer name.
@@ -179,6 +269,8 @@ public class EndpointsController : Controller
             if (string.IsNullOrWhiteSpace(name)) continue;
             var driver = Get("driver");
             var port = Get("port");
+            var usbSerial = Get("serial");
+            bool offline = it.TryGetProperty("offline", out var offV) && offV.ValueKind == System.Text.Json.JsonValueKind.True;
 
             var rec = assets.FirstOrDefault(a =>
                 a.GetValueOrDefault("assetType")?.ToString() == "Printer" &&
@@ -200,7 +292,7 @@ public class EndpointsController : Controller
                     ["assetType"] = "Printer",
                     ["brand"] = brand,
                     ["model"] = model,
-                    ["serial"] = "",
+                    ["serial"] = usbSerial,
                     ["printerType"] = GuessPrinterType(brand, text),
                     ["connection"] = "USB",
                     ["printerName"] = name,
@@ -223,7 +315,10 @@ public class EndpointsController : Controller
                 added++;
             }
             rec["usbPort"] = port;
-            rec["lastSeen"] = now;
+            rec["usbStatus"] = offline ? "Offline" : "Online";
+            if (string.IsNullOrWhiteSpace(rec.GetValueOrDefault("serial")?.ToString()) && !string.IsNullOrWhiteSpace(usbSerial))
+                rec["serial"] = usbSerial;
+            if (!offline) rec["lastSeen"] = now;   // offline = Windows says it is off/unplugged -> last seen stays at the last online time
         }
         return added;
     }
@@ -1232,5 +1327,28 @@ public class PrinterItemDto
     public string? Model { get; set; }
     public string? Serial { get; set; }
     public string? PageCount { get; set; }
+    public string? Ports { get; set; }
+}
+
+// Request body for /api/endpoints/report-network (see ReportNetwork).
+public class NetworkReportDto
+{
+    public string? Key { get; set; }
+    public string? ScannedFrom { get; set; }
+    public string? Subnets { get; set; }
+    public List<NetDeviceDto>? Devices { get; set; }
+}
+
+public class NetDeviceDto
+{
+    public string? Ip { get; set; }
+    public string? Mac { get; set; }
+    public string? Hostname { get; set; }
+    public string? Category { get; set; }
+    public string? Brand { get; set; }
+    public string? Model { get; set; }
+    public string? Serial { get; set; }
+    public string? Descr { get; set; }
+    public string? PortCount { get; set; }
     public string? Ports { get; set; }
 }

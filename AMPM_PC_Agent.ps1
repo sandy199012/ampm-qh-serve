@@ -112,17 +112,40 @@ $software = $software | Sort-Object name -Unique
 
 # USB printers plugged into this PC - network printers are found by the separate
 # AMPM_Printer_Scanner, but a USB printer has no IP so only the PC it is attached
-# to can report it. Virtual printers (PDF/XPS/OneNote/Fax) and printers Windows
-# currently shows as offline (unplugged/switched off) are skipped.
+# to can report it. Virtual printers (PDF/XPS/OneNote/Fax) are skipped. Printers
+# that Windows shows as offline (switched off / unplugged) are still reported,
+# with offline=true, so the website can show their status.
 $usbPrinters = @()
+$printersSeen = @()
 try {
     $virtual = 'PDF|XPS|OneNote|Fax|Snagit|Send To|Microsoft Print'
-    foreach ($pr in (Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue)) {
-        if ($pr.PortName -match '^(USB|DOT4)' -and $pr.Name -notmatch $virtual -and -not $pr.WorkOffline) {
-            $usbPrinters += [PSCustomObject]@{ name = "$($pr.Name)"; driver = "$($pr.DriverName)"; port = "$($pr.PortName)" }
+    foreach ($pr in @(Get-CimInstance Win32_Printer -ErrorAction SilentlyContinue)) {
+        $off = [bool]$pr.WorkOffline
+        $printersSeen += ("{0} [{1}]{2}" -f $pr.Name, $pr.PortName, $(if ($off) { ' offline' } else { '' }))
+        if ($pr.PortName -match '^(USB|DOT4|BTH|EPUSB|BRUSB)' -and $pr.Name -notmatch $virtual) {
+            $usbPrinters += [PSCustomObject]@{ name = "$($pr.Name)"; driver = "$($pr.DriverName)"; port = "$($pr.PortName)"; offline = $off; serial = '' }
         }
     }
 } catch {}
+
+# Best-effort USB serial number: Windows only exposes it when the printer
+# reports one in its USB device id (USB\VID_xxxx&PID_xxxx\SERIAL). Used only
+# when there is exactly ONE USB printer and exactly ONE such candidate, so it
+# can never be attached to the wrong printer.
+try {
+    if ($usbPrinters.Count -eq 1) {
+        $cands = @()
+        foreach ($d in @(Get-CimInstance Win32_PnPEntity -ErrorAction SilentlyContinue)) {
+            if ($d.DeviceID -match '^USB\\VID_[0-9A-Fa-f]{4}&PID_[0-9A-Fa-f]{4}\\([^&\\]{4,})$') {
+                $sn = $Matches[1]
+                if ($d.Name -match 'Printing|Printer|Composite' -or $d.Service -eq 'usbprint') { $cands += $sn }
+            }
+        }
+        $cands = @($cands | Sort-Object -Unique)
+        if ($cands.Count -eq 1) { $usbPrinters[0].serial = $cands[0] }
+    }
+} catch {}
+Log "Printers seen by Windows: $(if ($printersSeen.Count) { $printersSeen -join '; ' } else { 'none' }) | USB: $($usbPrinters.Count)"
 
 $payload = @{
     key          = $agentKey
@@ -164,6 +187,7 @@ if (-not $Silent) {
     Write-Host " User         : $env:USERNAME"
     Write-Host " Software     : $($software.Count) programs found"
     Write-Host " USB Printers : $($usbPrinters.Count) found$(if ($usbPrinters.Count) { ' (' + (($usbPrinters | ForEach-Object { $_.name }) -join ', ') + ')' })"
+    Write-Host " All printers : $(if ($printersSeen.Count) { $printersSeen -join '; ' } else { 'none' })"
     Write-Host ""
 }
 

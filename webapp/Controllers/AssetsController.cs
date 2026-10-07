@@ -22,7 +22,15 @@ public class AssetsController : Controller
             .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
             .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
             .ToList();
-        var assets = _db.GetAssets();
+        // Network devices (switch / WiFi / NVR / camera) live in their own tab,
+        // so the main list and its stats exclude them.
+        var assets = _db.GetAssets().Where(a => !AssetTags.IsNetworkType(a.GetValueOrDefault("assetType")?.ToString())).ToList();
+        ViewBag.NetDevices = _db.GetAssets()
+            .Where(a => AssetTags.IsNetworkType(a.GetValueOrDefault("assetType")?.ToString()))
+            .OrderBy(a => a.GetValueOrDefault("assetType")?.ToString())
+            .ThenBy(a => a.GetValueOrDefault("assetTag")?.ToString())
+            .ToList();
+        ViewBag.NetScanInfo = _db.KGetObj<Dictionary<string,object?>>("network_scan_last");
         if (!string.IsNullOrEmpty(search))
         {
             var s = search.ToLower();
@@ -42,21 +50,23 @@ public class AssetsController : Controller
         ViewBag.TypeFilter = type;
         // Last network-printer scan summary (written by EndpointsController.ReportPrinters)
         ViewBag.PrinterScanInfo = _db.KGetObj<Dictionary<string,object?>>("printer_scan_last");
-        ViewBag.Types = _db.GetAssets().Select(a => a.GetValueOrDefault("assetType")?.ToString() ?? "").Where(t => !string.IsNullOrEmpty(t)).Distinct().OrderBy(t => t).ToList();
+        ViewBag.Types = _db.GetAssets().Select(a => a.GetValueOrDefault("assetType")?.ToString() ?? "").Where(t => !string.IsNullOrEmpty(t) && !AssetTags.IsNetworkType(t)).Distinct().OrderBy(t => t).ToList();
         return View(assets);
     }
 
     [HttpGet]
-    public IActionResult Create()
+    public IActionResult Create(string? type)
     {
+        ViewBag.PresetType = type;
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         ViewBag.Employees = _db.GetEmployees()
             .Where(e => string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
             .OrderBy(e => e.GetValueOrDefault("name")?.ToString())
             .ToList();
-        // Printers have their own tag series (PRN-0001, PRN-0002 ...) — the form
-        // pre-fills this when "Printer" is chosen as the asset type.
-        ViewBag.NextPrinterTag = AssetTags.NextTag(_db.GetAssets(), AssetTags.PrinterPrefix);
+        // Printers (PRN-), switches (SW-), WiFi devices (WIFI-), NVRs (NVR-) and
+        // cameras (CAM-) each have their own tag series — the form pre-fills the
+        // next free number when one of those types is chosen.
+        ViewBag.NextTags = AssetTags.NextTags(_db.GetAssets());
         return View(new Dictionary<string,object?>());
     }
 
@@ -66,23 +76,25 @@ public class AssetsController : Controller
         var asset = new Dictionary<string,object?> { ["id"] = Guid.NewGuid().ToString("N")[..8] };
         foreach (var key in form.Keys) asset[key] = form[key].ToString();
         var assets = _db.GetAssets();
-        if (asset.GetValueOrDefault("assetType")?.ToString() == "Printer")
+        var newType = asset.GetValueOrDefault("assetType")?.ToString();
+        var prefix = AssetTags.PrefixFor(newType);
+        if (prefix != null)
         {
-            // Blank tag, or a tag that already exists, -> next free PRN- number.
+            // Blank tag, or a tag that already exists, -> next free number in that type's series.
             var tag = asset.GetValueOrDefault("assetTag")?.ToString()?.Trim() ?? "";
             bool taken = assets.Any(a => string.Equals(a.GetValueOrDefault("assetTag")?.ToString(), tag, StringComparison.OrdinalIgnoreCase));
             if (string.IsNullOrWhiteSpace(tag) || taken)
-                asset["assetTag"] = AssetTags.NextTag(assets, AssetTags.PrinterPrefix);
+                asset["assetTag"] = AssetTags.NextTag(assets, prefix);
             if (string.IsNullOrWhiteSpace(asset.GetValueOrDefault("source")?.ToString()))
                 asset["source"] = "Manual";
-            if (!string.IsNullOrWhiteSpace(asset.GetValueOrDefault("assignedToName")?.ToString()))
-                asset["assignedDate"] = IstTime.Today.ToString("yyyy-MM-dd");
         }
+        if (newType == "Printer" && !string.IsNullOrWhiteSpace(asset.GetValueOrDefault("assignedToName")?.ToString()))
+            asset["assignedDate"] = IstTime.Today.ToString("yyyy-MM-dd");
         assets.Add(asset);
         SaveAssets(assets);
         SyncAssetToEmployee(asset);
         TempData["Success"] = $"Asset {asset.GetValueOrDefault("assetTag")} added!";
-        return RedirectToAction("Index");
+        return AssetTags.IsNetworkType(newType) ? Redirect("/Assets/Index#net") : RedirectToAction("Index");
     }
 
     [HttpGet]
@@ -108,7 +120,7 @@ public class AssetsController : Controller
         SaveAssets(assets);
         SyncAssetToEmployee(asset);
         TempData["Success"] = "Asset updated!";
-        return RedirectToAction("Index");
+        return AssetTags.IsNetworkType(asset.GetValueOrDefault("assetType")?.ToString()) ? Redirect("/Assets/Index#net") : RedirectToAction("Index");
     }
 
     [HttpPost]
@@ -202,10 +214,12 @@ public class AssetsController : Controller
     public IActionResult Delete(string id)
     {
         var assets = _db.GetAssets();
+        var gone = assets.FirstOrDefault(a => a.GetValueOrDefault("id")?.ToString() == id);
+        bool wasNet = AssetTags.IsNetworkType(gone?.GetValueOrDefault("assetType")?.ToString());
         assets.RemoveAll(a => a.GetValueOrDefault("id")?.ToString() == id);
         SaveAssets(assets);
         TempData["Success"] = "Asset deleted.";
-        return RedirectToAction("Index");
+        return wasNet ? Redirect("/Assets/Index#net") : RedirectToAction("Index");
     }
 
     [HttpGet("/Assets/Handover/{id}")]
@@ -385,11 +399,35 @@ public static class AssetTags
         return prefix + (max + 1).ToString("D4");
     }
 
+    // Types shown in the separate "Network Devices" tab of Asset Stock.
+    public static readonly string[] NetworkTypes = { "Network Switch", "WiFi Device", "NVR", "Camera" };
+    public static bool IsNetworkType(string? t) => t != null && NetworkTypes.Contains(t);
+
+    // Tag series per asset type (null = the normal free-text tags, e.g. AMPM-0003).
+    public static string? PrefixFor(string? type) => type switch
+    {
+        "Printer" => PrinterPrefix,
+        "Network Switch" => "SW-",
+        "WiFi Device" => "WIFI-",
+        "NVR" => "NVR-",
+        "Camera" => "CAM-",
+        _ => null,
+    };
+
+    // type -> next free tag, for the Add Asset form.
+    public static Dictionary<string,string> NextTags(List<Dictionary<string,object?>> assets)
+    {
+        var d = new Dictionary<string,string>();
+        foreach (var t in new[] { "Printer", "Network Switch", "WiFi Device", "NVR", "Camera" })
+            d[t] = NextTag(assets, PrefixFor(t)!);
+        return d;
+    }
+
     // Things that are not "a person's PC": they must never overwrite the
     // employee record's hostname/IP/OS/CPU fields when assigned.
     public static bool IsPeripheral(Dictionary<string,object?> asset)
     {
         var t = asset.GetValueOrDefault("assetType")?.ToString() ?? "";
-        return t == "Printer" || t == "Monitor" || t == "UPS";
+        return t == "Printer" || t == "Monitor" || t == "UPS" || IsNetworkType(t);
     }
 }

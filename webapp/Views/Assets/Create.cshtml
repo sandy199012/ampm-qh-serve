@@ -12,11 +12,12 @@
             <div class="card-header fw-bold" style="background:#0A192F;color:white">Asset Details</div>
             <div class="card-body">
                 <div class="mb-3"><label class="form-label small fw-bold">Asset Tag *</label><input type="text" name="assetTag" id="assetTag" class="form-control" required placeholder="AMPM-0003"/>
-                    <div class="form-text" id="tagHint" style="display:none">Printers get their own tag series (<b>PRN-0001, PRN-0002 ...</b>) &mdash; auto-filled, you can change it.</div></div>
+                    <div class="form-text" id="tagHint" style="display:none">This type has its own tag series (<b>PRN-, SW-, WIFI-, NVR-, CAM-</b>) &mdash; auto-filled, you can change it.</div></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Asset Type *</label>
                     <select name="assetType" id="assetType" class="form-select" required onchange="onTypeChange()">
-                        @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","Server","UPS","Other"})
-                        {<option>@t</option>}
+                        @{var presetType = ViewBag.PresetType as string ?? "";}
+                        @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","Server","UPS","Network Switch","WiFi Device","NVR","Camera","Other"})
+                        {if(presetType==t){<option selected>@t</option>}else{<option>@t</option>}}
                     </select>
                 </div>
                 <div class="mb-3"><label class="form-label small fw-bold">Brand</label><input type="text" name="brand" class="form-control" placeholder="Dell, HP, Lenovo..."/></div>
@@ -53,6 +54,18 @@
                 <div class="mb-1"><label class="form-label small fw-bold">Toner / Cartridge Model</label><input type="text" name="tonerModel" class="form-control" placeholder="e.g. HP 12A, Brother TN-2380" disabled/></div>
             </div>
         </div>
+        <div class="card border-0 shadow-sm mb-3" id="netCard" style="display:none">
+            <div class="card-header fw-bold" style="background:#1D4ED8;color:white"><i class="bi bi-router"></i> Network Device Details</div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6 mb-3"><label class="form-label small fw-bold">IP Address</label><input type="text" name="ip" class="form-control" placeholder="192.168.1.10" disabled/></div>
+                    <div class="col-6 mb-3"><label class="form-label small fw-bold">MAC Address</label><input type="text" name="mac" class="form-control" placeholder="AA:BB:CC:DD:EE:FF" disabled/></div>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Hostname / Device Name</label><input type="text" name="hostname" class="form-control" disabled/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Ports / Channels</label><input type="text" name="portCount" class="form-control" placeholder="e.g. 24 (switch ports) or 8 (NVR channels)" disabled/></div>
+                <div class="mb-1"><label class="form-label small fw-bold">Location</label><input type="text" name="location" class="form-control" placeholder="Floor / Room / Rack" disabled/></div>
+            </div>
+        </div>
         <div class="card border-0 shadow-sm mb-3" id="specCard">
             <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Specifications</div>
             <div class="card-body">
@@ -62,7 +75,7 @@
                 <div class="mb-3"><label class="form-label small fw-bold">Operating System</label><input type="text" name="os" class="form-control" placeholder="Windows 11 Pro"/></div>
             </div>
         </div>
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm" id="assignCard">
             <div class="card-header fw-bold" style="background:#059669;color:white">Assignment</div>
             <div class="card-body">
                 @{ var employees = (List<Dictionary<string,object?>>)(ViewBag.Employees ?? new List<Dictionary<string,object?>>()); }
@@ -103,7 +116,14 @@
 
 @section Scripts {
 <script>
-const nextPrinterTag = '@(ViewBag.NextPrinterTag ?? "PRN-0001")';
+const nextTags = {
+@foreach (var kv in (Dictionary<string,string>)(ViewBag.NextTags ?? new Dictionary<string,string>()))
+{
+    <text>    '@kv.Key': '@kv.Value',
+</text>
+}
+};
+const netTypes = ['Network Switch', 'WiFi Device', 'NVR', 'Camera'];
 let tagAutoFilled = false;
 function toggleCard(id, show) {
     const c = document.getElementById(id);
@@ -112,14 +132,19 @@ function toggleCard(id, show) {
     c.querySelectorAll('input,select,textarea').forEach(i => i.disabled = !show);
 }
 function onTypeChange() {
-    const isPrn = document.getElementById('assetType').value === 'Printer';
+    const t = document.getElementById('assetType').value;
+    const isPrn = t === 'Printer';
+    const isNet = netTypes.indexOf(t) >= 0;
     toggleCard('printerCard', isPrn);
-    toggleCard('specCard', !isPrn);
-    document.getElementById('tagHint').style.display = isPrn ? '' : 'none';
+    toggleCard('netCard', isNet);
+    toggleCard('specCard', !isPrn && !isNet);
+    toggleCard('assignCard', !isNet);
+    const want = nextTags[t];
+    document.getElementById('tagHint').style.display = want ? '' : 'none';
     const tag = document.getElementById('assetTag');
-    if (isPrn) {
-        if (!tag.value.trim()) { tag.value = nextPrinterTag; tagAutoFilled = true; }
-    } else if (tagAutoFilled && tag.value === nextPrinterTag) {
+    if (want) {
+        if (!tag.value.trim() || tagAutoFilled) { tag.value = want; tagAutoFilled = true; }
+    } else if (tagAutoFilled) {
         tag.value = ''; tagAutoFilled = false;
     }
 }

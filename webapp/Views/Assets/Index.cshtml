@@ -1,14 +1,24 @@
 @model List<Dictionary<string,object?>>
-@{ViewData["Title"] = "Asset Stock";}
+@{ViewData["Title"] = "Asset Stock";
+  var netDevices = (List<Dictionary<string,object?>>)(ViewBag.NetDevices ?? new List<Dictionary<string,object?>>());
+  var netScan = ViewBag.NetScanInfo as Dictionary<string,object?>;
+  var nowIst = DateTime.UtcNow.AddHours(5.5);}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><i class="bi bi-pc-display" style="color:#7C3AED"></i> Asset Stock &mdash; @Model.Count assets</h5>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#printerScanModal"><i class="bi bi-printer"></i> Scan Network Printers</button>
+        <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#printerScanModal"><i class="bi bi-radar"></i> Scan Network</button>
         <a href="/Assets/Export" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Export</a>
         <a href="/Assets/Create" class="btn btn-sm px-3 text-white" style="background:#7C3AED"><i class="bi bi-plus-circle"></i> Add Asset</a>
     </div>
 </div>
+
+<ul class="nav nav-tabs mb-3" id="assetTabs" role="tablist">
+    <li class="nav-item"><button class="nav-link active" id="tab-assets" data-bs-toggle="tab" data-bs-target="#pane-assets" type="button" role="tab"><i class="bi bi-pc-display"></i> Assets <span class="badge bg-secondary">@Model.Count</span></button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-net" data-bs-toggle="tab" data-bs-target="#pane-net" type="button" role="tab"><i class="bi bi-router"></i> Network Devices <span class="badge bg-primary">@netDevices.Count</span></button></li>
+</ul>
+<div class="tab-content">
+<div class="tab-pane fade show active" id="pane-assets" role="tabpanel">
 
 @{
     var scanInfo = ViewBag.PrinterScanInfo as Dictionary<string,object?>;
@@ -87,6 +97,7 @@
                             @a.GetValueOrDefault("printerType")
                             @if(!string.IsNullOrEmpty(a.GetValueOrDefault("connection")?.ToString())){<span>&middot; @a.GetValueOrDefault("connection")</span>}
                             @if(!string.IsNullOrEmpty(a.GetValueOrDefault("connectedPc")?.ToString())){<span>&middot; on PC <b>@a.GetValueOrDefault("connectedPc")</b></span>}
+                            @if(a.GetValueOrDefault("usbStatus")?.ToString() == "Offline"){<span class="badge bg-secondary fw-normal">USB offline</span>}
                             @if(!string.IsNullOrEmpty(a.GetValueOrDefault("ip")?.ToString())){<span>&middot; <span class="font-monospace">@a.GetValueOrDefault("ip")</span></span>}
                             @if(!string.IsNullOrEmpty(a.GetValueOrDefault("tonerModel")?.ToString())){<span>&middot; Toner: @a.GetValueOrDefault("tonerModel")</span>}
                             @if(!string.IsNullOrEmpty(a.GetValueOrDefault("pageCount")?.ToString())){<span>&middot; Pages: @a.GetValueOrDefault("pageCount")</span>}
@@ -135,6 +146,119 @@
     </div>
 </div>
 
+</div><!-- /pane-assets -->
+
+<div class="tab-pane fade" id="pane-net" role="tabpanel">
+@if (netScan != null)
+{
+    <div class="alert alert-info py-2 small d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-router"></i>
+        <span>Last network scan: <b>@netScan.GetValueOrDefault("time")</b> from <b>@netScan.GetValueOrDefault("scannedFrom")</b>
+        (@netScan.GetValueOrDefault("subnets")) &mdash; @netScan.GetValueOrDefault("found") devices found,
+        @netScan.GetValueOrDefault("added") new, @netScan.GetValueOrDefault("updated") updated.</span>
+    </div>
+}
+@{
+    var netCats = new[] {
+        ("Network Switch", "Switches",      "bi-diagram-3",  "primary"),
+        ("WiFi Device",    "WiFi / Routers","bi-wifi",       "success"),
+        ("NVR",            "NVR / DVR",     "bi-hdd-rack",   "warning"),
+        ("Camera",         "Cameras",       "bi-camera-video","danger") };
+}
+<div class="row g-2 mb-3">
+    @foreach (var nc in netCats)
+    {
+        var cnt = netDevices.Count(d => d.GetValueOrDefault("assetType")?.ToString() == nc.Item1);
+        <div class="col-6 col-md-3">
+            <div class="card border-0 bg-@(nc.Item4)-subtle text-center py-2" style="cursor:pointer" onclick="setNetCat('@nc.Item1')" title="Click to filter">
+                <div class="fw-bold fs-4 text-@(nc.Item4)-emphasis"><i class="bi @(nc.Item3)"></i> @cnt</div>
+                <div class="small text-muted">@nc.Item2</div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+    <input type="text" id="netSearch" class="form-control form-control-sm" style="max-width:280px" placeholder="Search tag, brand, model, IP, MAC..." oninput="filterNet()"/>
+    <select id="netCat" class="form-select form-select-sm" style="max-width:190px" onchange="filterNet()">
+        <option value="">All types</option>
+        @foreach (var nc in netCats){<option value="@nc.Item1">@nc.Item2</option>}
+    </select>
+    <div class="ms-auto d-flex gap-2">
+        <div class="dropdown">
+            <button class="btn btn-sm px-3 text-white dropdown-toggle" style="background:#1D4ED8" type="button" data-bs-toggle="dropdown"><i class="bi bi-plus-circle"></i> Add Network Device</button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="/Assets/Create?type=Network%20Switch"><i class="bi bi-diagram-3"></i> Network Switch</a></li>
+                <li><a class="dropdown-item" href="/Assets/Create?type=WiFi%20Device"><i class="bi bi-wifi"></i> WiFi / Router</a></li>
+                <li><a class="dropdown-item" href="/Assets/Create?type=NVR"><i class="bi bi-hdd-rack"></i> NVR / DVR</a></li>
+                <li><a class="dropdown-item" href="/Assets/Create?type=Camera"><i class="bi bi-camera-video"></i> Camera</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0" id="netTable">
+            <thead style="background:#0A192F;color:white">
+                <tr>
+                    <th class="ps-3">Asset Tag</th><th>Type</th><th>Brand / Model</th><th>IP</th><th>MAC</th>
+                    <th>Hostname</th><th>Serial</th><th>Ports</th><th>Location</th><th>Last Seen</th><th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!netDevices.Any())
+            {
+                <tr><td colspan="11" class="text-center text-muted py-5">
+                    No network devices yet. Click <b>Scan Network</b> to auto-detect switches, WiFi, NVR and cameras, or use <b>Add Network Device</b>.
+                </td></tr>
+            }
+            @foreach (var d in netDevices)
+            {
+                var did   = d.GetValueOrDefault("id")?.ToString() ?? "";
+                var dtype = d.GetValueOrDefault("assetType")?.ToString() ?? "";
+                var dip   = d.GetValueOrDefault("ip")?.ToString() ?? "";
+                var ls    = d.GetValueOrDefault("lastSeen")?.ToString() ?? "";
+                var dsrc  = d.GetValueOrDefault("source")?.ToString() ?? "";
+                string seenBadge = "";
+                if (DateTime.TryParse(ls, out var lsDt)) { seenBadge = (nowIst - lsDt).TotalHours <= 48 ? "success" : "danger"; }
+                var typeIcon = dtype == "Network Switch" ? "bi-diagram-3" : dtype == "WiFi Device" ? "bi-wifi" : dtype == "NVR" ? "bi-hdd-rack" : "bi-camera-video";
+                var searchText = string.Join(" ", new[]{ d.GetValueOrDefault("assetTag"), dtype, d.GetValueOrDefault("brand"), d.GetValueOrDefault("model"), dip, d.GetValueOrDefault("mac"), d.GetValueOrDefault("hostname"), d.GetValueOrDefault("serial"), d.GetValueOrDefault("location") }.Select(x => x?.ToString() ?? "")).ToLowerInvariant();
+                <tr data-type="@dtype" data-text="@searchText">
+                    <td class="ps-3 font-monospace fw-bold text-primary small">@d.GetValueOrDefault("assetTag")</td>
+                    <td><span class="badge bg-light text-dark border"><i class="bi @typeIcon"></i> @dtype</span>
+                        @if (dsrc.StartsWith("Auto-discovered")){<br/><span class="badge bg-info-subtle text-info-emphasis fw-normal">auto-discovered</span>}</td>
+                    <td class="small"><strong>@d.GetValueOrDefault("brand")</strong> @d.GetValueOrDefault("model")</td>
+                    <td class="small font-monospace">
+                        @if (!string.IsNullOrEmpty(dip)){<a href="http://@dip" target="_blank" rel="noopener" title="Open web page of this device">@dip</a>}
+                    </td>
+                    <td class="small font-monospace text-muted">@d.GetValueOrDefault("mac")</td>
+                    <td class="small">@d.GetValueOrDefault("hostname")</td>
+                    <td class="small font-monospace">@d.GetValueOrDefault("serial")</td>
+                    <td class="small text-center">@d.GetValueOrDefault("portCount")</td>
+                    <td class="small">@d.GetValueOrDefault("location")</td>
+                    <td class="small">
+                        @if (seenBadge != ""){<span class="badge bg-@(seenBadge)-subtle text-@(seenBadge)-emphasis fw-normal">@ls</span>}
+                        else {<span class="text-muted">&mdash;</span>}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <a href="/Assets/Edit/@did" class="btn btn-outline-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                            <form method="post" action="/Assets/Delete/@did" onsubmit="return confirm('Delete this device permanently?')">
+                                <button class="btn btn-outline-danger btn-sm" type="submit" title="Delete"><i class="bi bi-trash"></i></button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="small text-muted mt-2">Red date = not seen by the scanner for more than 2 days (powered off, unplugged or the scanner has not run). Unmanaged switches/APs without SNMP or a web page cannot be detected &mdash; add them with <b>Add Network Device</b>.</div>
+</div><!-- /pane-net -->
+</div><!-- /tab-content -->
+
 @{ var employees = (List<Dictionary<string,object?>>)(ViewBag.Employees ?? new List<Dictionary<string,object?>>()); }
 @foreach (var a in Model)
 {
@@ -174,21 +298,47 @@
 
 <div class="modal fade" id="printerScanModal" tabindex="-1">
   <div class="modal-dialog modal-lg"><div class="modal-content">
-    <div class="modal-header"><h6 class="modal-title"><i class="bi bi-printer"></i> Auto-detect Network Printers</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+    <div class="modal-header"><h6 class="modal-title"><i class="bi bi-radar"></i> Auto-detect Network Printers &amp; Devices</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body small">
-      <p class="mb-2">The website cannot see your office network from the internet, so a small scanner runs on <b>one PC inside the office LAN</b>. It finds every network printer (IP, MAC, brand, model, serial, page count) and sends them here &mdash; each new printer gets its own tag (<b>PRN-0001, PRN-0002 ...</b>). Printers already in the list are only refreshed, never duplicated, and their assignment is never touched.</p>
+      <p class="mb-2">The website cannot see your office network from the internet, so a small scanner runs on <b>one PC inside the office LAN</b>. It finds every <b>network printer</b> (tag <b>PRN-</b>) and every <b>network switch</b> (<b>SW-</b>), <b>WiFi access point / router</b> (<b>WIFI-</b>), <b>NVR / DVR</b> (<b>NVR-</b>) and <b>IP camera</b> (<b>CAM-</b>) with IP, MAC, brand, model and serial where available. Printers go into the main list; switches, WiFi, NVR and cameras go into the <b>Network Devices</b> tab. Devices already in the list are only refreshed, never duplicated, and assignment/location you set by hand is never touched.</p>
       <ol class="mb-3">
         <li><a href="/Assets/ScannerDownload" class="btn btn-sm btn-primary py-0"><i class="bi bi-download"></i> Download AMPM_Printer_Scanner.zip</a> and extract it on an office PC.</li>
         <li>Double-click <b>AMPM_Printer_Scanner.bat</b> &mdash; takes about 10&ndash;30 seconds, then refresh this page.</li>
         <li><i>(Optional)</i> Right-click <b>AMPM_Printer_Scanner_Install.bat</b> &rarr; <b>Run as administrator</b> to repeat the scan automatically every day at 11:00.</li>
         <li>After the scan, use the <i class="bi bi-person-check"></i> Assign button on each printer to pick the employee it belongs to (or use <b>Add Asset &rarr; Printer</b> for printers the scan cannot see, e.g. USB printers).</li>
       </ol>
-      <div class="text-muted">Other VLAN/subnet? Open the .ps1 in Notepad and add it to <code>$extraSubnets</code> (e.g. <code>'192.168.2'</code>). Printers with SNMP switched off will still be found (IP + MAC) but brand/model/serial may stay blank &mdash; fill them with Edit.</div>
+      <div class="text-muted">Other VLAN/subnet? Open the .ps1 in Notepad and add it to <code>$extraSubnets</code> (e.g. <code>'192.168.2'</code>). Switches and WiFi devices are recognised best when <b>SNMP v1/v2c with community "public"</b> is enabled on them; cameras and NVRs are recognised from their ports and web-login page. Anything found without brand/model can be completed with Edit.</div>
     </div>
   </div></div>
 </div>
 
 <script>
+function filterNet() {
+    const q = (document.getElementById('netSearch').value || '').toLowerCase().trim();
+    const cat = document.getElementById('netCat').value;
+    document.querySelectorAll('#netTable tbody tr[data-type]').forEach(tr => {
+        const okCat = !cat || tr.dataset.type === cat;
+        const okTxt = !q || (tr.dataset.text || '').indexOf(q) >= 0;
+        tr.style.display = (okCat && okTxt) ? '' : 'none';
+    });
+}
+function setNetCat(c) {
+    const sel = document.getElementById('netCat');
+    sel.value = (sel.value === c) ? '' : c;
+    filterNet();
+}
+// open the Network Devices tab when the URL ends with #net (used after add/edit/delete there)
+(function () {
+    if (location.hash === '#net') {
+        const t = document.getElementById('tab-net');
+        if (t && window.bootstrap) bootstrap.Tab.getOrCreateInstance(t).show();
+    }
+    document.querySelectorAll('#assetTabs button[data-bs-toggle="tab"]').forEach(b => {
+        b.addEventListener('shown.bs.tab', e => {
+            history.replaceState(null, '', e.target.id === 'tab-net' ? '#net' : location.pathname + location.search);
+        });
+    });
+})();
 function fillAssignEmp(aid) {
     const sel = document.getElementById('empSelect' + aid);
     const opt = sel.options[sel.selectedIndex];

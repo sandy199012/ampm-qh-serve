@@ -1,6 +1,7 @@
 @model Dictionary<string,object?>
 @{ViewData["Title"] = "Edit Asset";
   var isPrinter = (Model.GetValueOrDefault("assetType")?.ToString() ?? "") == "Printer";
+  var isNet = new[]{"Network Switch","WiFi Device","NVR","Camera"}.Contains(Model.GetValueOrDefault("assetType")?.ToString() ?? "");
   var aid = Model.GetValueOrDefault("id")?.ToString() ?? "";
   string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","DESIGN - ACCESSORIES","PRODUCTION - APPAREL","PRODUCTION - LEATHER","PRODUCTION - MTO","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING","SAMPLING - APPAREL","FABRIC STORE","RESEARCH & DEVELOPMENT","TRUNK SHOW","ACCESSORIES STORE"};}
 
@@ -18,7 +19,7 @@
                 <div class="mb-3"><label class="form-label small fw-bold">Asset Type</label>
                     <select name="assetType" id="assetType" class="form-select" onchange="onTypeChange()">
                         @{var curType = Model.GetValueOrDefault("assetType")?.ToString() ?? "";}
-                        @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","Server","UPS","Other"})
+                        @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","Server","UPS","Network Switch","WiFi Device","NVR","Camera","Other"})
                         {if(curType==t){<option selected>@t</option>}else{<option>@t</option>}}
                     </select>
                 </div>
@@ -70,16 +71,32 @@
                 }
             </div>
         </div>
-        <div class="card border-0 shadow-sm mb-3" id="specCard" style="@(isPrinter ? "display:none" : "")">
-            <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Specifications</div>
+        <div class="card border-0 shadow-sm mb-3" id="netCard" style="@(isNet ? "" : "display:none")">
+            <div class="card-header fw-bold" style="background:#1D4ED8;color:white"><i class="bi bi-router"></i> Network Device Details@if(!string.IsNullOrEmpty(Model.GetValueOrDefault("source")?.ToString())){<span class="badge bg-light text-dark ms-2 fw-normal">@Model.GetValueOrDefault("source")</span>}</div>
             <div class="card-body">
-                <div class="mb-3"><label class="form-label small fw-bold">Processor</label><input type="text" name="processor" value="@Model.GetValueOrDefault("processor")" class="form-control" disabled="@isPrinter"/></div>
-                <div class="mb-3"><label class="form-label small fw-bold">RAM (GB)</label><input type="text" name="ram" value="@Model.GetValueOrDefault("ram")" class="form-control" disabled="@isPrinter"/></div>
-                <div class="mb-3"><label class="form-label small fw-bold">Storage (GB)</label><input type="text" name="storage" value="@Model.GetValueOrDefault("storage")" class="form-control" disabled="@isPrinter"/></div>
-                <div class="mb-3"><label class="form-label small fw-bold">OS</label><input type="text" name="os" value="@Model.GetValueOrDefault("os")" class="form-control" disabled="@isPrinter"/></div>
+                <div class="row g-2">
+                    <div class="col-6 mb-3"><label class="form-label small fw-bold">IP Address</label><input type="text" name="ip" value="@Model.GetValueOrDefault("ip")" class="form-control" disabled="@(!isNet)"/></div>
+                    <div class="col-6 mb-3"><label class="form-label small fw-bold">MAC Address</label><input type="text" name="mac" value="@Model.GetValueOrDefault("mac")" class="form-control" disabled="@(!isNet)"/></div>
+                </div>
+                <div class="mb-3"><label class="form-label small fw-bold">Hostname / Device Name</label><input type="text" name="hostname" value="@Model.GetValueOrDefault("hostname")" class="form-control" disabled="@(!isNet)"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Ports / Channels</label><input type="text" name="portCount" value="@Model.GetValueOrDefault("portCount")" class="form-control" disabled="@(!isNet)"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Location</label><input type="text" name="location" value="@Model.GetValueOrDefault("location")" class="form-control" disabled="@(!isNet)"/></div>
+                @if(!string.IsNullOrEmpty(Model.GetValueOrDefault("lastSeen")?.ToString()))
+                {
+                    <div class="small text-muted">Last seen by scanner: <b>@Model.GetValueOrDefault("lastSeen")</b></div>
+                }
             </div>
         </div>
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm mb-3" id="specCard" style="@((isPrinter || isNet) ? "display:none" : "")">
+            <div class="card-header fw-bold" style="background:#1e3a5f;color:white">Specifications</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">Processor</label><input type="text" name="processor" value="@Model.GetValueOrDefault("processor")" class="form-control" disabled="@(isPrinter || isNet)"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">RAM (GB)</label><input type="text" name="ram" value="@Model.GetValueOrDefault("ram")" class="form-control" disabled="@(isPrinter || isNet)"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">Storage (GB)</label><input type="text" name="storage" value="@Model.GetValueOrDefault("storage")" class="form-control" disabled="@(isPrinter || isNet)"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">OS</label><input type="text" name="os" value="@Model.GetValueOrDefault("os")" class="form-control" disabled="@(isPrinter || isNet)"/></div>
+            </div>
+        </div>
+        <div class="card border-0 shadow-sm" id="assignCard" style="@(isNet ? "display:none" : "")">
             <div class="card-header fw-bold" style="background:#059669;color:white">Assignment</div>
             <div class="card-body">
                 @{ var employees = (List<Dictionary<string,object?>>)(ViewBag.Employees ?? new List<Dictionary<string,object?>>()); }
@@ -129,11 +146,17 @@ function toggleCard(id, show) {
     // Inputs in a hidden card are disabled so they are NOT posted (existing values stay untouched).
     c.querySelectorAll('input,select,textarea').forEach(i => i.disabled = !show);
 }
+const netTypes = ['Network Switch', 'WiFi Device', 'NVR', 'Camera'];
 function onTypeChange() {
-    const isPrn = document.getElementById('assetType').value === 'Printer';
+    const t = document.getElementById('assetType').value;
+    const isPrn = t === 'Printer';
+    const isNet = netTypes.indexOf(t) >= 0;
     toggleCard('printerCard', isPrn);
-    toggleCard('specCard', !isPrn);
+    toggleCard('netCard', isNet);
+    toggleCard('specCard', !isPrn && !isNet);
+    toggleCard('assignCard', !isNet);
 }
+onTypeChange();
 function fillAssetEmp() {
     const sel = document.getElementById('empSelect');
     const opt = sel.options[sel.selectedIndex];

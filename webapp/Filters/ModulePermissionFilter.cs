@@ -55,6 +55,11 @@ public class ModulePermissionFilter : IActionFilter
         if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-printers", StringComparison.OrdinalIgnoreCase))
             return;
 
+        // Same scan, second request: switches / WiFi / NVR / cameras
+        // (EndpointsController.ReportNetwork).
+        if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-network", StringComparison.OrdinalIgnoreCase))
+            return;
+
         if (!_auth.IsLoggedIn(ctx))
         {
             context.Result = new RedirectToActionResult("Login", "Account", null);
