@@ -163,13 +163,14 @@
         ("Network Switch", "Switches",      "bi-diagram-3",  "primary"),
         ("WiFi Device",    "WiFi / Routers","bi-wifi",       "success"),
         ("NVR",            "NVR / DVR",     "bi-hdd-rack",   "warning"),
-        ("Camera",         "Cameras",       "bi-camera-video","danger") };
+        ("Camera",         "Cameras",       "bi-camera-video","danger"),
+        ("Other Network Device", "Other / to sort", "bi-question-circle", "secondary") };
 }
 <div class="row g-2 mb-3">
     @foreach (var nc in netCats)
     {
         var cnt = netDevices.Count(d => d.GetValueOrDefault("assetType")?.ToString() == nc.Item1);
-        <div class="col-6 col-md-3">
+        <div class="col-6 col">
             <div class="card border-0 bg-@(nc.Item4)-subtle text-center py-2" style="cursor:pointer" onclick="setNetCat('@nc.Item1')" title="Click to filter">
                 <div class="fw-bold fs-4 text-@(nc.Item4)-emphasis"><i class="bi @(nc.Item3)"></i> @cnt</div>
                 <div class="small text-muted">@nc.Item2</div>
@@ -192,6 +193,7 @@
                 <li><a class="dropdown-item" href="/Assets/Create?type=WiFi%20Device"><i class="bi bi-wifi"></i> WiFi / Router</a></li>
                 <li><a class="dropdown-item" href="/Assets/Create?type=NVR"><i class="bi bi-hdd-rack"></i> NVR / DVR</a></li>
                 <li><a class="dropdown-item" href="/Assets/Create?type=Camera"><i class="bi bi-camera-video"></i> Camera</a></li>
+                <li><a class="dropdown-item" href="/Assets/Create?type=Other%20Network%20Device"><i class="bi bi-question-circle"></i> Other network device</a></li>
             </ul>
         </div>
     </div>
@@ -222,7 +224,7 @@
                 var dsrc  = d.GetValueOrDefault("source")?.ToString() ?? "";
                 string seenBadge = "";
                 if (DateTime.TryParse(ls, out var lsDt)) { seenBadge = (nowIst - lsDt).TotalHours <= 48 ? "success" : "danger"; }
-                var typeIcon = dtype == "Network Switch" ? "bi-diagram-3" : dtype == "WiFi Device" ? "bi-wifi" : dtype == "NVR" ? "bi-hdd-rack" : "bi-camera-video";
+                var typeIcon = dtype == "Network Switch" ? "bi-diagram-3" : dtype == "WiFi Device" ? "bi-wifi" : dtype == "NVR" ? "bi-hdd-rack" : dtype == "Other Network Device" ? "bi-question-circle" : "bi-camera-video";
                 var searchText = string.Join(" ", new[]{ d.GetValueOrDefault("assetTag"), dtype, d.GetValueOrDefault("brand"), d.GetValueOrDefault("model"), dip, d.GetValueOrDefault("mac"), d.GetValueOrDefault("hostname"), d.GetValueOrDefault("serial"), d.GetValueOrDefault("location") }.Select(x => x?.ToString() ?? "")).ToLowerInvariant();
                 <tr data-type="@dtype" data-text="@searchText">
                     <td class="ps-3 font-monospace fw-bold text-primary small">@d.GetValueOrDefault("assetTag")</td>
@@ -300,7 +302,7 @@
   <div class="modal-dialog modal-lg"><div class="modal-content">
     <div class="modal-header"><h6 class="modal-title"><i class="bi bi-radar"></i> Auto-detect Network Printers &amp; Devices</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
     <div class="modal-body small">
-      <p class="mb-2">The website cannot see your office network from the internet, so a small scanner runs on <b>one PC inside the office LAN</b>. It finds every <b>network printer</b> (tag <b>PRN-</b>) and every <b>network switch</b> (<b>SW-</b>), <b>WiFi access point / router</b> (<b>WIFI-</b>), <b>NVR / DVR</b> (<b>NVR-</b>) and <b>IP camera</b> (<b>CAM-</b>) with IP, MAC, brand, model and serial where available. Printers go into the main list; switches, WiFi, NVR and cameras go into the <b>Network Devices</b> tab. Devices already in the list are only refreshed, never duplicated, and assignment/location you set by hand is never touched.</p>
+      <p class="mb-2">The website cannot see your office network from the internet, so a small scanner runs on <b>one PC inside the office LAN</b>. It finds every <b>network printer</b> (tag <b>PRN-</b>) and every <b>network switch</b> (<b>SW-</b>), <b>WiFi access point / router</b> (<b>WIFI-</b>), <b>NVR / DVR</b> (<b>NVR-</b>) and <b>IP camera</b> (<b>CAM-</b>) with IP, MAC, brand, model and serial where available. Printers go into the main list; switches, WiFi, NVR and cameras go into the <b>Network Devices</b> tab. Anything on the network that answers like a device but cannot be identified (for example a switch or router with SNMP switched off) is added as <b>Other network device</b> (<b>NET-</b>) &mdash; open it with Edit and pick the correct type. Devices already in the list are only refreshed, never duplicated, and assignment/location you set by hand is never touched.</p>
       <ol class="mb-3">
         <li><a href="/Assets/ScannerDownload" class="btn btn-sm btn-primary py-0"><i class="bi bi-download"></i> Download AMPM_Printer_Scanner.zip</a> and extract it on an office PC.</li>
         <li>Double-click <b>AMPM_Printer_Scanner.bat</b> &mdash; takes about 10&ndash;30 seconds, then refresh this page.</li>

@@ -387,6 +387,30 @@ function Get-HttpInfo([string]$ip, [string]$path = '/') {
     return $info
 }
 
+# ONVIF discovery probe, sent straight to one camera/recorder (UDP 3702). Almost
+# every IP camera and NVR answers it WITHOUT a password and tells its hardware
+# model, its name and whether it is a camera or a recorder.
+function Get-Onvif([string]$ip) {
+    $res = @{ Hardware = ''; Name = ''; Types = '' }
+    $udp = $null
+    try {
+        $udp = New-Object System.Net.Sockets.UdpClient
+        $udp.Client.ReceiveTimeout = 1200
+        $xml = '<?xml version="1.0" encoding="UTF-8"?><e:Envelope xmlns:e="http://www.w3.org/2003/05/soap-envelope" xmlns:w="http://schemas.xmlsoap.org/ws/2004/08/addressing" xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery"><e:Header><w:MessageID>uuid:' + [guid]::NewGuid().ToString() + '</w:MessageID><w:To>urn:schemas-xmlsoap-org:ws:2005:04:discovery</w:To><w:Action>http://schemas.xmlsoap.org/ws/2005/04/discovery/Probe</w:Action></e:Header><e:Body><d:Probe/></e:Body></e:Envelope>'
+        $b = [System.Text.Encoding]::UTF8.GetBytes($xml)
+        [void]$udp.Send($b, $b.Length, $ip, 3702)
+        $ep = New-Object System.Net.IPEndPoint([System.Net.IPAddress]::Any, 0)
+        $r = $udp.Receive([ref]$ep)
+        $txt = [System.Text.Encoding]::UTF8.GetString($r)
+        if ($txt -match 'onvif://www\.onvif\.org/hardware/([^\s<]+)') { $res.Hardware = [uri]::UnescapeDataString($Matches[1]) }
+        if ($txt -match 'onvif://www\.onvif\.org/name/([^\s<]+)') { $res.Name = [uri]::UnescapeDataString($Matches[1]) }
+        $tl = @()
+        foreach ($m in [regex]::Matches($txt, 'onvif://www\.onvif\.org/type/([^\s<]+)')) { $tl += $m.Groups[1].Value }
+        $res.Types = ($tl -join ' ')
+    } catch {} finally { if ($udp) { try { $udp.Close() } catch {} } }
+    return $res
+}
+
 # Decide switch / WiFi / NVR / camera ('' = not a network device).
 function Get-NetCategory([object]$open, [string]$text, [bool]$hasSnmp, [long]$services) {
     $t = $text.ToLower()
@@ -501,7 +525,7 @@ foreach ($ip in $candidates) {
     # it). Their API paths answer "401 login required" WITHOUT any password, and
     # that answer carries the model (Hikvision) or serial number (Dahua) in the
     # login realm - which is what tells an NVR from a camera.
-    if (($open -contains 80) -and ($strongCam -or ($open -contains 8000)) -and -not $http.Realm) {
+    if (($open -contains 80) -and ($http.Status -ne 0) -and ($strongCam -or ($open -contains 8000)) -and -not $http.Realm) {
         $h2 = Get-HttpInfo $ip '/ISAPI/System/deviceInfo'
         if ($h2.Realm) { $http.Realm = $h2.Realm }
         else {
@@ -510,15 +534,27 @@ foreach ($ip in $candidates) {
         }
     }
 
+    $onv = @{ Hardware = ''; Name = ''; Types = '' }
+    if ($strongCam -or ($open -contains 8000)) { $onv = Get-Onvif $ip }
+
     $services = [long]0
     $hasSnmp = [bool]$sysDescr
     if ($hasSnmp) {
         $sv = Get-Snmp $ip '1.3.6.1.2.1.1.7.0'
         if ($sv) { $services = [long]$sv }
     }
-    $text = "$($http.Server) $($http.Realm) $($http.Title) $sysDescr $sysName"
+    $text = "$($http.Server) $($http.Realm) $($http.Title) $sysDescr $sysName $($onv.Hardware) $($onv.Name) $($onv.Types)"
     $cat = Get-NetCategory $open $text $hasSnmp $services
-    Log ("  host {0} ports={1} snmp={2} server='{3}' realm='{4}' title='{5}' -> {6}" -f $ip, ($open -join ','), $(if ($hasSnmp) { 'yes' } else { 'no' }), $http.Server, $http.Realm, $http.Title, $(if ($cat) { $cat } else { 'NOT RECOGNISED' }))
+    $logCat = $cat
+    if (-not $cat) {
+        # Answers like a network device but cannot be told apart (typically a switch
+        # or router with SNMP switched off). Plain web/file servers are left out; the
+        # rest is sent as "Other Network Device" so it shows up in the website and
+        # can be given its real type there with Edit.
+        $isServer = ($http.Server -match 'IIS|Microsoft|nginx|Apache|Kestrel|Werkzeug|gunicorn|Express|Tomcat|Jetty') -or ($sysDescr -match 'Windows|Linux|Darwin|FreeBSD')
+        if ($isServer) { $logCat = 'skipped (looks like a server/PC)' } else { $cat = 'Other Network Device'; $logCat = $cat }
+    }
+    Log ("  host {0} ports={1} snmp={2} server='{3}' realm='{4}' title='{5}' onvif='{6} {7} {8}' -> {9}" -f $ip, ($open -join ','), $(if ($hasSnmp) { 'yes' } else { 'no' }), $http.Server, $http.Realm, $http.Title, $onv.Hardware, $onv.Name, $onv.Types, $logCat)
     if (-not $cat) { continue }
 
     $ifNum = ''; $entModel = ''; $entSerial = ''
@@ -532,6 +568,7 @@ foreach ($ip in $candidates) {
     if (-not $brand -and ($open -contains 37777)) { $brand = 'Dahua' }   # 37777 is Dahua's own protocol port
     $model = $entModel
     if (-not $model -and $http.Realm -match '^(i?DS-|NVR|XVR|DVR|DH-|IPC|UVR|HW|CP-|UNV)') { $model = $http.Realm }
+    if (-not $model -and $onv.Hardware) { $model = $onv.Hardware }
     if (-not $model -and $http.Title -and $http.Title.Length -le 60 -and $brand) { $model = $http.Title }
     if (-not $model -and $sysDescr) { $model = $sysDescr; if ($model.Length -gt 60) { $model = $model.Substring(0, 60) } }
     if ($brand -and $model -and $model.ToLower().StartsWith($brand.ToLower() + ' ')) { $model = $model.Substring($brand.Length + 1).Trim() }

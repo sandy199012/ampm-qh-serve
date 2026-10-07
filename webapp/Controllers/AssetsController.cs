@@ -412,7 +412,7 @@ public static class AssetTags
     }
 
     // Types shown in the separate "Network Devices" tab of Asset Stock.
-    public static readonly string[] NetworkTypes = { "Network Switch", "WiFi Device", "NVR", "Camera" };
+    public static readonly string[] NetworkTypes = { "Network Switch", "WiFi Device", "NVR", "Camera", "Other Network Device" };
     public static bool IsNetworkType(string? t) => t != null && NetworkTypes.Contains(t);
 
     // Tag series per asset type (null = the normal free-text tags, e.g. AMPM-0003).
@@ -423,6 +423,7 @@ public static class AssetTags
         "WiFi Device" => "WIFI-",
         "NVR" => "NVR-",
         "Camera" => "CAM-",
+        "Other Network Device" => "NET-",
         _ => null,
     };
 
@@ -430,7 +431,7 @@ public static class AssetTags
     public static Dictionary<string,string> NextTags(List<Dictionary<string,object?>> assets)
     {
         var d = new Dictionary<string,string>();
-        foreach (var t in new[] { "Printer", "Network Switch", "WiFi Device", "NVR", "Camera" })
+        foreach (var t in new[] { "Printer", "Network Switch", "WiFi Device", "NVR", "Camera", "Other Network Device" })
             d[t] = NextTag(assets, PrefixFor(t)!);
         return d;
     }

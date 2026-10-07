@@ -234,6 +234,17 @@ public class EndpointsController : Controller
                 FillIfBlank("brand", d.Brand);
                 FillIfBlank("model", d.Model);
                 FillIfBlank("serial", d.Serial);
+                // A device first added as "Other network device" (NET-) that the scanner
+                // can now identify (e.g. SNMP was switched on) moves to its real type and
+                // tag. A type chosen by hand is never touched.
+                const string otherType = "Other Network Device";
+                if (rec.GetValueOrDefault("assetType")?.ToString() == otherType && cat != otherType
+                    && (rec.GetValueOrDefault("assetTag")?.ToString() ?? "").StartsWith("NET-", StringComparison.OrdinalIgnoreCase)
+                    && (rec.GetValueOrDefault("source")?.ToString() ?? "").StartsWith("Auto-discovered"))
+                {
+                    rec["assetType"] = cat;
+                    rec["assetTag"] = AssetTags.NextTag(assets, AssetTags.PrefixFor(cat)!);
+                }
                 updated++;
             }
 

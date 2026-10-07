@@ -1,7 +1,7 @@
 @model Dictionary<string,object?>
 @{ViewData["Title"] = "Edit Asset";
   var isPrinter = (Model.GetValueOrDefault("assetType")?.ToString() ?? "") == "Printer";
-  var isNet = new[]{"Network Switch","WiFi Device","NVR","Camera"}.Contains(Model.GetValueOrDefault("assetType")?.ToString() ?? "");
+  var isNet = new[]{"Network Switch","WiFi Device","NVR","Camera","Other Network Device"}.Contains(Model.GetValueOrDefault("assetType")?.ToString() ?? "");
   var aid = Model.GetValueOrDefault("id")?.ToString() ?? "";
   string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","DESIGN - ACCESSORIES","PRODUCTION - APPAREL","PRODUCTION - LEATHER","PRODUCTION - MTO","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING","SAMPLING - APPAREL","FABRIC STORE","RESEARCH & DEVELOPMENT","TRUNK SHOW","ACCESSORIES STORE"};}
 
@@ -19,7 +19,7 @@
                 <div class="mb-3"><label class="form-label small fw-bold">Asset Type</label>
                     <select name="assetType" id="assetType" class="form-select" onchange="onTypeChange()">
                         @{var curType = Model.GetValueOrDefault("assetType")?.ToString() ?? "";}
-                        @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","Server","UPS","Network Switch","WiFi Device","NVR","Camera","Other"})
+                        @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","Server","UPS","Network Switch","WiFi Device","NVR","Camera","Other Network Device","Other"})
                         {if(curType==t){<option selected>@t</option>}else{<option>@t</option>}}
                     </select>
                 </div>
@@ -146,7 +146,7 @@ function toggleCard(id, show) {
     // Inputs in a hidden card are disabled so they are NOT posted (existing values stay untouched).
     c.querySelectorAll('input,select,textarea').forEach(i => i.disabled = !show);
 }
-const netTypes = ['Network Switch', 'WiFi Device', 'NVR', 'Camera'];
+const netTypes = ['Network Switch', 'WiFi Device', 'NVR', 'Camera', 'Other Network Device'];
 function onTypeChange() {
     const t = document.getElementById('assetType').value;
     const isPrn = t === 'Printer';
