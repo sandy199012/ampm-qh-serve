@@ -452,27 +452,93 @@ table.kv td.v{color:#0F172A}
 <Style ss:ID='aAmber' ss:Parent='Default'><Font ss:Size='9' ss:Bold='1' ss:Color='#D97706'/><Alignment ss:Vertical='Center'/>{AssetXlBorder}</Style>
 ";
 
-    // Zips the network-printer scanner scripts (kept under wwwroot/tools) and
-    // serves them as one download. Done in code rather than as plain static
-    // files because ASP.NET's static-file middleware refuses unknown extensions
-    // like .ps1/.bat, and a single ZIP is easier for the user anyway.
-    [HttpGet("/Assets/ScannerDownload")]
-    public IActionResult ScannerDownload([FromServices] IWebHostEnvironment env)
+    // ---- Agents (PC / Printer / Network device) ------------------------------
+    // The three agent scripts live under wwwroot/tools and are NOT served as
+    // plain files: they are zipped here with the current access key put into
+    // the .ps1, so a downloaded agent always carries the right key and a new
+    // key / new version only reaches a PC when the agent is downloaded again.
+    [HttpGet("/Assets/Agents")]
+    public IActionResult Agents()
     {
+        var pcs = _db.KGetObj<List<Dictionary<string,object?>>>("pc_inventory") ?? new();
+        var now = IstTime.Now;
+        int last1h = 0, last24h = 0; DateTime? newest = null; string newestHost = "";
+        foreach (var pc in pcs)
+        {
+            if (!DateTime.TryParse(pc.GetValueOrDefault("lastSeen")?.ToString(), out var d)) continue;
+            if (newest == null || d > newest) { newest = d; newestHost = pc.GetValueOrDefault("hostname")?.ToString() ?? ""; }
+            var age = (now - d).TotalHours;
+            if (age <= 1) last1h++;
+            if (age <= 24) last24h++;
+        }
+        ViewBag.PcTotal = pcs.Count;
+        ViewBag.PcLast1h = last1h;
+        ViewBag.PcLast24h = last24h;
+        ViewBag.PcNewest = newest?.ToString("yyyy-MM-dd HH:mm") ?? "";
+        ViewBag.PcNewestHost = newestHost;
+        ViewBag.PrinterScanInfo = _db.KGetObj<Dictionary<string,object?>>("printer_scan_last");
+        ViewBag.NetScanInfo = _db.KGetObj<Dictionary<string,object?>>("network_scan_last");
+        ViewBag.KeyFromEnv = Environment.GetEnvironmentVariable("AMPM_AGENT_KEY") is { Length: > 7 };
+        return View();
+    }
+
+    [HttpGet("/Assets/AgentDownload")]
+    public IActionResult AgentDownload(string? type, [FromServices] IWebHostEnvironment env)
+    {
+        var pkg = AgentPackage.Build(env, type, EndpointsController.CurrentAgentKey);
+        if (pkg == null) return NotFound("Agent files are not deployed on the server yet.");
+        Response.Headers["Cache-Control"] = "no-store";
+        return File(pkg.Value.Bytes, "application/zip", pkg.Value.FileName);
+    }
+
+    // Old link (single combined scanner) -> the new Agents page.
+    [HttpGet("/Assets/ScannerDownload")]
+    public IActionResult ScannerDownload() => Redirect("/Assets/Agents");
+}
+
+// Builds the downloadable agent ZIPs: every file under wwwroot/tools whose name
+// starts with the agent's prefix, with the access-key placeholder inside the .ps1
+// replaced by the current key, plus a short README.
+public static class AgentPackage
+{
+    public const string Placeholder = "__AMPM_AGENT_KEY__";
+
+    public static (byte[] Bytes, string FileName)? Build(IWebHostEnvironment env, string? type, string key)
+    {
+        string prefix, zipName, readme;
+        switch ((type ?? "").Trim().ToLowerInvariant())
+        {
+            case "pc":
+                prefix = "AMPM_PC_Agent"; zipName = "AMPM_PC_Agent.zip";
+                readme = "AMPM PC AGENT\r\n=============\r\nReports this PC (hardware, software, USB printers) to the AMPM IT Tool.\r\n\r\n1. Extract this ZIP anywhere on the PC.\r\n2. Double-click AMPM_PC_Agent.bat to report once (shows the result).\r\n3. Right-click AMPM_PC_Agent_Setup.bat -> Run as administrator, ONCE, so the PC\r\n   reports by itself at every start-up and every 10 minutes.\r\n\r\nTo update: download the agent again from the website and run the Setup file again.\r\nLog file: ampm_agent_log.txt (in the extracted folder, and in C:\\ProgramData\\AMPM\\PcAgent for the automatic runs).\r\n";
+                break;
+            case "printer":
+                prefix = "AMPM_Printer_Agent"; zipName = "AMPM_Printer_Agent.zip";
+                readme = "AMPM PRINTER AGENT\r\n==================\r\nFinds network printers on the office LAN and reports them to Asset Stock (PRN- tags).\r\nRun it on ONE PC that is on the office network.\r\n\r\n1. Extract this ZIP anywhere.\r\n2. Double-click AMPM_Printer_Agent.bat to scan now (10-30 seconds).\r\n3. Optional: right-click AMPM_Printer_Agent_Setup.bat -> Run as administrator to scan every day at 11:00.\r\n\r\nOther subnet? Open AMPM_Printer_Agent.ps1 in Notepad and add it to $extraSubnets (for example '192.168.2').\r\nUSB printers are reported by the PC Agent of the PC they are plugged into.\r\nLog file: ampm_printer_log.txt\r\n";
+                break;
+            case "network":
+                prefix = "AMPM_Network_Agent"; zipName = "AMPM_Network_Agent.zip";
+                readme = "AMPM NETWORK DEVICE AGENT\r\n=========================\r\nFinds switches, WiFi access points / routers, NVR / DVR and IP cameras on the office LAN and\r\nreports them to Asset Stock -> Network Devices (SW-, WIFI-, NVR-, CAM-, NET- tags).\r\nRun it on ONE PC that is on the office network.\r\n\r\n1. Extract this ZIP anywhere.\r\n2. Double-click AMPM_Network_Agent.bat to scan now (2-4 minutes).\r\n3. Optional: right-click AMPM_Network_Agent_Setup.bat -> Run as administrator to scan every day at 11:30.\r\n\r\nOther subnet? Open AMPM_Network_Agent.ps1 in Notepad and add it to $extraSubnets (for example '192.168.2').\r\nSwitches / WiFi are recognised best with SNMP v1/v2c (community 'public') enabled on them; if you use another\r\ncommunity put it in $snmpCommunity. Cameras / NVR: switch ONVIF on in their settings for model details.\r\nDevices that cannot be identified come in as NET- 'Other Network Device' - open Edit on the website and choose the real type.\r\nLog file: ampm_network_log.txt (one line per device - useful when something is not recognised).\r\n";
+                break;
+            default:
+                return null;
+        }
+
         var dir = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "tools");
-        if (!Directory.Exists(dir)) return NotFound("Scanner files are not deployed on the server yet.");
+        if (!Directory.Exists(dir)) return null;
+        var files = Directory.GetFiles(dir, prefix + "*").OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToArray();
+        if (files.Length == 0) return null;
+
         using var ms = new MemoryStream();
         using (var zip = new System.IO.Compression.ZipArchive(ms, System.IO.Compression.ZipArchiveMode.Create, true))
         {
-            foreach (var f in Directory.GetFiles(dir, "AMPM_Printer_Scanner*"))
+            foreach (var f in files)
             {
                 var entry = zip.CreateEntry(Path.GetFileName(f));
                 using var es = entry.Open();
                 if (f.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase))
                 {
-                    // The agent key is never stored in the repo: it is put into the script
-                    // here, at download time, for a logged-in user with Assets access only.
-                    var text = System.IO.File.ReadAllText(f).Replace("__AMPM_AGENT_KEY__", EndpointsController.CurrentAgentKey);
+                    var text = System.IO.File.ReadAllText(f).Replace(Placeholder, key);
                     var bytes = new System.Text.UTF8Encoding(false).GetBytes(text);
                     es.Write(bytes, 0, bytes.Length);
                 }
@@ -482,9 +548,12 @@ table.kv td.v{color:#0F172A}
                     fs.CopyTo(es);
                 }
             }
+            var rd = zip.CreateEntry("README.txt");
+            using var rs = rd.Open();
+            var rb = new System.Text.UTF8Encoding(false).GetBytes(readme);
+            rs.Write(rb, 0, rb.Length);
         }
-        Response.Headers["Cache-Control"] = "no-store";
-        return File(ms.ToArray(), "application/zip", "AMPM_Printer_Scanner.zip");
+        return (ms.ToArray(), zipName);
     }
 }
 

@@ -1,5 +1,5 @@
 @echo off
-title AMPM - Printer Scanner - Install daily scan
+title AMPM - PC Inventory Agent - Setup
 
 net session >nul 2>&1
 if not "%errorlevel%"=="0" (
@@ -13,4 +13,4 @@ if not "%errorlevel%"=="0" (
 
 cd /d "%~dp0"
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-ChildItem -LiteralPath '%~dp0' -File | Unblock-File" >nul 2>&1
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0AMPM_Printer_Scanner.ps1" -Install
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0AMPM_PC_Agent.ps1" -Install

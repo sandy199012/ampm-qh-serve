@@ -1,0 +1,111 @@
+@{
+    ViewData["Title"] = "Agents";
+    var pcTotal   = (int)(ViewBag.PcTotal ?? 0);
+    var pc1h      = (int)(ViewBag.PcLast1h ?? 0);
+    var pc24h     = (int)(ViewBag.PcLast24h ?? 0);
+    var pcNewest  = (string)(ViewBag.PcNewest ?? "");
+    var pcHost    = (string)(ViewBag.PcNewestHost ?? "");
+    var prInfo    = ViewBag.PrinterScanInfo as Dictionary<string,object?>;
+    var nwInfo    = ViewBag.NetScanInfo as Dictionary<string,object?>;
+    bool keyEnv   = (bool)(ViewBag.KeyFromEnv ?? false);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0"><i class="bi bi-cloud-download" style="color:#7C3AED"></i> Agents &mdash; auto-update your assets</h5>
+    <a href="/Assets/Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Asset Stock</a>
+</div>
+
+<div class="alert alert-light border small">
+    The website cannot see your office PCs or network from the internet, so small agents run <b>inside the office</b> and send the details here.
+    Download an agent <b>from this page</b> &mdash; the access key is put inside it automatically. To update an agent (new version or new key), just download it again and run its Setup file again.
+    @if (!keyEnv)
+    {
+        <div class="text-danger mt-1"><i class="bi bi-exclamation-triangle"></i> The server is still using the built-in default key. For better security set <code>AMPM_AGENT_KEY</code> in Render &rarr; Environment, then download the agents again.</div>
+    }
+</div>
+
+<div class="row g-3">
+
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="fw-bold"><i class="bi bi-pc-display text-primary"></i> PC Agent</h6>
+        <p class="small text-muted mb-2">Runs on <b>every office PC / laptop</b>. Sends hostname, IP, MAC, OS, CPU, RAM, disk, serial number, installed software, the signed-in user and any <b>USB printers</b> plugged into that PC &mdash; at every start-up and every 10 minutes.</p>
+        <div class="small mb-3">
+            @if (pcTotal == 0) { <span class="badge bg-secondary">No PC has reported yet</span> }
+            else
+            {
+                <span class="badge bg-@(pc1h > 0 ? "success" : "warning text-dark")">@pc1h PC reported in the last hour</span>
+                <span class="badge bg-light text-dark border">@pc24h of @pcTotal in last 24 h</span>
+                @if (pcNewest != "") { <div class="text-muted mt-1">Latest report: <b>@pcNewest</b> (@pcHost)</div> }
+            }
+        </div>
+        <a href="/Assets/AgentDownload?type=pc" class="btn btn-primary btn-sm"><i class="bi bi-download"></i> Download PC Agent</a>
+        <ol class="small mt-3 mb-0 ps-3">
+            <li>Extract the ZIP on the PC.</li>
+            <li>Double-click <b>AMPM_PC_Agent.bat</b> to report once.</li>
+            <li>Right-click <b>AMPM_PC_Agent_Setup.bat</b> &rarr; <b>Run as administrator</b> (once) &mdash; after that it reports by itself.</li>
+        </ol>
+        <div class="small text-muted mt-2">Data goes to <b>Endpoints &rarr; PC Inventory</b> and the PC's row in Asset Stock.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="fw-bold"><i class="bi bi-printer text-success"></i> Printer Agent</h6>
+        <p class="small text-muted mb-2">Run on <b>one PC inside the office network</b>. Finds every <b>network printer</b> (tag <b>PRN-</b>) with IP, MAC, brand, model, serial number and page count. (USB printers come from the PC Agent.)</p>
+        <div class="small mb-3">
+            @if (prInfo == null) { <span class="badge bg-secondary">No scan received yet</span> }
+            else
+            {
+                <span class="badge bg-success">Last scan @prInfo.GetValueOrDefault("time")</span>
+                <div class="text-muted mt-1">from <b>@prInfo.GetValueOrDefault("scannedFrom")</b> (@prInfo.GetValueOrDefault("subnets")) &mdash; @prInfo.GetValueOrDefault("found") found, @prInfo.GetValueOrDefault("added") new, @prInfo.GetValueOrDefault("updated") updated</div>
+            }
+        </div>
+        <a href="/Assets/AgentDownload?type=printer" class="btn btn-success btn-sm"><i class="bi bi-download"></i> Download Printer Agent</a>
+        <ol class="small mt-3 mb-0 ps-3">
+            <li>Extract the ZIP on one office PC.</li>
+            <li>Double-click <b>AMPM_Printer_Agent.bat</b> &mdash; takes 10&ndash;30 seconds.</li>
+            <li>Optional: <b>AMPM_Printer_Agent_Setup.bat</b> (run as administrator) scans every day at 11:00.</li>
+        </ol>
+        <div class="small text-muted mt-2">Data goes to the <b>Assets</b> list (type Printer).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <h6 class="fw-bold"><i class="bi bi-router text-warning"></i> Network Device Agent</h6>
+        <p class="small text-muted mb-2">Run on <b>one PC inside the office network</b>. Finds <b>switches, WiFi / routers, NVR / DVR and IP cameras</b> (tags <b>SW- WIFI- NVR- CAM-</b>) with IP, MAC, brand, model and serial. Anything it cannot identify comes in as <b>NET-</b> &ldquo;Other Network Device&rdquo; &mdash; set its real type with Edit.</p>
+        <div class="small mb-3">
+            @if (nwInfo == null) { <span class="badge bg-secondary">No scan received yet</span> }
+            else
+            {
+                <span class="badge bg-success">Last scan @nwInfo.GetValueOrDefault("time")</span>
+                <div class="text-muted mt-1">from <b>@nwInfo.GetValueOrDefault("scannedFrom")</b> (@nwInfo.GetValueOrDefault("subnets")) &mdash; @nwInfo.GetValueOrDefault("found") found, @nwInfo.GetValueOrDefault("added") new, @nwInfo.GetValueOrDefault("updated") updated</div>
+            }
+        </div>
+        <a href="/Assets/AgentDownload?type=network" class="btn btn-warning btn-sm"><i class="bi bi-download"></i> Download Network Device Agent</a>
+        <ol class="small mt-3 mb-0 ps-3">
+            <li>Extract the ZIP on one office PC.</li>
+            <li>Double-click <b>AMPM_Network_Agent.bat</b> &mdash; takes 2&ndash;4 minutes.</li>
+            <li>Optional: <b>AMPM_Network_Agent_Setup.bat</b> (run as administrator) scans every day at 11:30.</li>
+        </ol>
+        <div class="small text-muted mt-2">Data goes to <b>Asset Stock &rarr; Network Devices</b> tab.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="card border-0 shadow-sm mt-3">
+  <div class="card-body small text-muted">
+    <b>Tips.</b> Other VLAN / subnet? Open the agent's <code>.ps1</code> in Notepad and add it to <code>$extraSubnets</code> (e.g. <code>'192.168.2'</code>).
+    Switches and WiFi devices are recognised best with <b>SNMP v1/v2c (community &ldquo;public&rdquo;)</b> enabled on them; for cameras and NVR switch <b>ONVIF</b> on in their settings so the model shows up.
+    Every agent writes a log file next to itself (<code>ampm_agent_log.txt</code>, <code>ampm_printer_log.txt</code>, <code>ampm_network_log.txt</code>) &mdash; if something does not show here, that log says why.
+    Devices you already edited by hand (assignment, location, type) are never overwritten by an agent.
+  </div>
+</div>

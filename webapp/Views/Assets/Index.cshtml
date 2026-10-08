@@ -7,7 +7,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h5 class="fw-bold mb-0"><i class="bi bi-pc-display" style="color:#7C3AED"></i> Asset Stock &mdash; @Model.Count assets</h5>
     <div class="d-flex gap-2">
-        <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#printerScanModal"><i class="bi bi-radar"></i> Scan Network</button>
+        <a href="/Assets/Agents" class="btn btn-outline-info btn-sm"><i class="bi bi-cloud-download"></i> Agents</a>
         <a href="/Assets/Export" class="btn btn-outline-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Export</a>
         <a href="/Assets/Create" class="btn btn-sm px-3 text-white" style="background:#7C3AED"><i class="bi bi-plus-circle"></i> Add Asset</a>
     </div>
@@ -212,7 +212,7 @@
             @if (!netDevices.Any())
             {
                 <tr><td colspan="11" class="text-center text-muted py-5">
-                    No network devices yet. Click <b>Scan Network</b> to auto-detect switches, WiFi, NVR and cameras, or use <b>Add Network Device</b>.
+                    No network devices yet. Open <b>Agents</b> and run the Network Device Agent to auto-detect switches, WiFi, NVR and cameras, or use <b>Add Network Device</b>.
                 </td></tr>
             }
             @foreach (var d in netDevices)
@@ -298,21 +298,6 @@
     </div>
 }
 
-<div class="modal fade" id="printerScanModal" tabindex="-1">
-  <div class="modal-dialog modal-lg"><div class="modal-content">
-    <div class="modal-header"><h6 class="modal-title"><i class="bi bi-radar"></i> Auto-detect Network Printers &amp; Devices</h6><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-    <div class="modal-body small">
-      <p class="mb-2">The website cannot see your office network from the internet, so a small scanner runs on <b>one PC inside the office LAN</b>. It finds every <b>network printer</b> (tag <b>PRN-</b>) and every <b>network switch</b> (<b>SW-</b>), <b>WiFi access point / router</b> (<b>WIFI-</b>), <b>NVR / DVR</b> (<b>NVR-</b>) and <b>IP camera</b> (<b>CAM-</b>) with IP, MAC, brand, model and serial where available. Printers go into the main list; switches, WiFi, NVR and cameras go into the <b>Network Devices</b> tab. Anything on the network that answers like a device but cannot be identified (for example a switch or router with SNMP switched off) is added as <b>Other network device</b> (<b>NET-</b>) &mdash; open it with Edit and pick the correct type. Devices already in the list are only refreshed, never duplicated, and assignment/location you set by hand is never touched.</p>
-      <ol class="mb-3">
-        <li><a href="/Assets/ScannerDownload" class="btn btn-sm btn-primary py-0"><i class="bi bi-download"></i> Download AMPM_Printer_Scanner.zip</a> and extract it on an office PC.</li>
-        <li>Double-click <b>AMPM_Printer_Scanner.bat</b> &mdash; takes about 10&ndash;30 seconds, then refresh this page.</li>
-        <li><i>(Optional)</i> Right-click <b>AMPM_Printer_Scanner_Install.bat</b> &rarr; <b>Run as administrator</b> to repeat the scan automatically every day at 11:00.</li>
-        <li>After the scan, use the <i class="bi bi-person-check"></i> Assign button on each printer to pick the employee it belongs to (or use <b>Add Asset &rarr; Printer</b> for printers the scan cannot see, e.g. USB printers).</li>
-      </ol>
-      <div class="text-muted">Other VLAN/subnet? Open the .ps1 in Notepad and add it to <code>$extraSubnets</code> (e.g. <code>'192.168.2'</code>). Switches and WiFi devices are recognised best when <b>SNMP v1/v2c with community "public"</b> is enabled on them; cameras and NVRs are recognised from their ports and web-login page. Anything found without brand/model can be completed with Edit.</div>
-    </div>
-  </div></div>
-</div>
 
 <script>
 function filterNet() {

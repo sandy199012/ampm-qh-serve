@@ -5,36 +5,33 @@ param(
 $ErrorActionPreference = 'SilentlyContinue'
 
 # ==========================================================================
-# AMPM IT Tool - Network Printer + Network Device Scanner
+# AMPM IT Tool - Network Device Agent
 #
-# Finds every network printer AND every network device (switches, WiFi
-# access points / routers, NVR / DVR recorders, IP cameras) on this PC's LAN
-# (and any extra subnets listed below) and pushes them to the AMPM IT Tool
-# website -> Asset Stock (printers in the main list, the rest in the
-# "Network Devices" tab).
-#   * New device   -> added with the next tag: PRN-0001 (printer), SW-0001
-#                     (switch), WIFI-0001, NVR-0001, CAM-0001 ...
-#   * Known device -> only its IP / MAC / hostname / last-seen (and page count
-#                     for printers) are refreshed - assignment, location and
-#                     anything you typed by hand is never touched.
+# Finds every switch, WiFi access point / router, NVR / DVR recorder and IP
+# camera on this PC's LAN (and any extra subnets listed below) and pushes them
+# to the AMPM IT Tool website -> Asset Stock -> Network Devices tab.
+#   * New device   -> added with the next tag: SW-0001 (switch), WIFI-0001,
+#                     NVR-0001, CAM-0001; devices that answer but cannot be told
+#                     apart come in as NET-0001 "Other Network Device" - open Edit
+#                     on the website and pick the real type.
+#   * Known device -> only IP / MAC / hostname / last-seen are refreshed -
+#                     assignment, location and anything you typed is never touched.
+# Network printers are NOT handled here - use the Printer Agent.
+# How: TCP probe (554/8000/37777 cameras+NVR, 80/443/22/23 management), plain
+# HTTP page + login banner, ONVIF probe for cameras/NVR (model + camera/recorder),
+# SNMP for switches/WiFi (enable SNMP v1/v2c, community "public", on them for the
+# best result); MAC from this PC's ARP table.
 #
-# How it finds devices:
-#   1. TCP probe of every address in the subnet: printer ports 9100/515/631,
-#      camera/NVR ports 554 (RTSP) / 8000 / 37777, management ports 80/443/22/23.
-#   2. SNMP (public community) is asked for model / serial / page count / type.
-#      Switches and access points should have SNMP v1/v2c enabled (community
-#      "public") to be recognised reliably; cameras/NVRs are recognised from
-#      their ports and web-login banner without SNMP.
-#   3. MAC address is read from this PC's ARP table.
+# This file is downloaded from the website (Asset Stock -> Agents). The access
+# key is put into it at download time, so download it again whenever the key
+# changes or a new version is published.
 #
 # Usage:
-#   AMPM_Printer_Scanner.bat           -> scan now (window stays open)
-#   AMPM_Printer_Scanner_Install.bat   -> (run as Administrator) scan every day
-#   -Silent                            -> no console output (used by the task)
+#   AMPM_Network_Agent.bat          -> scan now (window stays open)
+#   AMPM_Network_Agent_Setup.bat    -> (run as Administrator) scan every day at 11:30
+#   -Silent                         -> no console output (used by the scheduled task)
 # ==========================================================================
-
 $serverBase = 'https://ampm-qh-serve-1.onrender.com'
-$serverUrl  = "$serverBase/api/endpoints/report-printers"
 $netUrl     = "$serverBase/api/endpoints/report-network"
 $agentKey  = '__AMPM_AGENT_KEY__'   # filled in automatically when you download this from the website
 
@@ -45,8 +42,8 @@ $snmpCommunity = 'public'
 if ($agentKey -like '__AMPM*') {
     Write-Host ''
     Write-Host ' This copy has no access key.' -ForegroundColor Yellow
-    Write-Host ' Please download the scanner again from the website:' -ForegroundColor Yellow
-    Write-Host '   Asset Stock -> Scan Network -> Download scanner' -ForegroundColor Yellow
+    Write-Host ' Please download it again from the website:' -ForegroundColor Yellow
+    Write-Host '   Asset Stock -> Agents -> Download' -ForegroundColor Yellow
     if (-not $Silent) { Read-Host 'Press Enter to close' }
     exit 1
 }
@@ -55,10 +52,10 @@ if ($agentKey -like '__AMPM*') {
 # three numbers, e.g.  $extraSubnets = @('192.168.2', '10.0.5')
 $extraSubnets = @()
 
-$ports      = @(9100, 515, 631, 554, 8000, 37777, 80, 443, 22, 23)
+$ports      = @(554, 8000, 37777, 80, 443, 22, 23, 9100, 515, 631)
 $tcpWaitMs  = 3000
 $maxSubnets = 8
-$logFile    = Join-Path $PSScriptRoot 'ampm_printer_scan_log.txt'
+$logFile    = Join-Path $PSScriptRoot 'ampm_network_log.txt'
 
 function Log($msg) {
     $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')  $msg"
@@ -70,29 +67,38 @@ try { [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::
 
 # ---------------------------------------------------------------- install --
 if ($Install) {
-    $taskName = 'AMPM Network Printer Scanner'
+    $taskName = 'AMPM Network Device Agent'
+    $destDir  = Join-Path $env:ProgramData 'AMPM\NetworkAgent'
     $me = $PSCommandPath
     if (-not $me) { $me = $MyInvocation.MyCommand.Path }
     try {
+        # The task runs a copy kept in ProgramData, so it keeps working even if the
+        # download folder is deleted. Running Setup again after a new download
+        # simply replaces that copy.
+        New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+        $dest = Join-Path $destDir (Split-Path $me -Leaf)
+        if ($me -ne $dest) { Copy-Item -LiteralPath $me -Destination $dest -Force -ErrorAction Stop }
         $action   = New-ScheduledTaskAction -Execute 'powershell.exe' `
-            -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$me`" -Silent"
-        $trigger  = New-ScheduledTaskTrigger -Daily -At '11:00'
+            -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$dest`" -Silent"
+        $trigger  = New-ScheduledTaskTrigger -Daily -At '11:30'
+
         $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
         $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
             -StartWhenAvailable -MultipleInstances IgnoreNew
         Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+    Unregister-ScheduledTask -TaskName 'AMPM Network Printer Scanner' -Confirm:$false -ErrorAction SilentlyContinue
         Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger `
             -Principal $principal -Settings $settings `
-            -Description 'Scans the office network for printers and reports them to the AMPM IT Tool (Asset Stock) every day.' `
+            -Description 'Scans the office network for switches, WiFi, NVR and cameras and reports them to the AMPM IT Tool (Asset Stock - Network Devices) every day.' `
             -ErrorAction Stop | Out-Null
         Write-Host ''
-        Write-Host " DONE - '$taskName' installed. It will scan every day at 11:00" -ForegroundColor Green
-        Write-Host ' (or at the next start-up if this PC was off at that time).'
-        Write-Host ' Running the first scan now...'
+        Write-Host " DONE - '$taskName' installed (scans every day at 11:30)." -ForegroundColor Green
+        Write-Host " Installed copy : $dest"
+        Write-Host ' Running it once now...'
         Write-Host ''
     } catch {
         Write-Host " INSTALL FAILED: $_" -ForegroundColor Red
-        Write-Host ' Right-click AMPM_Printer_Scanner_Install.bat and choose "Run as administrator".'
+        Write-Host ' Right-click AMPM_Network_Agent_Setup.bat and choose "Run as administrator".'
         Read-Host 'Press Enter to close'
         exit 1
     }
@@ -167,7 +173,7 @@ if ($prefixes.Count -eq 0) {
 
 if (-not $Silent) {
     Write-Host ''
-    Write-Host ' AMPM - Network Printer Scanner' -ForegroundColor Cyan
+    Write-Host ' AMPM - Network Device Agent' -ForegroundColor Cyan
     Write-Host " This PC     : $env:COMPUTERNAME ($ownIp)"
     Write-Host " Scanning    : $($prefixes -join '.x, ').x"
     Write-Host ' Please wait...'
@@ -311,22 +317,6 @@ function Get-Snmp([string]$ip, [string]$oid, [int]$timeoutMs = 700) {
     finally { try { $udp.Close() } catch {} }
 }
 
-$brands = @(
-    @{ Key = 'hewlett'; Name = 'HP' }, @{ Key = 'hp '; Name = 'HP' }, @{ Key = 'laserjet'; Name = 'HP' },
-    @{ Key = 'brother'; Name = 'Brother' }, @{ Key = 'canon'; Name = 'Canon' }, @{ Key = 'epson'; Name = 'Epson' },
-    @{ Key = 'samsung'; Name = 'Samsung' }, @{ Key = 'xerox'; Name = 'Xerox' }, @{ Key = 'ricoh'; Name = 'Ricoh' },
-    @{ Key = 'kyocera'; Name = 'Kyocera' }, @{ Key = 'lexmark'; Name = 'Lexmark' }, @{ Key = 'konica'; Name = 'Konica Minolta' },
-    @{ Key = 'minolta'; Name = 'Konica Minolta' }, @{ Key = 'sharp'; Name = 'Sharp' }, @{ Key = 'oki'; Name = 'OKI' },
-    @{ Key = 'zebra'; Name = 'Zebra' }, @{ Key = 'tsc '; Name = 'TSC' }, @{ Key = 'pantum'; Name = 'Pantum' },
-    @{ Key = 'toshiba'; Name = 'Toshiba' }, @{ Key = 'panasonic'; Name = 'Panasonic' }, @{ Key = 'dell'; Name = 'Dell' },
-    @{ Key = 'fuji'; Name = 'Fuji Xerox' }
-)
-function Find-Brand([string]$text) {
-    $t = ($text + ' ').ToLower()
-    foreach ($b in $brands) { if ($t.Contains($b.Key)) { return $b.Name } }
-    return ''
-}
-
 # ---- network-device helpers (switch / WiFi / NVR / camera) ----------------
 $netBrands = @(
     @{ Re = 'hikvision|\bds-[0-9a-z]|\bids-'; Name = 'Hikvision' },
@@ -462,13 +452,11 @@ if ($arp.Count -eq 0) {
     }
 }
 
-$found = New-Object System.Collections.ArrayList
 $netFound = New-Object System.Collections.ArrayList
 $candidates = $allOpen.Keys | Sort-Object { IpToLong $_ }
 foreach ($ip in $candidates) {
     if ($ip -eq $ownIp) { continue }
     $open = @($allOpen[$ip])
-    $isRaw = ($open -contains 9100) -or ($open -contains 515)
     $strongCam = ($open -contains 554) -or ($open -contains 37777)
 
     # SNMP is skipped for obvious cameras/NVRs (they rarely answer and each
@@ -483,34 +471,10 @@ foreach ($ip in $candidates) {
         $pages   = Get-Snmp $ip '1.3.6.1.2.1.43.10.2.1.4.1.1'
     }
 
-    # 631 (IPP) alone is not enough - PCs and NAS boxes also use it. Require
-    # printer-MIB answers in that case.
-    $looksPrinter = $isRaw -or ($serial) -or ($hrDescr -and $pages)
-
-    if ($looksPrinter) {
-        $text = "$hrDescr $sysDescr"
-        $brand = Find-Brand $text
-        $model = $hrDescr
-        if (-not $model -and $sysDescr -match 'PID:([^,;]+)') { $model = $Matches[1].Trim() }
-        if (-not $model -and $sysDescr) { $model = $sysDescr; if ($model.Length -gt 60) { $model = $model.Substring(0, 60) } }
-        if ($brand -and $model -and $model.ToLower().StartsWith($brand.ToLower() + ' ')) { $model = $model.Substring($brand.Length + 1).Trim() }
-
-        $hostName = $sysName
-        if (-not $hostName) {
-            try { $hostName = ([System.Net.Dns]::GetHostEntry($ip)).HostName } catch { $hostName = '' }
-        }
-
-        $item = [ordered]@{
-            ip         = $ip
-            mac        = [string]$arp[$ip]
-            hostname   = [string]$hostName
-            brand      = [string]$brand
-            model      = [string]$model
-            serial     = [string]$serial
-            pageCount  = [string]$pages
-            ports      = ($open -join ',')
-        }
-        [void]$found.Add($item)
+    # Printers belong to the Printer Agent.
+    $isPrinter = ($open -contains 9100) -or ($open -contains 515) -or ($open -contains 631) -or ($serial) -or ($hrDescr -and $pages)
+    if ($isPrinter) {
+        Log ("  host {0} ports={1} -> printer / print server (skipped - Printer Agent handles it)" -f $ip, ($open -join ','))
         continue
     }
 
@@ -596,58 +560,25 @@ foreach ($ip in $candidates) {
     })
 }
 
-Log "Scan finished - $($found.Count) printer(s), $($netFound.Count) network device(s) found"
+Log "Scan finished - $($netFound.Count) network device(s) found"
 $typeCount = @{}
 foreach ($nf in $netFound) { $typeCount[[string]$nf.category] = 1 + [int]$typeCount[[string]$nf.category] }
 Log ("  network device types: " + ((@($typeCount.Keys | Sort-Object | ForEach-Object { "$($typeCount[$_]) $_" })) -join ', '))
 
 if (-not $Silent) {
     Write-Host ''
-    if ($found.Count -eq 0) {
-        Write-Host ' No printers found. Make sure this PC is on the same network as the printers.' -ForegroundColor Yellow
-    } else {
-        Write-Host " Found $($found.Count) network printer(s):" -ForegroundColor Green
-        foreach ($f in $found) {
-            Write-Host ('   {0,-15} {1,-17} {2} {3}  {4}' -f $f.ip, $f.mac, $f.brand, $f.model, $(if ($f.serial) { "SN:$($f.serial)" } else { '' }))
-        }
-    }
     if ($netFound.Count -eq 0) {
         Write-Host ' No switches / WiFi / NVR / cameras recognised.' -ForegroundColor Yellow
     } else {
-        Write-Host " Found $($netFound.Count) network device(s) (switch / WiFi / NVR / camera):" -ForegroundColor Green
+        Write-Host " Found $($netFound.Count) network device(s):" -ForegroundColor Green
         foreach ($f in $netFound) {
-            Write-Host ('   {0,-15} {1,-17} {2,-15} {3} {4}' -f $f.ip, $f.mac, $f.category, $f.brand, $f.model)
+            Write-Host ('   {0,-15} {1,-17} {2,-20} {3} {4}' -f $f.ip, $f.mac, $f.category, $f.brand, $f.model)
         }
     }
     Write-Host ''
 }
 
 # ------------------------------------------------------------------ send ---
-$body = [ordered]@{
-    key         = $agentKey
-    scannedFrom = $env:COMPUTERNAME
-    subnets     = ($prefixes -join ', ')
-    printers    = @($found)
-}
-$json = ConvertTo-Json -InputObject $body -Depth 5
-$bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
-
-try {
-    $resp = Invoke-RestMethod -Uri $serverUrl -Method Post -Body $bytes -ContentType 'application/json; charset=utf-8' -TimeoutSec 90
-    if ($resp.ok -eq $true) {
-        Log "OK - sent to website: $($resp.added) new, $($resp.updated) updated"
-        if (-not $Silent) { Write-Host " DONE - website updated: $($resp.added) new printer(s), $($resp.updated) refreshed." -ForegroundColor Green
-                            Write-Host ' Open Asset Stock in the IT Tool to assign each printer to an employee.' }
-    } else {
-        Log "Server rejected: $($resp | ConvertTo-Json -Compress)"
-        if (-not $Silent) { Write-Host ' Server rejected the request.' -ForegroundColor Yellow }
-    }
-} catch {
-    Log "FAILED to send - $_"
-    if (-not $Silent) { Write-Host " FAILED to send to the website - check internet. Error: $_" -ForegroundColor Red }
-}
-
-# network devices (switch / WiFi / NVR / camera) -> Asset Stock "Network Devices" tab
 $body2 = [ordered]@{
     key         = $agentKey
     scannedFrom = $env:COMPUTERNAME
@@ -662,10 +593,11 @@ try {
         if (-not $Silent) { Write-Host " DONE - network devices updated: $($resp2.added) new, $($resp2.updated) refreshed (Asset Stock -> Network Devices tab)." -ForegroundColor Green }
     } else {
         Log "Server rejected network devices: $($resp2 | ConvertTo-Json -Compress)"
+        if (-not $Silent) { Write-Host ' Server rejected the request (wrong or old key? download this agent again from the website).' -ForegroundColor Yellow }
     }
 } catch {
     Log "FAILED to send network devices - $_"
-    if (-not $Silent) { Write-Host " FAILED to send network devices. Error: $_" -ForegroundColor Red }
+    if (-not $Silent) { Write-Host " FAILED to send network devices - check internet / key. Error: $_" -ForegroundColor Red }
 }
 
 if (-not $Silent) {

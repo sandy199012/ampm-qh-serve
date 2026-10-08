@@ -93,6 +93,17 @@ public class EndpointsController : Controller
             System.Security.Cryptography.SHA256.HashData(a), System.Security.Cryptography.SHA256.HashData(b));
     }
 
+    // PC Agent download (zip with the current key inside) - same package as on the
+    // Asset Stock "Agents" page, offered here too for people who only have Endpoints access.
+    [HttpGet("/Endpoints/PcAgentDownload")]
+    public IActionResult PcAgentDownload([FromServices] IWebHostEnvironment env)
+    {
+        var pkg = AgentPackage.Build(env, "pc", AgentKey);
+        if (pkg == null) return NotFound("Agent files are not deployed on the server yet.");
+        Response.Headers["Cache-Control"] = "no-store";
+        return File(pkg.Value.Bytes, "application/zip", pkg.Value.FileName);
+    }
+
     // Called by AMPM_PC_Agent.ps1/.bat — run once (or on a schedule) on any office
     // PC, it collects that PC's own hostname/IP/OS/CPU/RAM/disk and pushes it here,
     // so PC Inventory fills itself in instead of typing/CSV-importing every machine.
