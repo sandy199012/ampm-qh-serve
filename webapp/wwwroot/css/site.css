@@ -9,7 +9,10 @@ body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; font-size:
 
 /* Navbar */
 .navbar-brand { font-size: 16px; letter-spacing: .5px; }
-.navbar .nav-link { font-size: 13px; padding: 8px 12px !important; }
+.navbar .nav-link { font-size: 13px; padding: 8px 10px !important; white-space: nowrap; }
+.navbar-expand-xl .navbar-nav { flex-wrap: wrap; }
+@media (min-width: 1200px) and (max-width: 1699px) { .navbar-expand-xl .nav-link i { display: none; } .navbar .nav-link { padding: 8px 8px !important; } }
+main { min-width: 0; }
 .navbar .nav-link:hover { color: var(--cyan) !important; }
 
 /* Cards */
