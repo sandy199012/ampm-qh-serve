@@ -1,3 +1,4 @@
+@using System.Text.Json
 @{
     ViewData["Title"] = "Dashboard";
     var stats = (DashboardStats)ViewBag.Stats;
@@ -5,178 +6,244 @@
     var tickets = (List<Dictionary<string,object?>>)(ViewBag.RecentTickets ?? new List<Dictionary<string,object?>>());
     var lowStock = (List<Dictionary<string,object?>>)(ViewBag.LowStock ?? new List<Dictionary<string,object?>>());
     int pendingGoals = ViewBag.PendingGoals ?? 0;
-    int openTickets = stats.OpenTickets;
+    var charts = (DashCharts)(ViewBag.Charts ?? new DashCharts());
+    var chartJson = JsonSerializer.Serialize(charts, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 }
 
 <style>
-    .dash { --d-ink:#0F172A; --d-body:#334155; --d-muted:#64748B; --d-line:#E2E8F0; --d-soft:#F8FAFC;
-            --d-accent:#1D4ED8; --d-danger:#B91C1C; --d-warn:#B45309; --d-ok:#15803D;
-            max-width:1500px; margin:0 auto; color:var(--d-body); }
+    .dash { --ink:#0F172A; --body:#334155; --muted:#64748B; --line:#E2E8F0; --soft:#F8FAFC;
+            max-width:1600px; margin:0 auto; color:var(--body); }
     .dash .tnum { font-variant-numeric:tabular-nums; }
+    body { background:#F1F5F9 !important; }
 
-    /* Page header */
-    .dash-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:12px;
-                 padding:4px 0 16px; margin-bottom:20px; border-bottom:1px solid var(--d-line); }
-    .dash-title { font-size:22px; font-weight:650; color:var(--d-ink); margin:0; letter-spacing:-.2px; }
-    .dash-sub { font-size:13px; color:var(--d-muted); margin:4px 0 0; }
-    .dash-sub .sep { margin:0 8px; color:#CBD5E1; }
-    .dash-meta { display:flex; align-items:center; gap:8px; }
-    .chip { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; letter-spacing:.6px;
-            text-transform:uppercase; padding:5px 10px; border-radius:6px; border:1px solid var(--d-line);
-            background:#fff; color:var(--d-body); }
-    .chip .dot { width:7px; height:7px; border-radius:50%; background:var(--d-ok); }
+    /* ---------- Hero ---------- */
+    .hero { position:relative; overflow:hidden; border-radius:16px; padding:26px 30px; margin-bottom:20px; color:#fff;
+            background:linear-gradient(120deg,#0B1F44 0%,#12337A 48%,#1D4ED8 100%);
+            box-shadow:0 8px 24px rgba(18,51,122,.25); }
+    .hero::before { content:""; position:absolute; right:-70px; top:-90px; width:300px; height:300px; border-radius:50%;
+                    background:radial-gradient(circle,rgba(56,189,248,.35),rgba(56,189,248,0) 70%); }
+    .hero::after  { content:""; position:absolute; right:230px; bottom:-120px; width:260px; height:260px; border-radius:50%;
+                    background:radial-gradient(circle,rgba(167,139,250,.30),rgba(167,139,250,0) 70%); }
+    .hero > * { position:relative; z-index:1; }
+    .hero-top { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-start; gap:14px; }
+    .hero h1 { font-size:24px; font-weight:700; margin:0 0 4px; letter-spacing:-.2px; }
+    .hero p  { margin:0; font-size:13px; color:#BFD3F5; }
+    .hero-tags { display:flex; gap:8px; flex-wrap:wrap; }
+    .htag { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600; letter-spacing:.6px; text-transform:uppercase;
+            padding:6px 11px; border-radius:999px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22); color:#fff; }
+    .htag .dot { width:7px; height:7px; border-radius:50%; background:#4ADE80; box-shadow:0 0 0 3px rgba(74,222,128,.25); }
+    .hero-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:22px; }
+    .hs { background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.16); border-radius:12px; padding:12px 16px; backdrop-filter:blur(4px); }
+    .hs .v { font-size:24px; font-weight:700; line-height:1.1; }
+    .hs .l { font-size:12px; color:#BFD3F5; margin-top:2px; }
+    .hs.is-hot .v { color:#FCA5A5; }
 
-    /* Section label */
-    .sec-label { font-size:11px; font-weight:600; letter-spacing:1px; text-transform:uppercase; color:var(--d-muted); margin:0 0 10px; }
+    /* ---------- KPI cards ---------- */
+    .sec-label { font-size:11px; font-weight:700; letter-spacing:1.1px; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
+    .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:22px; }
+    .kpi { position:relative; display:block; background:#fff; border-radius:14px; padding:18px 18px 14px; text-decoration:none; color:inherit;
+           border:1px solid var(--line); overflow:hidden; transition:transform .15s, box-shadow .15s; }
+    .kpi::before { content:""; position:absolute; left:0; top:0; right:0; height:4px; background:linear-gradient(90deg,var(--c1),var(--c2)); }
+    .kpi::after  { content:""; position:absolute; right:-30px; bottom:-40px; width:110px; height:110px; border-radius:50%;
+                   background:radial-gradient(circle,color-mix(in srgb,var(--c1) 14%,transparent),transparent 70%); }
+    .kpi:hover { transform:translateY(-2px); box-shadow:0 10px 22px rgba(15,23,42,.10); color:inherit; }
+    .kpi-row { display:flex; align-items:center; justify-content:space-between; gap:12px; position:relative; z-index:1; }
+    .kpi-label { font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; }
+    .kpi-value { font-size:30px; line-height:1; font-weight:700; color:var(--ink); }
+    .kpi-icon { flex:none; width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:21px;
+                background:linear-gradient(135deg,var(--c1),var(--c2)); box-shadow:0 6px 14px color-mix(in srgb,var(--c1) 35%,transparent); }
+    .kpi-foot { position:relative; z-index:1; margin-top:12px; padding-top:10px; border-top:1px dashed var(--line);
+                font-size:12px; font-weight:600; color:var(--c1); display:flex; justify-content:space-between; align-items:center; }
+    .kpi-foot .note { font-weight:500; color:var(--muted); }
 
-    /* KPI cards */
-    .kpi-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:24px; }
-    .kpi { display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff;
-           border:1px solid var(--d-line); border-radius:10px; padding:16px 18px; text-decoration:none; color:inherit;
-           transition:border-color .15s, box-shadow .15s; }
-    .kpi:hover { border-color:#94A3B8; box-shadow:0 2px 8px rgba(15,23,42,.06); color:inherit; }
-    .kpi-label { font-size:12px; font-weight:500; color:var(--d-muted); margin-bottom:6px; }
-    .kpi-value { font-size:28px; line-height:1; font-weight:650; color:var(--d-ink); }
-    .kpi-value.is-danger { color:var(--d-danger); }
-    .kpi-value.is-warn { color:var(--d-warn); }
-    .kpi-icon { flex:none; width:40px; height:40px; border-radius:9px; display:flex; align-items:center; justify-content:center;
-                background:#EFF6FF; color:var(--d-accent); font-size:18px; }
-    .kpi-icon.is-danger { background:#FEF2F2; color:var(--d-danger); }
-    .kpi-icon.is-warn { background:#FFFBEB; color:var(--d-warn); }
+    /* ---------- Quick actions ---------- */
+    .qa { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:22px; }
+    .qa a { display:inline-flex; align-items:center; gap:8px; font-size:13px; font-weight:600; text-decoration:none; color:var(--ink);
+            background:#fff; border:1px solid var(--line); border-radius:10px; padding:8px 14px 8px 8px; transition:transform .15s, box-shadow .15s, border-color .15s; }
+    .qa a .qi { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px;
+                background:linear-gradient(135deg,var(--c1),var(--c2)); }
+    .qa a:hover { transform:translateY(-1px); border-color:var(--c1); box-shadow:0 6px 14px rgba(15,23,42,.08); }
 
-    /* Quick actions */
-    .qa { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:24px; }
-    .qa a { display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:500; color:var(--d-ink);
-            background:#fff; border:1px solid var(--d-line); border-radius:8px; padding:7px 13px; text-decoration:none;
-            transition:background .15s, border-color .15s; }
-    .qa a i { color:var(--d-accent); font-size:14px; }
-    .qa a:hover { background:var(--d-soft); border-color:#94A3B8; }
-
-    /* Panels */
-    .panel { background:#fff; border:1px solid var(--d-line); border-radius:10px; overflow:hidden; margin-bottom:16px; }
-    .panel-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 18px; border-bottom:1px solid var(--d-line); }
-    .panel-title { font-size:14px; font-weight:600; color:var(--d-ink); margin:0; display:flex; align-items:center; gap:8px; }
-    .panel-title i { color:var(--d-muted); font-size:15px; }
-    .panel-link { font-size:12px; font-weight:500; color:var(--d-accent); text-decoration:none; }
+    /* ---------- Panels ---------- */
+    .panel { background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden; height:100%; }
+    .panel-head { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 18px; border-bottom:1px solid var(--line); }
+    .panel-title { font-size:14px; font-weight:700; color:var(--ink); margin:0; display:flex; align-items:center; gap:9px; }
+    .panel-title .pi { width:26px; height:26px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; color:#fff; font-size:13px;
+                       background:linear-gradient(135deg,var(--c1),var(--c2)); }
+    .panel-sub { font-size:12px; color:var(--muted); font-weight:500; }
+    .panel-link { font-size:12px; font-weight:600; color:#1D4ED8; text-decoration:none; }
     .panel-link:hover { text-decoration:underline; }
-    .panel.is-alert-warn { border-top:3px solid #D97706; }
-    .panel.is-alert-danger { border-top:3px solid #DC2626; }
+    .panel-body { padding:14px 18px 16px; }
+    .chart-box { position:relative; height:250px; }
+    .chart-box.sm { height:230px; }
+    .chart-empty { height:100%; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; }
+    .stack { display:flex; flex-direction:column; gap:16px; height:100%; }
+    .stack .panel { height:auto; }
 
-    /* Tickets table */
+    /* ---------- Tickets table ---------- */
     .dtable { width:100%; border-collapse:collapse; font-size:13px; }
-    .dtable th { font-size:11px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--d-muted);
-                 background:var(--d-soft); padding:10px 18px; text-align:left; border-bottom:1px solid var(--d-line); white-space:nowrap; }
+    .dtable th { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); background:var(--soft);
+                 padding:10px 18px; text-align:left; border-bottom:1px solid var(--line); white-space:nowrap; }
     .dtable td { padding:11px 18px; border-bottom:1px solid #F1F5F9; vertical-align:middle; }
     .dtable tbody tr:last-child td { border-bottom:0; }
-    .dtable tbody tr:hover { background:var(--d-soft); }
-    .tid { white-space:nowrap; font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:12px; font-weight:600; color:var(--d-accent); }
+    .dtable tbody tr:hover { background:#F5F9FF; }
+    .tid { white-space:nowrap; font-family:ui-monospace,SFMono-Regular,Consolas,monospace; font-size:12px; font-weight:700; color:#1D4ED8; }
     .ttl { max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .pill { display:inline-block; font-size:11px; font-weight:600; padding:3px 9px; border-radius:999px; border:1px solid transparent; white-space:nowrap; }
-    .pill-danger { background:#FEF2F2; color:#B91C1C; border-color:#FECACA; }
-    .pill-warn   { background:#FFFBEB; color:#B45309; border-color:#FDE68A; }
-    .pill-info   { background:#EFF6FF; color:#1D4ED8; border-color:#BFDBFE; }
-    .pill-ok     { background:#F0FDF4; color:#15803D; border-color:#BBF7D0; }
+    .pill { display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; border:1px solid transparent; white-space:nowrap; }
+    .pill-danger { background:#FEE2E2; color:#B91C1C; border-color:#FECACA; }
+    .pill-warn   { background:#FFEDD5; color:#C2410C; border-color:#FED7AA; }
+    .pill-amber  { background:#FEF3C7; color:#92400E; border-color:#FDE68A; }
+    .pill-info   { background:#DBEAFE; color:#1D4ED8; border-color:#BFDBFE; }
+    .pill-ok     { background:#DCFCE7; color:#15803D; border-color:#BBF7D0; }
     .pill-mute   { background:#F1F5F9; color:#475569; border-color:#E2E8F0; }
-    .sdot { display:inline-flex; align-items:center; gap:7px; font-size:13px; white-space:nowrap; }
+    .sdot { display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:500; white-space:nowrap; }
     .sdot::before { content:""; width:8px; height:8px; border-radius:50%; background:#94A3B8; }
-    .sdot.s-danger::before { background:#DC2626; } .sdot.s-info::before { background:#2563EB; }
-    .sdot.s-ok::before { background:#16A34A; }
-    .view-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:7px;
-                border:1px solid var(--d-line); color:var(--d-muted); text-decoration:none; background:#fff; }
-    .view-btn:hover { color:var(--d-accent); border-color:var(--d-accent); background:#EFF6FF; }
-    .empty { text-align:center; color:var(--d-muted); padding:28px 12px; font-size:13px; }
+    .sdot.s-danger::before { background:#DC2626; } .sdot.s-info::before { background:#2563EB; } .sdot.s-ok::before { background:#16A34A; }
+    .view-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:1px solid var(--line);
+                color:var(--muted); text-decoration:none; background:#fff; }
+    .view-btn:hover { color:#fff; border-color:#1D4ED8; background:#1D4ED8; }
+    .empty { text-align:center; color:var(--muted); padding:28px 12px; font-size:13px; }
 
-    /* List rows (alerts) */
+    /* ---------- Alert / list rows ---------- */
     .lrow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 18px; border-bottom:1px solid #F1F5F9; font-size:13px; }
     .lrow:last-child { border-bottom:0; }
     .lrow .lbl { display:flex; align-items:center; gap:8px; min-width:0; }
-    .lrow .lbl i { color:var(--d-muted); }
-    .lfoot { padding:10px 18px; border-top:1px solid var(--d-line); background:var(--d-soft); }
-
-    /* System info */
+    .lrow .lbl i { color:var(--muted); }
+    .lfoot { padding:10px 18px; border-top:1px solid var(--line); background:var(--soft); }
     .info-list { margin:0; padding:4px 18px 8px; }
     .info-list div { padding:10px 0; border-bottom:1px solid #F1F5F9; }
     .info-list div:last-child { border-bottom:0; }
-    .info-list dt { font-size:11px; font-weight:600; letter-spacing:.6px; text-transform:uppercase; color:var(--d-muted); margin-bottom:2px; }
-    .info-list dd { margin:0; font-size:13px; font-weight:500; color:var(--d-ink); }
+    .info-list dt { font-size:11px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--muted); margin-bottom:2px; }
+    .info-list dd { margin:0; font-size:13px; font-weight:600; color:var(--ink); }
 
-    @@media (max-width: 1199px) { .kpi-grid { grid-template-columns:repeat(2, 1fr); } }
-    @@media (max-width: 575px) {
-        .kpi-grid { gap:10px; }
-        .kpi { padding:13px 14px; } .kpi-value { font-size:24px; } .kpi-icon { width:34px; height:34px; font-size:16px; }
+    @@media (max-width:1199px) { .kpi-grid { grid-template-columns:repeat(2,1fr); } .hero-strip { grid-template-columns:repeat(2,1fr); } }
+    @@media (max-width:575px) {
+        .hero { padding:20px 18px; } .hero h1 { font-size:20px; }
+        .kpi-grid { gap:10px; } .kpi { padding:14px 14px 10px; } .kpi-value { font-size:24px; } .kpi-icon { width:38px; height:38px; font-size:17px; }
         .dtable th, .dtable td { padding:9px 12px; }
-        .dash-title { font-size:19px; }
     }
 </style>
 
 @{
-    // tone: "" (normal) | "danger" | "warn"
-    void Kpi(string icon, string label, int val, string url, string tone = "")
+    // c1/c2 = gradient colours for the module
+    void Kpi(string icon, string label, int val, string url, string c1, string c2, string note)
     {
-        var cls = tone == "" ? "" : " is-" + tone;
-        <a href="@url" class="kpi">
-            <div>
-                <div class="kpi-label">@label</div>
-                <div class="kpi-value tnum@(cls)">@val</div>
+        <a href="@url" class="kpi" style="--c1:@c1;--c2:@c2">
+            <div class="kpi-row">
+                <div>
+                    <div class="kpi-label">@label</div>
+                    <div class="kpi-value tnum">@val</div>
+                </div>
+                <div class="kpi-icon"><i class="bi @icon"></i></div>
             </div>
-            <div class="kpi-icon@(cls)"><i class="bi @icon"></i></div>
+            <div class="kpi-foot"><span class="note">@note</span><span>View &rarr;</span></div>
         </a>;
     }
-    void Act(string icon, string label, string url)
+    void Act(string icon, string label, string url, string c1, string c2)
     {
-        <a href="@url"><i class="bi @icon"></i> @label</a>;
+        <a href="@url" style="--c1:@c1;--c2:@c2"><span class="qi"><i class="bi @icon"></i></span> @label</a>;
     }
 }
 
 <div class="dash">
 
-    <!-- Page header -->
-    <div class="dash-head">
-        <div>
-            <h1 class="dash-title">Dashboard</h1>
-            <p class="dash-sub">
-                Welcome back, @user.Name<span class="sep">|</span>AMPM Fashions Pvt Ltd &mdash; IT Department<span class="sep">|</span>@IstTime.Now.ToString("dddd, dd MMMM yyyy")
-            </p>
+    <!-- Hero -->
+    <div class="hero">
+        <div class="hero-top">
+            <div>
+                <h1>Welcome back, @user.Name</h1>
+                <p>AMPM Fashions Pvt Ltd &mdash; IT Department &nbsp;&bull;&nbsp; @IstTime.Now.ToString("dddd, dd MMMM yyyy")</p>
+            </div>
+            <div class="hero-tags">
+                <span class="htag"><span class="dot"></span> Live</span>
+                <span class="htag"><i class="bi bi-person-badge"></i> @user.Role</span>
+            </div>
         </div>
-        <div class="dash-meta">
-            <span class="chip"><span class="dot"></span> Live</span>
-            <span class="chip">@user.Role</span>
+        <div class="hero-strip">
+            <div class="hs @(stats.OpenTickets > 0 ? "is-hot" : "")"><div class="v tnum">@stats.OpenTickets</div><div class="l">Open tickets</div></div>
+            <div class="hs @(charts.CriticalOpen > 0 ? "is-hot" : "")"><div class="v tnum">@charts.CriticalOpen</div><div class="l">Critical &amp; unresolved</div></div>
+            <div class="hs"><div class="v tnum">@charts.RaisedToday</div><div class="l">Raised today</div></div>
+            <div class="hs"><div class="v tnum">@charts.ResolvedCount</div><div class="l">Resolved / closed</div></div>
         </div>
     </div>
 
     <!-- Key metrics -->
     <div class="sec-label">Overview</div>
     <div class="kpi-grid">
-        @{ Kpi("bi-people-fill",          "Employees",         stats.TotalEmployees,   "/Employees/Index"); }
-        @{ Kpi("bi-headset",              "Open Tickets",      openTickets,            "/Helpdesk/Index?status=Open", openTickets > 0 ? "danger" : ""); }
-        @{ Kpi("bi-file-earmark-text",    "Purchase Orders",   stats.TotalPOs,         "/PurchaseOrders/Index"); }
-        @{ Kpi("bi-pc-display",           "Assets",            stats.TotalAssets,      "/Assets/Index"); }
-        @{ Kpi("bi-box-seam",             "IT Store Items",    stats.TotalStockItems,  "/ITStore/Index"); }
-        @{ Kpi("bi-bullseye",             "Pending Goals",     pendingGoals,           "/Goals/Index"); }
-        @{ Kpi("bi-key",                  "Expiring Licenses", stats.ExpiringLicenses, "/Licenses/Index", stats.ExpiringLicenses > 0 ? "danger" : ""); }
-        @{ Kpi("bi-lightning-charge",     "Bills Due",         stats.BillsDue,         "/Bills/Index", stats.BillsDue > 0 ? "warn" : ""); }
+        @{ Kpi("bi-people-fill",       "Employees",         stats.TotalEmployees,   "/Employees/Index",              "#2563EB", "#60A5FA", "Total on record"); }
+        @{ Kpi("bi-headset",           "Open Tickets",      stats.OpenTickets,      "/Helpdesk/Index?status=Open",   "#E11D48", "#FB7185", "Needs attention"); }
+        @{ Kpi("bi-file-earmark-text", "Purchase Orders",   stats.TotalPOs,         "/PurchaseOrders/Index",         "#059669", "#34D399", "All orders"); }
+        @{ Kpi("bi-pc-display",        "Assets",            stats.TotalAssets,      "/Assets/Index",                 "#7C3AED", "#A78BFA", "Tracked devices"); }
+        @{ Kpi("bi-box-seam",          "IT Store Items",    stats.TotalStockItems,  "/ITStore/Index",                "#D97706", "#FBBF24", "In inventory"); }
+        @{ Kpi("bi-bullseye",          "Pending Goals",     pendingGoals,           "/Goals/Index",                  "#0891B2", "#22D3EE", "In progress"); }
+        @{ Kpi("bi-key",               "Expiring Licenses", stats.ExpiringLicenses, "/Licenses/Index",               "#DB2777", "#F472B6", "Renew soon"); }
+        @{ Kpi("bi-lightning-charge",  "Bills Due",         stats.BillsDue,         "/Bills/Index",                  "#EA580C", "#FB923C", "Pending / overdue"); }
+    </div>
+
+    <!-- Charts -->
+    <div class="sec-label">Analytics</div>
+    <div class="row g-3 mb-3">
+        <div class="col-xl-4 col-md-6">
+            <div class="panel" style="--c1:#E11D48;--c2:#FB7185">
+                <div class="panel-head"><h2 class="panel-title"><span class="pi"><i class="bi bi-pie-chart-fill"></i></span> Tickets by Status</h2></div>
+                <div class="panel-body"><div class="chart-box"><canvas id="chStatus" aria-label="Tickets by status"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-xl-8 col-md-6">
+            <div class="panel" style="--c1:#2563EB;--c2:#60A5FA">
+                <div class="panel-head">
+                    <h2 class="panel-title"><span class="pi"><i class="bi bi-graph-up"></i></span> Tickets Raised &mdash; Last 7 Days</h2>
+                    <span class="panel-sub">@charts.DayValues.Sum() total</span>
+                </div>
+                <div class="panel-body"><div class="chart-box"><canvas id="chTrend" aria-label="Tickets raised per day"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="panel" style="--c1:#EA580C;--c2:#FB923C">
+                <div class="panel-head"><h2 class="panel-title"><span class="pi"><i class="bi bi-flag-fill"></i></span> Tickets by Priority</h2></div>
+                <div class="panel-body"><div class="chart-box sm"><canvas id="chPriority" aria-label="Tickets by priority"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-6">
+            <div class="panel" style="--c1:#7C3AED;--c2:#A78BFA">
+                <div class="panel-head">
+                    <h2 class="panel-title"><span class="pi"><i class="bi bi-pc-display"></i></span> Assets by Type</h2>
+                    <a href="/Assets/Index" class="panel-link">Open &rarr;</a>
+                </div>
+                <div class="panel-body"><div class="chart-box sm"><canvas id="chAssets" aria-label="Assets by type"></canvas></div></div>
+            </div>
+        </div>
+        <div class="col-xl-4 col-md-12">
+            <div class="panel" style="--c1:#059669;--c2:#34D399">
+                <div class="panel-head">
+                    <h2 class="panel-title"><span class="pi"><i class="bi bi-file-earmark-text"></i></span> Purchase Orders by Status</h2>
+                    <span class="panel-sub" id="poTotal"></span>
+                </div>
+                <div class="panel-body"><div class="chart-box sm"><canvas id="chPO" aria-label="Purchase orders by status"></canvas></div></div>
+            </div>
+        </div>
     </div>
 
     <!-- Quick actions -->
     <div class="sec-label">Quick actions</div>
     <div class="qa">
-        @{ Act("bi-plus-circle",        "New Ticket",   "/Helpdesk/Create"); }
-        @{ Act("bi-file-earmark-plus",  "New PO",       "/PurchaseOrders/Create"); }
-        @{ Act("bi-person-plus",        "Add Employee", "/Employees/Create"); }
-        @{ Act("bi-pc-display",         "Add Asset",    "/Assets/Create"); }
-        @{ Act("bi-box-seam",           "Add Stock",    "/ITStore/AddItem"); }
-        @{ Act("bi-bullseye",           "Add Goal",     "/Goals/Create"); }
-        @{ Act("bi-shop",               "Add Vendor",   "/Vendors/Create"); }
-        @{ Act("bi-key",                "Add License",  "/Licenses/Create"); }
-        @{ Act("bi-lightning-charge",   "Add Bill",     "/Bills/Create"); }
+        @{ Act("bi-plus-circle",       "New Ticket",   "/Helpdesk/Create",       "#E11D48", "#FB7185"); }
+        @{ Act("bi-file-earmark-plus", "New PO",       "/PurchaseOrders/Create", "#059669", "#34D399"); }
+        @{ Act("bi-person-plus",       "Add Employee", "/Employees/Create",      "#2563EB", "#60A5FA"); }
+        @{ Act("bi-pc-display",        "Add Asset",    "/Assets/Create",         "#7C3AED", "#A78BFA"); }
+        @{ Act("bi-box-seam",          "Add Stock",    "/ITStore/AddItem",       "#D97706", "#FBBF24"); }
+        @{ Act("bi-bullseye",          "Add Goal",     "/Goals/Create",          "#0891B2", "#22D3EE"); }
+        @{ Act("bi-shop",              "Add Vendor",   "/Vendors/Create",        "#475569", "#94A3B8"); }
+        @{ Act("bi-key",               "Add License",  "/Licenses/Create",       "#DB2777", "#F472B6"); }
+        @{ Act("bi-lightning-charge",  "Add Bill",     "/Bills/Create",          "#EA580C", "#FB923C"); }
     </div>
 
     <div class="row g-3">
         <!-- Recent Tickets -->
         <div class="col-lg-8">
-            <div class="panel">
+            <div class="panel" style="--c1:#E11D48;--c2:#FB7185">
                 <div class="panel-head">
-                    <h2 class="panel-title"><i class="bi bi-ticket-perforated"></i> Recent Tickets</h2>
+                    <h2 class="panel-title"><span class="pi"><i class="bi bi-ticket-perforated"></i></span> Recent Tickets</h2>
                     <a href="/Helpdesk/Index" class="panel-link">View all &rarr;</a>
                 </div>
                 <div class="table-responsive">
@@ -191,7 +258,7 @@
                             var s = t.GetValueOrDefault("status")?.ToString() ?? "Open";
                             var p = t.GetValueOrDefault("priority")?.ToString() ?? "";
                             var sCls = s == "Open" ? "s-danger" : s == "In Progress" ? "s-info" : s == "Resolved" ? "s-ok" : "";
-                            var pCls = p == "Critical" ? "pill-danger" : p == "High" ? "pill-warn" : p == "Medium" ? "pill-info" : "pill-mute";
+                            var pCls = p == "Critical" ? "pill-danger" : p == "High" ? "pill-warn" : p == "Medium" ? "pill-amber" : p == "Low" ? "pill-ok" : "pill-mute";
                             var tid = t.GetValueOrDefault("ticketId")?.ToString() ?? "";
                             <tr>
                                 <td class="tid">@tid</td>
@@ -210,11 +277,12 @@
 
         <!-- Right panel -->
         <div class="col-lg-4">
+            <div class="stack">
             @if (lowStock.Any())
             {
-            <div class="panel is-alert-warn">
+            <div class="panel" style="--c1:#D97706;--c2:#FBBF24">
                 <div class="panel-head">
-                    <h2 class="panel-title"><i class="bi bi-exclamation-triangle"></i> Low Stock Alert</h2>
+                    <h2 class="panel-title"><span class="pi"><i class="bi bi-exclamation-triangle-fill"></i></span> Low Stock Alert</h2>
                 </div>
                 @foreach (var item in lowStock.Take(5))
                 {
@@ -223,7 +291,7 @@
                     int bal = tq - iq;
                     <div class="lrow">
                         <span class="lbl">@item.GetValueOrDefault("name")</span>
-                        <span class="pill @(bal <= 0 ? "pill-danger" : "pill-warn") tnum">@bal left</span>
+                        <span class="pill @(bal <= 0 ? "pill-danger" : "pill-amber") tnum">@bal left</span>
                     </div>
                 }
                 <div class="lfoot"><a href="/ITStore/Index" class="panel-link">View IT Store &rarr;</a></div>
@@ -232,9 +300,9 @@
 
             @if (stats.ExpiringLicenses > 0 || stats.BillsDue > 0)
             {
-            <div class="panel is-alert-danger">
+            <div class="panel" style="--c1:#DB2777;--c2:#F472B6">
                 <div class="panel-head">
-                    <h2 class="panel-title"><i class="bi bi-bell"></i> Renewals &amp; Dues</h2>
+                    <h2 class="panel-title"><span class="pi"><i class="bi bi-bell-fill"></i></span> Renewals &amp; Dues</h2>
                 </div>
                 @if (stats.ExpiringLicenses > 0)
                 {
@@ -254,9 +322,9 @@
             }
 
             <!-- System Info -->
-            <div class="panel">
+            <div class="panel" style="--c1:#0891B2;--c2:#22D3EE">
                 <div class="panel-head">
-                    <h2 class="panel-title"><i class="bi bi-info-circle"></i> System Info</h2>
+                    <h2 class="panel-title"><span class="pi"><i class="bi bi-info-circle-fill"></i></span> System Info</h2>
                 </div>
                 <dl class="info-list">
                     <div><dt>Company</dt><dd>AMPM Fashions Pvt. Ltd.</dd></div>
@@ -266,6 +334,129 @@
                     <div><dt>Server</dt><dd><span class="pill pill-ok">Live &mdash; Supabase + Render</span></dd></div>
                 </dl>
             </div>
+            </div>
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+    var D = @Html.Raw(chartJson);
+    var ink = '#0F172A', muted = '#64748B', grid = '#EEF2F7';
+    var sum = function (a) { return a.reduce(function (x, y) { return x + y; }, 0); };
+
+    // PO total (rupees, Indian grouping) - plain text, works even if charts fail to load
+    var poEl = document.getElementById('poTotal');
+    if (poEl && D.poTotal > 0) poEl.textContent = '₹ ' + Math.round(D.poTotal).toLocaleString('en-IN') + ' total';
+
+    function empty(id, msg) {
+        var c = document.getElementById(id); if (!c) return;
+        c.parentNode.innerHTML = '<div class="chart-empty">' + msg + '</div>';
+    }
+    if (typeof Chart === 'undefined') {
+        ['chStatus','chTrend','chPriority','chAssets','chPO'].forEach(function (i) { empty(i, 'Charts could not load (check internet)'); });
+        return;
+    }
+
+    Chart.defaults.font.family = "'Segoe UI', system-ui, -apple-system, sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = muted;
+    var tip = { backgroundColor: '#0F172A', titleColor: '#fff', bodyColor: '#E2E8F0', padding: 10, cornerRadius: 8, displayColors: true, boxPadding: 4 };
+    var legend = { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8, padding: 14, color: '#334155' } };
+
+    // legend text with counts, so identity is never colour-alone
+    function legendWithCounts(labels, values) {
+        return Object.assign({}, legend, { labels: Object.assign({}, legend.labels, {
+            generateLabels: function (chart) {
+                var ds = chart.data.datasets[0];
+                return chart.data.labels.map(function (l, i) {
+                    return { text: l + '  ' + values[i], fillStyle: ds.backgroundColor[i], strokeStyle: ds.backgroundColor[i],
+                             pointStyle: 'circle', hidden: !chart.getDataVisibility(i), index: i };
+                });
+            }
+        }) });
+    }
+
+    // doughnut with total in the centre
+    var centerText = {
+        id: 'centerText',
+        afterDraw: function (chart) {
+            var o = chart.options.plugins.centerText; if (!o) return;
+            var m = chart.getDatasetMeta(0).data[0]; if (!m) return;
+            var ctx = chart.ctx; ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillStyle = ink; ctx.font = '700 26px "Segoe UI", system-ui, sans-serif'; ctx.fillText(o.value, m.x, m.y - 6);
+            ctx.fillStyle = muted; ctx.font = '500 11px "Segoe UI", system-ui, sans-serif'; ctx.fillText(o.label, m.x, m.y + 14);
+            ctx.restore();
+        }
+    };
+    function doughnut(id, labels, values, colors, centreLabel) {
+        if (!labels.length || sum(values) === 0) return empty(id, 'No data yet');
+        new Chart(document.getElementById(id), {
+            type: 'doughnut', plugins: [centerText],
+            data: { labels: labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#fff', borderWidth: 2, hoverOffset: 6 }] },
+            options: { maintainAspectRatio: false, cutout: '68%',
+                plugins: { legend: legendWithCounts(labels, values), tooltip: tip, centerText: { value: String(sum(values)), label: centreLabel } } }
+        });
+    }
+
+    // 1) Tickets by status - semantic colours (open=red, in progress=blue, resolved=green, closed=grey)
+    var stColor = { 'Open': '#E11D48', 'In Progress': '#2563EB', 'Resolved': '#16A34A', 'Closed': '#94A3B8', 'Other': '#CBD5E1' };
+    doughnut('chStatus', D.statusLabels, D.statusValues, D.statusLabels.map(function (l) { return stColor[l] || '#CBD5E1'; }), 'tickets');
+
+    // 2) Tickets raised, last 7 days - area line
+    if (sum(D.dayValues) === 0 && !D.dayLabels.length) { empty('chTrend', 'No data yet'); }
+    else {
+        var tc = document.getElementById('chTrend').getContext('2d');
+        var g = tc.createLinearGradient(0, 0, 0, 250); g.addColorStop(0, 'rgba(37,99,235,.28)'); g.addColorStop(1, 'rgba(37,99,235,0)');
+        new Chart(tc, {
+            type: 'line',
+            data: { labels: D.dayLabels, datasets: [{ label: 'Tickets raised', data: D.dayValues, borderColor: '#2563EB', backgroundColor: g, fill: true,
+                    tension: .35, borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 6, pointBackgroundColor: '#fff', pointBorderColor: '#2563EB', pointBorderWidth: 2 }] },
+            options: { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { display: false }, tooltip: tip },
+                scales: { x: { grid: { display: false }, border: { display: false } },
+                          y: { beginAtZero: true, ticks: { precision: 0, stepSize: 1 }, grid: { color: grid }, border: { display: false } } } }
+        });
+    }
+
+    // 3) Priority - horizontal bars, severity colours with value labels
+    var prColor = { 'Critical': '#E11D48', 'High': '#EA580C', 'Medium': '#EAB308', 'Low': '#16A34A' };
+    if (sum(D.priorityValues) === 0) empty('chPriority', 'No data yet');
+    else new Chart(document.getElementById('chPriority'), {
+        type: 'bar',
+        data: { labels: D.priorityLabels, datasets: [{ data: D.priorityValues, backgroundColor: D.priorityLabels.map(function (l) { return prColor[l]; }),
+                borderRadius: 6, borderSkipped: false, barThickness: 22 }] },
+        options: { indexAxis: 'y', maintainAspectRatio: false, layout: { padding: { right: 28 } },
+            plugins: { legend: { display: false }, tooltip: tip },
+            scales: { x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: grid }, border: { display: false } },
+                      y: { grid: { display: false }, border: { display: false }, ticks: { color: '#334155', font: { weight: 600 } } } } },
+        plugins: [{ id: 'valLabels', afterDatasetsDraw: function (c) {
+            var ctx = c.ctx; ctx.save(); ctx.fillStyle = ink; ctx.font = '700 12px "Segoe UI", sans-serif'; ctx.textBaseline = 'middle';
+            c.getDatasetMeta(0).data.forEach(function (b, i) { ctx.fillText(D.priorityValues[i], b.x + 8, b.y); }); ctx.restore(); } }]
+    });
+
+    // 4) Assets by type - categorical palette in fixed order, "Other" grey
+    var cat = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#94A3B8'];
+    doughnut('chAssets', D.assetLabels, D.assetValues, D.assetLabels.map(function (l, i) { return l === 'Other' ? '#94A3B8' : cat[i % 6]; }), 'assets');
+
+    // 5) Purchase orders by status
+    var poColor = { 'Draft': '#94A3B8', 'Pending': '#EAB308', 'Submitted': '#2563EB', 'Approved': '#16A34A', 'Received': '#0891B2', 'Rejected': '#E11D48', 'Cancelled': '#E11D48' };
+    var poFallback = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300'];
+    if (sum(D.poValues) === 0) empty('chPO', 'No data yet');
+    else new Chart(document.getElementById('chPO'), {
+        type: 'bar',
+        data: { labels: D.poLabels, datasets: [{ data: D.poValues, backgroundColor: D.poLabels.map(function (l, i) { return poColor[l] || poFallback[i % 6]; }),
+                borderRadius: 6, borderSkipped: false, maxBarThickness: 44 }] },
+        options: { maintainAspectRatio: false, layout: { padding: { top: 20 } },
+            plugins: { legend: { display: false }, tooltip: tip },
+            scales: { x: { grid: { display: false }, border: { display: false }, ticks: { color: '#334155', font: { weight: 600 } } },
+                      y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: grid }, border: { display: false } } } },
+        plugins: [{ id: 'valLabels', afterDatasetsDraw: function (c) {
+            var ctx = c.ctx; ctx.save(); ctx.fillStyle = ink; ctx.font = '700 12px "Segoe UI", sans-serif'; ctx.textAlign = 'center';
+            c.getDatasetMeta(0).data.forEach(function (b, i) { ctx.fillText(D.poValues[i], b.x, b.y - 6); }); ctx.restore(); } }]
+    });
+})();
+</script>
+}
