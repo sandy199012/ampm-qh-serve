@@ -327,32 +327,130 @@ table.kv td.v{color:#0F172A}
         return Content(sb.ToString(), "text/html");
     }
 
+    // ONE Excel file with three sheets: IT Assets (PCs, laptops, monitors, ...),
+    // Printers, and Network Devices (switch / WiFi / NVR / camera / other).
+    // Written as a genuine SpreadsheetML workbook (same approach as the Todo
+    // report) because that has reliable multi-sheet support in Excel.
     [HttpGet("/Assets/Export")]
     public IActionResult Export()
     {
-        var assets = _db.GetAssets();
+        var all = _db.GetAssets();
+        static string V(Dictionary<string,object?> a, string k) => a.GetValueOrDefault(k)?.ToString()?.Trim() ?? "";
+        static string TypeOf(Dictionary<string,object?> a) => V(a, "assetType");
+
+        var pcs      = all.Where(a => TypeOf(a) != "Printer" && !AssetTags.IsNetworkType(TypeOf(a))).OrderBy(a => V(a, "assetTag"), StringComparer.OrdinalIgnoreCase).ToList();
+        var printers = all.Where(a => TypeOf(a) == "Printer").OrderBy(a => V(a, "assetTag"), StringComparer.OrdinalIgnoreCase).ToList();
+        var netOrder = AssetTags.NetworkTypes.ToList();
+        var nets     = all.Where(a => AssetTags.IsNetworkType(TypeOf(a)))
+                          .OrderBy(a => { var i = netOrder.IndexOf(TypeOf(a)); return i < 0 ? 99 : i; })
+                          .ThenBy(a => V(a, "assetTag"), StringComparer.OrdinalIgnoreCase).ToList();
+
+        string Assigned(Dictionary<string,object?> a) => V(a, "assignedToName") is { Length: > 0 } n ? n : "Unassigned";
+
+        // ---- sheet 1: IT assets ----
+        var pcHeads = new[] { "#", "Asset Tag", "Type", "Hostname", "Brand", "Model", "Serial Number", "MAC Address", "IP Address", "OS", "OS Build", "Architecture", "CPU", "RAM (GB)", "Disk Free", "Storage (Total)", "Condition", "Assigned To", "Emp Code", "Department", "Assigned Date", "Location", "Last Seen", "Source" };
+        var pcW = new[] { 28, 70, 70, 95, 70, 110, 100, 100, 85, 120, 90, 70, 150, 55, 60, 70, 65, 120, 65, 110, 80, 95, 100, 80 };
+        var pcRows = new List<string[]>();
+        foreach (var a in pcs)
+            pcRows.Add(new[] { (pcRows.Count + 1).ToString(), V(a,"assetTag"), TypeOf(a), V(a,"hostname"), V(a,"brand"), V(a,"model"), V(a,"serial"), V(a,"mac"), V(a,"ip"), V(a,"os"), V(a,"osBuild"), V(a,"arch"), V(a,"processor"), V(a,"ram"), V(a,"diskFree"), V(a,"storage"), V(a,"condition"), Assigned(a), V(a,"assignedToEmp"), V(a,"assignedToDept"), V(a,"assignedDate"), V(a,"location"), V(a,"lastSeen"), V(a,"source") });
+
+        // ---- sheet 2: printers ----
+        var prHeads = new[] { "#", "Asset Tag", "Brand", "Model", "Serial Number", "Printer Type", "Connection", "IP Address", "MAC Address", "Hostname", "Connected PC (USB)", "Printer Name (USB)", "USB Port", "USB Status", "Toner / Cartridge", "Page Count", "Condition", "Assigned To", "Emp Code", "Department", "Location", "Last Seen", "Source" };
+        var prW = new[] { 28, 70, 70, 120, 100, 80, 85, 85, 100, 95, 100, 130, 60, 70, 100, 65, 65, 120, 65, 110, 95, 100, 80 };
+        var prRows = new List<string[]>();
+        foreach (var a in printers)
+            prRows.Add(new[] { (prRows.Count + 1).ToString(), V(a,"assetTag"), V(a,"brand"), V(a,"model"), V(a,"serial"), V(a,"printerType"), V(a,"connection"), V(a,"ip"), V(a,"mac"), V(a,"hostname"), V(a,"connectedPc"), V(a,"printerName"), V(a,"usbPort"), V(a,"usbStatus"), V(a,"tonerModel"), V(a,"pageCount"), V(a,"condition"), Assigned(a), V(a,"assignedToEmp"), V(a,"assignedToDept"), V(a,"location"), V(a,"lastSeen"), V(a,"source") });
+
+        // ---- sheet 3: network devices ----
+        var nwHeads = new[] { "#", "Asset Tag", "Type", "Brand", "Model", "Serial Number", "IP Address", "MAC Address", "Hostname", "Ports / Channels", "Open Ports", "Description", "Location", "Condition", "First Seen", "Last Seen", "Source" };
+        var nwW = new[] { 28, 70, 100, 85, 120, 100, 90, 105, 110, 70, 100, 200, 100, 65, 100, 100, 90 };
+        var nwRows = new List<string[]>();
+        foreach (var a in nets)
+            nwRows.Add(new[] { (nwRows.Count + 1).ToString(), V(a,"assetTag"), TypeOf(a), V(a,"brand"), V(a,"model"), V(a,"serial"), V(a,"ip"), V(a,"mac"), V(a,"hostname"), V(a,"portCount"), V(a,"openPorts"), V(a,"descr"), V(a,"location"), V(a,"condition"), V(a,"firstSeen"), V(a,"lastSeen"), V(a,"source") });
+
         var sb = new System.Text.StringBuilder();
-        sb.Append($@"<html><head><meta charset='UTF-8'><style>
-body{{font-family:Arial;font-size:11px}}table{{border-collapse:collapse;width:100%}}
-th{{background:#0A192F;color:white;padding:6px;text-align:center;font-size:10px;border:1px solid #1e3a5f}}
-td{{padding:5px;border:1px solid #CBD5E1;font-size:10px}}
-.hdr{{background:#0A192F;color:white;font-size:14px;font-weight:bold;padding:10px}}
-.green{{color:#059669;font-weight:bold}}.amber{{color:#D97706;font-weight:bold}}
-</style></head><body>
-<table style='margin-bottom:12px'><tr><td class='hdr'>AMPM FASHIONS PVT. LTD. — ASSET STOCK REPORT</td></tr>
-<tr><td style='padding:5px;font-size:10px'>Generated: {IstTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha</td></tr></table>
-<table><thead><tr><th>#</th><th>Asset Tag</th><th>Type</th><th>Hostname</th><th>Brand</th><th>Model</th><th>Serial Number</th><th>MAC Address</th><th>IP Address</th><th>OS</th><th>OS Build</th><th>Architecture</th><th>CPU</th><th>RAM (GB)</th><th>Disk Free</th><th>Storage (Total)</th><th>Condition</th><th>Assigned To</th><th>Emp Code</th><th>Department</th><th>Assigned Date</th><th>Location</th><th>Last Seen</th><th>Printer Type</th><th>Connection</th><th>Toner / Cartridge</th><th>Page Count</th><th>Source</th></tr></thead><tbody>");
-        int sno = 0;
-        foreach (var a in assets)
-        {
-            sno++;
-            bool assigned = !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToName")?.ToString());
-            string cls = assigned ? "green" : "amber";
-            sb.Append($"<tr><td style='text-align:center'>{sno}</td><td><b>{a.GetValueOrDefault("assetTag")}</b></td><td>{a.GetValueOrDefault("assetType")}</td><td>{a.GetValueOrDefault("hostname")}</td><td>{a.GetValueOrDefault("brand")}</td><td>{a.GetValueOrDefault("model")}</td><td>{a.GetValueOrDefault("serial")}</td><td>{a.GetValueOrDefault("mac")}</td><td>{a.GetValueOrDefault("ip")}</td><td>{a.GetValueOrDefault("os")}</td><td>{a.GetValueOrDefault("osBuild")}</td><td>{a.GetValueOrDefault("arch")}</td><td>{a.GetValueOrDefault("processor")}</td><td>{a.GetValueOrDefault("ram")}</td><td>{a.GetValueOrDefault("diskFree")}</td><td>{a.GetValueOrDefault("storage")}</td><td>{a.GetValueOrDefault("condition")}</td><td class='{cls}'>{(assigned ? a.GetValueOrDefault("assignedToName") : "Unassigned")}</td><td>{a.GetValueOrDefault("assignedToEmp")}</td><td>{a.GetValueOrDefault("assignedToDept")}</td><td>{a.GetValueOrDefault("assignedDate")}</td><td>{a.GetValueOrDefault("location")}</td><td>{a.GetValueOrDefault("lastSeen")}</td><td>{a.GetValueOrDefault("printerType")}</td><td>{a.GetValueOrDefault("connection")}</td><td>{a.GetValueOrDefault("tonerModel")}</td><td>{a.GetValueOrDefault("pageCount")}</td><td>{a.GetValueOrDefault("source")}</td></tr>");
-        }
-        sb.Append("</tbody></table></body></html>");
+        sb.Append("<?xml version='1.0'?>\n<?mso-application progid='Excel.Sheet'?>\n");
+        sb.Append(@"<Workbook xmlns='urn:schemas-microsoft-com:office:spreadsheet'
+ xmlns:o='urn:schemas-microsoft-com:office:office'
+ xmlns:x='urn:schemas-microsoft-com:office:excel'
+ xmlns:ss='urn:schemas-microsoft-com:office:spreadsheet'>
+<Styles>");
+        sb.Append(AssetXlStyles);
+        sb.Append("</Styles>\n");
+        sb.Append(AssetSheet("IT Assets", "AMPM FASHIONS PVT. LTD. \u2014 IT ASSETS (PCs, laptops, monitors & other)", pcHeads, pcW, pcRows, 17));
+        sb.Append(AssetSheet("Printers", "AMPM FASHIONS PVT. LTD. \u2014 PRINTERS", prHeads, prW, prRows, 17));
+        sb.Append(AssetSheet("Network Devices", "AMPM FASHIONS PVT. LTD. \u2014 NETWORK DEVICES (switch / WiFi / NVR / camera / other)", nwHeads, nwW, nwRows, -1));
+        sb.Append("</Workbook>");
+
         return File(System.Text.Encoding.UTF8.GetBytes(sb.ToString()), "application/vnd.ms-excel", $"AMPM_Assets_{IstTime.Now:yyyyMMdd}.xls");
     }
+
+    // ---- SpreadsheetML helpers for Export ----
+    static string AssetXEsc(string? s)
+    {
+        if (string.IsNullOrEmpty(s)) return "";
+        var sb = new System.Text.StringBuilder(s.Length + 8);
+        foreach (var ch in s)
+        {
+            if (ch < 0x20 && ch != '\t' && ch != '\n' && ch != '\r') continue;   // not allowed in XML 1.0
+            switch (ch)
+            {
+                case '&': sb.Append("&amp;"); break;
+                case '<': sb.Append("&lt;"); break;
+                case '>': sb.Append("&gt;"); break;
+                default: sb.Append(ch); break;
+            }
+        }
+        return sb.ToString();
+    }
+
+    static string AssetCell(string? text, string style, int mergeAcross = 0)
+    {
+        var m = mergeAcross > 0 ? $" ss:MergeAcross='{mergeAcross}'" : "";
+        return $"<Cell ss:StyleID='{style}'{m}><Data ss:Type='String'>{AssetXEsc(text)}</Data></Cell>";
+    }
+
+    // assignCol = index of the "Assigned To" column (green when assigned, amber when
+    // "Unassigned"), or -1 for none.
+    static string AssetSheet(string name, string title, string[] heads, int[] widths, List<string[]> rows, int assignCol)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append($"<Worksheet ss:Name='{AssetXEsc(name)}'><Table ss:DefaultColumnWidth='70'>");
+        foreach (var w in widths) sb.Append($"<Column ss:Width='{w}'/>");
+        sb.Append($"<Row ss:Height='26'>{AssetCell(title, "aTitle", heads.Length - 1)}</Row>");
+        sb.Append($"<Row>{AssetCell($"Generated: {IstTime.Now:dd-MMM-yyyy HH:mm} | IT Admin: Sandeep Kumar Singh Kushwaha | Total: {rows.Count}", "aInfo", heads.Length - 1)}</Row>");
+        sb.Append("<Row ss:Height='22'>");
+        foreach (var h in heads) sb.Append(AssetCell(h, "aHead"));
+        sb.Append("</Row>");
+        foreach (var r in rows)
+        {
+            sb.Append("<Row>");
+            for (int c = 0; c < r.Length; c++)
+            {
+                string st = c == 0 ? "aCenter" : c == 1 ? "aBold" : "aCell";
+                if (c == assignCol) st = r[c] == "Unassigned" ? "aAmber" : "aGreen";
+                sb.Append(AssetCell(r[c], st));
+            }
+            sb.Append("</Row>");
+        }
+        if (rows.Count == 0)
+            sb.Append($"<Row>{AssetCell("Nothing to list yet.", "aCell", Math.Min(3, heads.Length - 1))}</Row>");
+        sb.Append("</Table></Worksheet>\n");
+        return sb.ToString();
+    }
+
+    const string AssetXlBorder = "<Borders><Border ss:Position='Bottom' ss:LineStyle='Continuous' ss:Weight='1' ss:Color='#CBD5E1'/><Border ss:Position='Left' ss:LineStyle='Continuous' ss:Weight='1' ss:Color='#CBD5E1'/><Border ss:Position='Right' ss:LineStyle='Continuous' ss:Weight='1' ss:Color='#CBD5E1'/><Border ss:Position='Top' ss:LineStyle='Continuous' ss:Weight='1' ss:Color='#CBD5E1'/></Borders>";
+    static readonly string AssetXlStyles = $@"
+<Style ss:ID='Default' ss:Name='Normal'><Font ss:FontName='Arial' ss:Size='10'/></Style>
+<Style ss:ID='aTitle' ss:Parent='Default'><Interior ss:Color='#0A192F' ss:Pattern='Solid'/><Font ss:Color='#FFFFFF' ss:Bold='1' ss:Size='14'/><Alignment ss:Vertical='Center'/></Style>
+<Style ss:ID='aInfo' ss:Parent='Default'><Font ss:Size='9'/><Alignment ss:Vertical='Center'/></Style>
+<Style ss:ID='aHead' ss:Parent='Default'><Interior ss:Color='#0A192F' ss:Pattern='Solid'/><Font ss:Color='#FFFFFF' ss:Bold='1' ss:Size='9'/><Alignment ss:Horizontal='Center' ss:Vertical='Center' ss:WrapText='1'/>{AssetXlBorder}</Style>
+<Style ss:ID='aCell' ss:Parent='Default'><Font ss:Size='9'/><Alignment ss:Vertical='Center'/>{AssetXlBorder}</Style>
+<Style ss:ID='aCenter' ss:Parent='Default'><Font ss:Size='9'/><Alignment ss:Horizontal='Center' ss:Vertical='Center'/>{AssetXlBorder}</Style>
+<Style ss:ID='aBold' ss:Parent='Default'><Font ss:Size='9' ss:Bold='1'/><Alignment ss:Vertical='Center'/>{AssetXlBorder}</Style>
+<Style ss:ID='aGreen' ss:Parent='Default'><Font ss:Size='9' ss:Bold='1' ss:Color='#059669'/><Alignment ss:Vertical='Center'/>{AssetXlBorder}</Style>
+<Style ss:ID='aAmber' ss:Parent='Default'><Font ss:Size='9' ss:Bold='1' ss:Color='#D97706'/><Alignment ss:Vertical='Center'/>{AssetXlBorder}</Style>
+";
 
     // Zips the network-printer scanner scripts (kept under wwwroot/tools) and
     // serves them as one download. Done in code rather than as plain static
