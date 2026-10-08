@@ -506,7 +506,9 @@ public static class AssetTags
                 && int.TryParse(t.Substring(prefix.Length), out var n) && n > max)
                 max = n;
         }
-        return prefix + (max + 1).ToString("D4");
+        // Phones / iPads use 3 digits (MOB-001, IPAD-001); every other series 4 (PRN-0001).
+        var pad = prefix.Equals("MOB-", StringComparison.OrdinalIgnoreCase) || prefix.Equals("IPAD-", StringComparison.OrdinalIgnoreCase) ? 3 : 4;
+        return prefix + (max + 1).ToString("D" + pad);
     }
 
     // Types shown in the separate "Network Devices" tab of Asset Stock.
@@ -522,6 +524,8 @@ public static class AssetTags
         "NVR" => "NVR-",
         "Camera" => "CAM-",
         "Other Network Device" => "NET-",
+        "Phone" => "MOB-",
+        "iPad" => "IPAD-",
         _ => null,
     };
 
@@ -529,7 +533,7 @@ public static class AssetTags
     public static Dictionary<string,string> NextTags(List<Dictionary<string,object?>> assets)
     {
         var d = new Dictionary<string,string>();
-        foreach (var t in new[] { "Printer", "Network Switch", "WiFi Device", "NVR", "Camera", "Other Network Device" })
+        foreach (var t in new[] { "Printer", "Network Switch", "WiFi Device", "NVR", "Camera", "Other Network Device", "Phone", "iPad" })
             d[t] = NextTag(assets, PrefixFor(t)!);
         return d;
     }

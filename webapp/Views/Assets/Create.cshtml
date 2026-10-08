@@ -12,11 +12,11 @@
             <div class="card-header fw-bold" style="background:#0A192F;color:white">Asset Details</div>
             <div class="card-body">
                 <div class="mb-3"><label class="form-label small fw-bold">Asset Tag *</label><input type="text" name="assetTag" id="assetTag" class="form-control" required placeholder="AMPM-0003"/>
-                    <div class="form-text" id="tagHint" style="display:none">This type has its own tag series (<b>PRN-, SW-, WIFI-, NVR-, CAM-, NET-</b>) &mdash; auto-filled, you can change it.</div></div>
+                    <div class="form-text" id="tagHint" style="display:none">This type has its own tag series (<b>PRN-, SW-, WIFI-, NVR-, CAM-, NET-, MOB-, IPAD-</b>) &mdash; auto-filled, you can change it.</div></div>
                 <div class="mb-3"><label class="form-label small fw-bold">Asset Type *</label>
                     <select name="assetType" id="assetType" class="form-select" required onchange="onTypeChange()">
                         @{var presetType = ViewBag.PresetType as string ?? "";}
-                        @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","Server","UPS","Network Switch","WiFi Device","NVR","Camera","Other Network Device","Other"})
+                        @foreach(var t in new[]{"Laptop","Desktop","Monitor","Printer","Tablet","Phone","iPad","Server","UPS","Network Switch","WiFi Device","NVR","Camera","Other Network Device","Other"})
                         {if(presetType==t){<option selected>@t</option>}else{<option>@t</option>}}
                     </select>
                 </div>
