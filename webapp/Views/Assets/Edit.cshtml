@@ -2,6 +2,7 @@
 @{ViewData["Title"] = "Edit Asset";
   var isPrinter = (Model.GetValueOrDefault("assetType")?.ToString() ?? "") == "Printer";
   var isNet = new[]{"Network Switch","WiFi Device","NVR","Camera","Other Network Device"}.Contains(Model.GetValueOrDefault("assetType")?.ToString() ?? "");
+  var isMob = new[]{"Phone","iPad","Tablet"}.Contains(Model.GetValueOrDefault("assetType")?.ToString() ?? "");
   var aid = Model.GetValueOrDefault("id")?.ToString() ?? "";
   string[] depts = {"IT","HR","ACCOUNTS & FINANCE","ADMIN","DESIGN - APPAREL","DESIGN - ACCESSORIES","PRODUCTION - APPAREL","PRODUCTION - LEATHER","PRODUCTION - MTO","WAREHOUSE & LOGISTICS","RETAILS","MERCHANDISING","QUALITY","MANAGEMENT","E-Commerce","MARKETING","SAMPLING - APPAREL","FABRIC STORE","RESEARCH & DEVELOPMENT","TRUNK SHOW","ACCESSORIES STORE"};}
 
@@ -96,6 +97,14 @@
                 <div class="mb-3"><label class="form-label small fw-bold">OS</label><input type="text" name="os" value="@Model.GetValueOrDefault("os")" class="form-control" disabled="@(isPrinter || isNet)"/></div>
             </div>
         </div>
+        <div class="card border-0 shadow-sm mb-3" id="mobCard" style="@(isMob ? "" : "display:none")">
+            <div class="card-header fw-bold" style="background:#7C3AED;color:white"><i class="bi bi-phone"></i> Phone / Tablet IDs</div>
+            <div class="card-body">
+                <div class="mb-3"><label class="form-label small fw-bold">IMEI <span class="fw-normal text-muted">(15 digits &mdash; dial *#06#)</span></label><input type="text" name="imei" value="@Model.GetValueOrDefault("imei")" class="form-control font-monospace" inputmode="numeric" maxlength="24" disabled="@(!isMob)"/></div>
+                <div class="mb-3"><label class="form-label small fw-bold">IMEI 2 <span class="fw-normal text-muted">(dual-SIM only)</span></label><input type="text" name="imei2" value="@Model.GetValueOrDefault("imei2")" class="form-control font-monospace" inputmode="numeric" maxlength="24" disabled="@(!isMob)"/></div>
+                <div class="small text-muted"><i class="bi bi-info-circle"></i> Employees can also fill these themselves: <b>/MyDevice</b> on their phone. Serial number is in Asset Details.</div>
+            </div>
+        </div>
         <div class="card border-0 shadow-sm" id="assignCard" style="@(isNet ? "display:none" : "")">
             <div class="card-header fw-bold" style="background:#059669;color:white">Assignment</div>
             <div class="card-body">
@@ -147,6 +156,7 @@ function toggleCard(id, show) {
     c.querySelectorAll('input,select,textarea').forEach(i => i.disabled = !show);
 }
 const netTypes = ['Network Switch', 'WiFi Device', 'NVR', 'Camera', 'Other Network Device'];
+const mobTypes = ['Phone', 'iPad', 'Tablet'];
 function onTypeChange() {
     const t = document.getElementById('assetType').value;
     const isPrn = t === 'Printer';
@@ -154,6 +164,7 @@ function onTypeChange() {
     toggleCard('printerCard', isPrn);
     toggleCard('netCard', isNet);
     toggleCard('specCard', !isPrn && !isNet);
+    toggleCard('mobCard', mobTypes.indexOf(t) >= 0);
     toggleCard('assignCard', !isNet);
 }
 onTypeChange();

@@ -40,6 +40,8 @@ public class AssetsController : Controller
                 a.GetValueOrDefault("model")?.ToString()?.ToLower().Contains(s)==true ||
                 a.GetValueOrDefault("assignedToName")?.ToString()?.ToLower().Contains(s)==true ||
                 a.GetValueOrDefault("serial")?.ToString()?.ToLower().Contains(s)==true ||
+                a.GetValueOrDefault("imei")?.ToString()?.Contains(s)==true ||
+                a.GetValueOrDefault("imei2")?.ToString()?.Contains(s)==true ||
                 a.GetValueOrDefault("ip")?.ToString()?.ToLower().Contains(s)==true ||
                 a.GetValueOrDefault("hostname")?.ToString()?.ToLower().Contains(s)==true
             ).ToList();
@@ -90,10 +92,12 @@ public class AssetsController : Controller
         }
         if (newType == "Printer" && !string.IsNullOrWhiteSpace(asset.GetValueOrDefault("assignedToName")?.ToString()))
             asset["assignedDate"] = IstTime.Today.ToString("yyyy-MM-dd");
+        var imeiWarn = NormalizeImei(asset);
         assets.Add(asset);
         SaveAssets(assets);
         SyncAssetToEmployee(asset);
         TempData["Success"] = $"Asset {asset.GetValueOrDefault("assetTag")} added!";
+        if (imeiWarn != null) TempData["Error"] = imeiWarn;
         return AssetTags.IsNetworkType(newType) ? Redirect("/Assets/Index#net") : RedirectToAction("Index");
     }
 
@@ -117,10 +121,28 @@ public class AssetsController : Controller
         var asset = assets.FirstOrDefault(a => a.GetValueOrDefault("id")?.ToString() == id);
         if (asset == null) return NotFound();
         foreach (var key in form.Keys) asset[key] = form[key].ToString();
+        var imeiWarn = NormalizeImei(asset);
         SaveAssets(assets);
         SyncAssetToEmployee(asset);
         TempData["Success"] = "Asset updated!";
+        if (imeiWarn != null) TempData["Error"] = imeiWarn;
         return AssetTags.IsNetworkType(asset.GetValueOrDefault("assetType")?.ToString()) ? Redirect("/Assets/Index#net") : RedirectToAction("Index");
+    }
+
+    // Keeps only the digits of imei / imei2 and returns a warning (the asset is still
+    // saved) when an IMEI does not pass the 15-digit + check-digit test.
+    static string? NormalizeImei(Dictionary<string,object?> asset)
+    {
+        string? warn = null;
+        foreach (var k in new[] { "imei", "imei2" })
+        {
+            if (!asset.ContainsKey(k)) continue;
+            var d = MobileIds.NormImei(asset[k]?.ToString());
+            asset[k] = d;
+            if (d != "" && !MobileIds.IsImei(d))
+                warn = $"Saved, but the IMEI '{d}' is not a valid 15-digit IMEI \u2014 please re-check it (dial *#06# on the phone).";
+        }
+        return warn;
     }
 
     [HttpPost]
@@ -348,11 +370,11 @@ table.kv td.v{color:#0F172A}
         string Assigned(Dictionary<string,object?> a) => V(a, "assignedToName") is { Length: > 0 } n ? n : "Unassigned";
 
         // ---- sheet 1: IT assets ----
-        var pcHeads = new[] { "#", "Asset Tag", "Type", "Hostname", "Brand", "Model", "Serial Number", "MAC Address", "IP Address", "OS", "OS Build", "Architecture", "CPU", "RAM (GB)", "Disk Free", "Storage (Total)", "Condition", "Assigned To", "Emp Code", "Department", "Assigned Date", "Location", "Last Seen", "Source" };
-        var pcW = new[] { 28, 70, 70, 95, 70, 110, 100, 100, 85, 120, 90, 70, 150, 55, 60, 70, 65, 120, 65, 110, 80, 95, 100, 80 };
+        var pcHeads = new[] { "#", "Asset Tag", "Type", "Hostname", "Brand", "Model", "Serial Number", "IMEI", "IMEI 2", "MAC Address", "IP Address", "OS", "OS Build", "Architecture", "CPU", "RAM (GB)", "Disk Free", "Storage (Total)", "Condition", "Assigned To", "Emp Code", "Department", "Assigned Date", "Location", "Last Seen", "Source" };
+        var pcW = new[] { 28, 70, 70, 95, 70, 110, 100, 115, 115, 100, 85, 120, 90, 70, 150, 55, 60, 70, 65, 120, 65, 110, 80, 95, 100, 80 };
         var pcRows = new List<string[]>();
         foreach (var a in pcs)
-            pcRows.Add(new[] { (pcRows.Count + 1).ToString(), V(a,"assetTag"), TypeOf(a), V(a,"hostname"), V(a,"brand"), V(a,"model"), V(a,"serial"), V(a,"mac"), V(a,"ip"), V(a,"os"), V(a,"osBuild"), V(a,"arch"), V(a,"processor"), V(a,"ram"), V(a,"diskFree"), V(a,"storage"), V(a,"condition"), Assigned(a), V(a,"assignedToEmp"), V(a,"assignedToDept"), V(a,"assignedDate"), V(a,"location"), V(a,"lastSeen"), V(a,"source") });
+            pcRows.Add(new[] { (pcRows.Count + 1).ToString(), V(a,"assetTag"), TypeOf(a), V(a,"hostname"), V(a,"brand"), V(a,"model"), V(a,"serial"), V(a,"imei"), V(a,"imei2"), V(a,"mac"), V(a,"ip"), V(a,"os"), V(a,"osBuild"), V(a,"arch"), V(a,"processor"), V(a,"ram"), V(a,"diskFree"), V(a,"storage"), V(a,"condition"), Assigned(a), V(a,"assignedToEmp"), V(a,"assignedToDept"), V(a,"assignedDate"), V(a,"location"), V(a,"lastSeen"), V(a,"source") });
 
         // ---- sheet 2: printers ----
         var prHeads = new[] { "#", "Asset Tag", "Brand", "Model", "Serial Number", "Printer Type", "Connection", "IP Address", "MAC Address", "Hostname", "Connected PC (USB)", "Printer Name (USB)", "USB Port", "USB Status", "Toner / Cartridge", "Page Count", "Condition", "Assigned To", "Emp Code", "Department", "Location", "Last Seen", "Source" };
@@ -377,7 +399,7 @@ table.kv td.v{color:#0F172A}
 <Styles>");
         sb.Append(AssetXlStyles);
         sb.Append("</Styles>\n");
-        sb.Append(AssetSheet("IT Assets", "AMPM FASHIONS PVT. LTD. \u2014 IT ASSETS (PCs, laptops, monitors & other)", pcHeads, pcW, pcRows, 17));
+        sb.Append(AssetSheet("IT Assets", "AMPM FASHIONS PVT. LTD. \u2014 IT ASSETS (PCs, laptops, phones, monitors & other)", pcHeads, pcW, pcRows, 19));
         sb.Append(AssetSheet("Printers", "AMPM FASHIONS PVT. LTD. \u2014 PRINTERS", prHeads, prW, prRows, 17));
         sb.Append(AssetSheet("Network Devices", "AMPM FASHIONS PVT. LTD. \u2014 NETWORK DEVICES (switch / WiFi / NVR / camera / other)", nwHeads, nwW, nwRows, -1));
         sb.Append("</Workbook>");
@@ -612,6 +634,7 @@ public static class AssetTags
     public static bool IsPeripheral(Dictionary<string,object?> asset)
     {
         var t = asset.GetValueOrDefault("assetType")?.ToString() ?? "";
-        return t == "Printer" || t == "Monitor" || t == "UPS" || IsNetworkType(t);
+        // Phones / iPads / tablets are the employee's mobile, not their PC.
+        return t == "Printer" || t == "Monitor" || t == "UPS" || t == "Phone" || t == "iPad" || t == "Tablet" || IsNetworkType(t);
     }
 }

@@ -89,7 +89,9 @@
                     <td class="ps-3 font-monospace fw-bold text-primary small">@tag</td>
                     <td><span class="badge bg-light text-dark border">@a.GetValueOrDefault("assetType")</span></td>
                     <td class="small"><strong>@a.GetValueOrDefault("brand")</strong> @a.GetValueOrDefault("model")
-                        @if(isPrinter && (a.GetValueOrDefault("source")?.ToString() ?? "").StartsWith("Auto-discovered")){<br/><span class="badge bg-info-subtle text-info-emphasis fw-normal">auto-discovered</span>}</td>
+                        @if(isPrinter && (a.GetValueOrDefault("source")?.ToString() ?? "").StartsWith("Auto-discovered")){<br/><span class="badge bg-info-subtle text-info-emphasis fw-normal">auto-discovered</span>}
+                        @if(!string.IsNullOrEmpty(a.GetValueOrDefault("imei")?.ToString())){<br/><span class="text-muted font-monospace" style="font-size:11px">IMEI @a.GetValueOrDefault("imei")@(string.IsNullOrEmpty(a.GetValueOrDefault("imei2")?.ToString()) ? "" : " / " + a.GetValueOrDefault("imei2"))</span>}
+                        @if(!string.IsNullOrEmpty(a.GetValueOrDefault("serial")?.ToString()) && (a.GetValueOrDefault("assetType")?.ToString() is "Phone" or "iPad" or "Tablet")){<br/><span class="text-muted font-monospace" style="font-size:11px">S/N @a.GetValueOrDefault("serial")</span>}</td>
                     @if (isPrinter)
                     {
                         <td class="small text-muted" colspan="4">

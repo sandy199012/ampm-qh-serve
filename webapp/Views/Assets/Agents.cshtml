@@ -102,6 +102,25 @@
 </div>
 
 <div class="card border-0 shadow-sm mt-3">
+  <div class="card-body">
+    <h6 class="fw-bold"><i class="bi bi-phone" style="color:#7C3AED"></i> Mobile phones &amp; tablets &mdash; no agent needed</h6>
+    <p class="small text-muted mb-2">
+        Share this link with employees. They open it in Chrome / Safari <b>on their phone</b>, log in, and the page reads the model, Android/iOS version, screen, RAM hint and battery by itself.
+        They type the <b>IMEI</b> and <b>serial</b> once (dial <code>*#06#</code>) &mdash; the IMEI is checked for correctness. The phone is saved in Asset Stock (tag <b>MOB-</b> / <b>IPAD-</b>) against their name.
+    </p>
+    <div class="input-group input-group-sm mb-2" style="max-width:520px">
+        <input type="text" class="form-control font-monospace" id="mobLink" readonly/>
+        <button class="btn btn-outline-primary" type="button" onclick="copyMobLink()"><i class="bi bi-clipboard"></i> Copy link</button>
+        <a class="btn btn-outline-secondary" href="/MyDevice" target="_blank"><i class="bi bi-box-arrow-up-right"></i> Open</a>
+    </div>
+    <div class="small text-muted">
+        A browser or normal app can never read IMEI / serial on Android 10+ or iOS &mdash; only an MDM (Mobile Device Management) tool can do that fully automatically.
+        Results show in <b>Asset Stock</b> and in <b>Monitor &rarr; Mobile Devices</b>.
+    </div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mt-3">
   <div class="card-body small text-muted">
     <b>Tips.</b> Other VLAN / subnet? Open the agent's <code>.ps1</code> in Notepad and add it to <code>$extraSubnets</code> (e.g. <code>'192.168.2'</code>).
     Switches and WiFi devices are recognised best with <b>SNMP v1/v2c (community &ldquo;public&rdquo;)</b> enabled on them; for cameras and NVR switch <b>ONVIF</b> on in their settings so the model shows up.
@@ -109,3 +128,15 @@
     Devices you already edited by hand (assignment, location, type) are never overwritten by an agent.
   </div>
 </div>
+
+@section Scripts {
+<script>
+    document.getElementById('mobLink').value = location.origin + '/MyDevice';
+    function copyMobLink() {
+        const el = document.getElementById('mobLink');
+        el.select();
+        if (navigator.clipboard) navigator.clipboard.writeText(el.value).catch(() => document.execCommand('copy'));
+        else document.execCommand('copy');
+    }
+</script>
+}

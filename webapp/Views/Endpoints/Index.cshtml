@@ -143,8 +143,8 @@
 <div class="tab-pane fade" id="tab-mobile">
 
     <div class="alert alert-info py-2 mb-3">
-        <i class="bi bi-info-circle"></i> Reported automatically by the Helpdesk mobile app every time an employee opens it and logs in — no manual entry needed.
-        Serial number/IMEI are not shown here: neither Android nor iOS lets a normal app read those without enrolling the device in an MDM (Mobile Device Management) solution, which is a separate setup from this website.
+        <i class="bi bi-info-circle"></i> Model, OS and battery arrive automatically &mdash; from the Helpdesk app, or when an employee opens <a href="/MyDevice" class="alert-link">/MyDevice</a> on the phone and logs in.
+        Android and iOS do not let a browser or a normal app read the <b>IMEI / serial number</b>, so the employee types them once (the IMEI is checked for correctness) and they appear here and in Asset Stock. Fully automatic IMEI needs an MDM (Mobile Device Management) solution.
     </div>
 
     @if (!mobileInv.Any())
@@ -163,6 +163,9 @@
                         <th>Manufacturer</th>
                         <th>OS</th>
                         <th>OS Build</th>
+                        <th>IMEI</th>
+                        <th>Serial</th>
+                        <th>Asset Tag</th>
                         <th>Battery</th>
                         <th>Logged-in User</th>
                         <th>Last Seen</th>
@@ -178,6 +181,9 @@
                             <td>@d.GetValueOrDefault("manufacturer")</td>
                             <td>@d.GetValueOrDefault("os")</td>
                             <td>@d.GetValueOrDefault("osBuild")</td>
+                            <td class="font-monospace small">@d.GetValueOrDefault("imei")</td>
+                            <td class="font-monospace small">@d.GetValueOrDefault("serial")</td>
+                            <td class="font-monospace small">@d.GetValueOrDefault("assetTag")</td>
                             <td>@(string.IsNullOrEmpty(d.GetValueOrDefault("battery")?.ToString()) ? "" : d.GetValueOrDefault("battery") + "%")</td>
                             <td>@d.GetValueOrDefault("user")</td>
                             <td>@d.GetValueOrDefault("lastSeen")</td>

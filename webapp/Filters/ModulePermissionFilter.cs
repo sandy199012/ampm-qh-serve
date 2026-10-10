@@ -26,8 +26,11 @@ public class ModulePermissionFilter : IActionFilter
     // AuthService.Modules, so no "user"-role account can ever be granted a
     // per-module permission for it either — CanView("Performance") below is
     // therefore admin/superadmin-only by construction.
+    // MyDevice is the "register my phone" self-service page: any logged-in user may
+    // record THEIR OWN phone/tablet; the controller checks the login itself and only
+    // lets admins touch a device that belongs to somebody else.
     static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
-        { "Account", "Home", "Api", "MyHelpdesk" };
+        { "Account", "Home", "Api", "MyHelpdesk", "MyDevice" };
 
     public void OnActionExecuting(ActionExecutingContext context)
     {

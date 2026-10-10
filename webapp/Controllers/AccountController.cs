@@ -9,7 +9,13 @@ public class AccountController : Controller
     public AccountController(AuthService auth) { _auth = auth; }
 
     [HttpGet]
-    public IActionResult Login() => View();
+    public IActionResult Login(string? returnUrl)
+    {
+        // Already signed in and following a shared link (e.g. /MyDevice)? Go straight there.
+        if (_auth.IsLoggedIn(HttpContext) && !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            return LocalRedirect(returnUrl);
+        return View();
+    }
 
     // Client address as seen by the app. Render puts the real client address at
     // the END of X-Forwarded-For (anything before it can be typed by the caller),
@@ -26,7 +32,7 @@ public class AccountController : Controller
     }
 
     [HttpPost]
-    public IActionResult Login(string username, string password)
+    public IActionResult Login(string username, string password, string? returnUrl)
     {
         var ip = ClientIp();
         if (LoginThrottle.IsLocked(ip, username ?? ""))
@@ -69,6 +75,10 @@ public class AccountController : Controller
         Response.Cookies.Append("ampm_name", user.Name, opts);
         Response.Cookies.Append("ampm_role", user.Role, opts);
         Response.Cookies.Delete("ampm_user");   // old forgeable login cookie
+
+        // A shared link such as /MyDevice sends people to login first and back afterwards.
+        // Only local paths are accepted, so this can never redirect to another site.
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl);
 
         // Admins/superadmins land on the full dashboard as before; everyone
         // else goes straight to their own self-service Helpdesk portal.

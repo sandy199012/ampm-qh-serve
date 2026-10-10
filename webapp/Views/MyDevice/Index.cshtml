@@ -1,0 +1,312 @@
+@using System.Text.Json
+@{
+    ViewData["Title"] = "My Phone / Device";
+    var user = (AMPMWeb.Services.UserSession)ViewBag.User;
+    bool noEmp = ViewBag.NoEmployeeLinked ?? false;
+    string empCode = ViewBag.EmpCode ?? "";
+    string empName = ViewBag.EmpName ?? "";
+    var mine = (List<Dictionary<string,object?>>)(ViewBag.Mine ?? new List<Dictionary<string,object?>>());
+    string mineJson = ViewBag.MineJson ?? "[]";
+    string V(Dictionary<string,object?> d, string k) => d.GetValueOrDefault(k)?.ToString() ?? "";
+}
+
+<style>
+    .md-wrap { max-width: 760px; margin: 0 auto; }
+    .md-hero { background: linear-gradient(135deg,#0A192F,#1D4ED8 60%,#06B6D4); color:#fff; border-radius:16px; padding:20px 22px; }
+    .md-hero h5 { margin:0 0 4px; font-weight:700; }
+    .md-chip { display:inline-flex; align-items:center; gap:6px; background:#EEF2FF; color:#1e3a8a; border-radius:20px; padding:4px 11px; font-size:12.5px; margin:3px 4px 3px 0; }
+    .md-chip b { font-weight:600; }
+    .md-chip.no { background:#F1F5F9; color:#64748B; }
+    .md-dev { border-left:4px solid #1D4ED8; }
+    .md-help summary { cursor:pointer; font-weight:600; }
+    .md-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing:.5px; }
+    @@media (max-width: 575px) { .md-hero { padding:16px; } }
+</style>
+
+<div class="md-wrap">
+
+    <div class="md-hero mb-3">
+        <h5><i class="bi bi-phone"></i> Register my phone / tablet</h5>
+        <div class="small opacity-75">Model, Android/iOS version, screen and battery are filled in automatically. IMEI and serial number need to be typed <b>once</b> &mdash; a browser is not allowed to read them.</div>
+    </div>
+
+    @if (noEmp && !user.IsAdmin)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            Your login isn't linked to an Employee record yet, so the phone can't be registered against your name.
+            Please contact IT to get your account linked.
+        </div>
+    }
+    else
+    {
+        <div class="small text-muted mb-3">
+            Logged in as <b>@user.Name</b>@if (empCode != ""){<span> &middot; Emp code <b>@empCode</b>@(empName != "" ? " (" + empName + ")" : "")</span>}
+        </div>
+
+        @if (mine.Any())
+        {
+            <div class="mb-3">
+                <div class="fw-bold small mb-2 text-uppercase text-muted">Your registered devices</div>
+                @foreach (var d in mine)
+                {
+                    <div class="card border-0 shadow-sm md-dev mb-2">
+                        <div class="card-body py-2 px-3 small">
+                            <div class="d-flex justify-content-between">
+                                <span class="fw-bold">@V(d,"brand") @V(d,"model")</span>
+                                <span class="font-monospace text-primary fw-bold">@V(d,"assetTag")</span>
+                            </div>
+                            <div class="text-muted">
+                                @if (V(d,"imei") != ""){<span>IMEI <span class="md-mono">@V(d,"imei")</span></span>}
+                                @if (V(d,"serial") != ""){<span> &middot; Serial <span class="md-mono">@V(d,"serial")</span></span>}
+                                @if (V(d,"os") != ""){<span> &middot; @V(d,"os")</span>}
+                                @if (V(d,"lastSeen") != ""){<span> &middot; updated @V(d,"lastSeen")</span>}
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="card border-0 shadow-sm mb-3">
+            <div class="card-header fw-bold" style="background:#0A192F;color:#fff"><i class="bi bi-cpu"></i> Detected from this device</div>
+            <div class="card-body">
+                <div id="detected" class="mb-1"><span class="text-muted small">Detecting&hellip;</span></div>
+                <div id="notPhone" class="alert alert-info py-2 small mb-0 mt-2" style="display:none">
+                    <i class="bi bi-info-circle"></i> This looks like a computer, not a phone. Open <b id="thisUrl"></b> in Chrome / Safari <b>on the phone</b>
+                    and log in there &mdash; or just fill the form below by hand.
+                    <button type="button" class="btn btn-sm btn-outline-primary ms-1 py-0" onclick="copyLink()"><i class="bi bi-clipboard"></i> Copy link</button>
+                </div>
+                <div id="knownBanner" class="alert alert-success py-2 small mb-0 mt-2" style="display:none"></div>
+            </div>
+        </div>
+
+        <form method="post" action="/MyDevice" id="devForm" autocomplete="off">
+            <input type="hidden" name="deviceId" id="deviceId"/>
+            <input type="hidden" name="screen" id="screen"/>
+            <input type="hidden" name="battery" id="battery"/>
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header fw-bold" style="background:#1e3a5f;color:#fff"><i class="bi bi-pencil-square"></i> Device details</div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-6 mb-2">
+                            <label class="form-label small fw-bold">Type</label>
+                            <select name="assetType" id="assetType" class="form-select">
+                                <option>Phone</option><option>iPad</option><option>Tablet</option>
+                            </select>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <label class="form-label small fw-bold">Brand</label>
+                            <input type="text" name="brand" id="brand" class="form-control" maxlength="40" placeholder="Samsung / Apple / vivo"/>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Model <span class="text-danger">*</span></label>
+                        <input type="text" name="model" id="model" class="form-control" maxlength="60" required placeholder="e.g. SM-A546E or iPhone 14"/>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6 mb-2">
+                            <label class="form-label small fw-bold">Android / iOS version</label>
+                            <input type="text" name="os" id="os" class="form-control" maxlength="40" placeholder="Android 14"/>
+                        </div>
+                        <div class="col-3 mb-2">
+                            <label class="form-label small fw-bold">RAM (GB)</label>
+                            <input type="text" name="ram" id="ram" inputmode="decimal" class="form-control" maxlength="6"/>
+                        </div>
+                        <div class="col-3 mb-2">
+                            <label class="form-label small fw-bold">Storage</label>
+                            <input type="text" name="storage" id="storage" inputmode="decimal" class="form-control" maxlength="6" placeholder="GB"/>
+                        </div>
+                    </div>
+
+                    <hr class="my-3"/>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">IMEI <span class="text-muted fw-normal">(15 digits)</span></label>
+                        <input type="text" name="imei" id="imei" class="form-control md-mono" inputmode="numeric" maxlength="24" placeholder="dial *#06# on the phone"/>
+                        <div class="form-text" id="imeiMsg"></div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">IMEI 2 <span class="text-muted fw-normal">(only if the phone has 2 SIM slots)</span></label>
+                        <input type="text" name="imei2" id="imei2" class="form-control md-mono" inputmode="numeric" maxlength="24"/>
+                        <div class="form-text" id="imei2Msg"></div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-bold">Serial number</label>
+                        <input type="text" name="serial" id="serial" class="form-control md-mono" maxlength="30" autocapitalize="characters"/>
+                    </div>
+                    <div class="form-text mb-2">IMEI <b>or</b> Serial is required &mdash; filling both is best.</div>
+
+                    @if (user.IsAdmin)
+                    {
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold">Employee code <span class="text-muted fw-normal">(admin only &mdash; leave empty for yourself)</span></label>
+                            <input type="text" name="empCode" class="form-control" maxlength="30" placeholder="@empCode"/>
+                        </div>
+                    }
+
+                    <details class="md-help small mt-3">
+                        <summary>Where do I find the IMEI and serial number?</summary>
+                        <div class="mt-2 text-muted">
+                            <p class="mb-1"><b>Any phone:</b> open the Phone (dialer) app and dial <span class="md-mono">*#06#</span> &mdash; IMEI is shown on screen (press and hold to copy).</p>
+                            <p class="mb-1"><b>Android:</b> Settings &rarr; About phone &rarr; (Status / IMEI information). Serial number is on the same page.</p>
+                            <p class="mb-1"><b>iPhone / iPad:</b> Settings &rarr; General &rarr; About &mdash; Model Name, Serial Number and IMEI are all listed there.</p>
+                            <p class="mb-0">It is also printed on the box and on the SIM tray.</p>
+                        </div>
+                    </details>
+                </div>
+            </div>
+            <div class="d-grid d-sm-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check-circle"></i> Save device</button>
+                <a href="@(user.IsAdmin ? "/" : "/MyHelpdesk/Index")" class="btn btn-outline-secondary px-4">Back</a>
+            </div>
+        </form>
+    }
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    const mine = @Html.Raw(mineJson);
+    const $ = id => document.getElementById(id);
+    const ua = navigator.userAgent || '';
+    const isIPhone = /iPhone|iPod/.test(ua);
+    const isIPad = /iPad/.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1);
+    const isAndroid = /Android/i.test(ua);
+    const isPhoneLike = isIPhone || isIPad || isAndroid;
+    const info = {};
+
+    function guessBrand(m) {
+        m = (m || '').trim();
+        const rules = [
+            [/^(SM-|GT-|SCH-|Galaxy)/i, 'Samsung'], [/^Pixel/i, 'Google'], [/^(CPH|OPPO)/i, 'OPPO'],
+            [/^RMX|realme/i, 'realme'], [/^(V\d{4}|vivo|I2\d{3})/i, 'vivo'], [/^(Redmi|POCO|Mi |MI |M\d{4}[A-Z]\d)/i, 'Xiaomi'],
+            [/^\d{2}\d{5}[A-Z0-9]{1,4}$/, 'Xiaomi'], [/^(moto|XT\d{4})/i, 'Motorola'], [/^(OnePlus|IN20|KB20|LE21|NE22|CPH2[3-9])/i, 'OnePlus'],
+            [/^(Nokia|TA-)/i, 'Nokia'], [/^(Infinix|X6\d{3})/i, 'Infinix'], [/^(TECNO|K[A-Z]\d)/i, 'TECNO'], [/^(itel)/i, 'itel'], [/^(iPhone|iPad)/i, 'Apple']
+        ];
+        for (const [re, b] of rules) if (re.test(m)) return b;
+        return '';
+    }
+
+    function setIfEmpty(id, v) { const el = $(id); if (el && v !== '' && v != null && !el.value.trim()) el.value = v; }
+    function chip(label, val) {
+        return '<span class="md-chip' + (val ? '' : ' no') + '">' + label + ': <b>' + (val ? String(val).replace(/[<>&]/g, '') : 'not available') + '</b></span>';
+    }
+
+    // stable per-browser id, so the same phone is recognised next time
+    let did = '';
+    try { did = localStorage.getItem('ampm_device_id') || ''; } catch (e) {}
+    if (!did) {
+        did = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('d' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+        try { localStorage.setItem('ampm_device_id', did); } catch (e) {}
+    }
+    $('deviceId').value = did;
+
+    function finish() {
+        // fill the form
+        if (isIPad) $('assetType').value = 'iPad';
+        else if (isAndroid && !/Mobile/i.test(ua)) $('assetType').value = 'Tablet';
+        else $('assetType').value = 'Phone';
+        setIfEmpty('model', info.model);
+        setIfEmpty('brand', info.brand || guessBrand(info.model));
+        setIfEmpty('os', info.os);
+        if (info.ram) setIfEmpty('ram', info.ram);
+        $('screen').value = info.screen || '';
+        $('battery').value = info.battery || '';
+
+        $('detected').innerHTML =
+            chip('Device', info.model) + chip('OS', info.os) + chip('Screen', info.screen) +
+            chip('RAM (approx.)', info.ram ? info.ram + ' GB' : '') + chip('CPU cores', info.cores) +
+            chip('Battery', info.battery ? info.battery + '%' : '') + chip('Network', info.net) +
+            chip('Browser', info.browser) + chip('IMEI', '') + chip('Serial', '');
+        if (!isPhoneLike) {
+            $('notPhone').style.display = '';
+            $('thisUrl').textContent = location.origin + '/MyDevice';
+        }
+
+        // already registered from this phone?
+        const k = mine.find(d => d.deviceId && d.deviceId === did);
+        if (k) {
+            setIfEmpty('imei', k.imei); setIfEmpty('imei2', k.imei2); setIfEmpty('serial', k.serial);
+            setIfEmpty('storage', k.storage); setIfEmpty('brand', k.brand);
+            if (k.model && !$('model').value) $('model').value = k.model;
+            const b = $('knownBanner');
+            b.style.display = '';
+            b.innerHTML = '<i class="bi bi-check-circle"></i> This phone is already registered as <b>' + k.tag + '</b>. Saving will just refresh its details.';
+        }
+        checkImei();
+    }
+
+    // Luhn check — same rule the server applies
+    function luhn(d) {
+        if (!/^\d{15}$/.test(d)) return false;
+        let s = 0;
+        for (let i = 0; i < 15; i++) {
+            let n = +d[14 - i];
+            if (i % 2 === 1) { n *= 2; if (n > 9) n -= 9; }
+            s += n;
+        }
+        return s % 10 === 0;
+    }
+    function checkField(id, msgId) {
+        const v = $(id).value.replace(/\D/g, ''), m = $(msgId);
+        if (!$(id).value.trim()) { m.textContent = ''; m.className = 'form-text'; return true; }
+        const ok = luhn(v);
+        m.textContent = ok ? 'Valid IMEI ✓' : (v.length !== 15 ? (v.length + ' digits — IMEI must be exactly 15 digits') : 'Not a valid IMEI — one digit is wrong, please re-check');
+        m.className = 'form-text ' + (ok ? 'text-success' : 'text-danger');
+        return ok;
+    }
+    function checkImei() { checkField('imei', 'imeiMsg'); checkField('imei2', 'imei2Msg'); }
+    $('imei').addEventListener('input', checkImei);
+    $('imei2').addEventListener('input', checkImei);
+    $('devForm').addEventListener('submit', function (e) {
+        const a = $('imei').value.trim(), b = $('imei2').value.trim(), s = $('serial').value.trim();
+        if (!a && !s) { e.preventDefault(); alert('Please enter the IMEI or the Serial Number.'); return; }
+        if ((a && !checkField('imei', 'imeiMsg')) || (b && !checkField('imei2', 'imei2Msg'))) {
+            e.preventDefault(); alert('The IMEI is not valid. Dial *#06# on the phone and copy it again.');
+        }
+    });
+
+    window.copyLink = function () {
+        const t = location.origin + '/MyDevice';
+        if (navigator.clipboard) navigator.clipboard.writeText(t).catch(() => {});
+    };
+
+    // ---- gather everything the browser is willing to tell us
+    try {
+        info.screen = Math.round(screen.width * (window.devicePixelRatio || 1)) + ' x ' + Math.round(screen.height * (window.devicePixelRatio || 1));
+        if (navigator.deviceMemory) info.ram = navigator.deviceMemory;
+        if (navigator.hardwareConcurrency) info.cores = navigator.hardwareConcurrency;
+        const c = navigator.connection || navigator.mozConnection;
+        if (c) info.net = (c.effectiveType || c.type || '').toString().toUpperCase();
+        info.browser = /EdgA?\//.test(ua) ? 'Edge' : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /CriOS|Chrome\//.test(ua) ? 'Chrome' : /FxiOS|Firefox/.test(ua) ? 'Firefox' : /Safari/.test(ua) ? 'Safari' : '';
+
+        if (isIPhone) { info.model = 'iPhone'; info.brand = 'Apple'; }
+        else if (isIPad) { info.model = 'iPad'; info.brand = 'Apple'; }
+        const iosV = ua.match(/OS (\d+)[_.](\d+)/);
+        if (isIPhone || isIPad) info.os = 'iOS' + (iosV && !/Macintosh/.test(ua) ? ' ' + iosV[1] + '.' + iosV[2] : '');
+        if (isAndroid) {
+            const mm = ua.match(/Android [\d.]+;\s*([^;)]+?)(?:\s+Build|\))/);
+            if (mm && mm[1] && mm[1].trim() !== 'K') info.model = mm[1].trim();
+            const av = ua.match(/Android (\d+)/);
+            info.os = 'Android' + (av ? ' ' + av[1] : '');
+        }
+        if (!isPhoneLike) {
+            info.model = ''; info.os = '';
+        }
+    } catch (e) {}
+
+    const tasks = [];
+    if (navigator.getBattery) {
+        tasks.push(navigator.getBattery().then(b => { info.battery = Math.round(b.level * 100); }).catch(() => {}));
+    }
+    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues && isAndroid) {
+        tasks.push(navigator.userAgentData.getHighEntropyValues(['model', 'platformVersion']).then(h => {
+            if (h.model) info.model = h.model;
+            if (h.platformVersion) info.os = 'Android ' + String(h.platformVersion).split('.')[0];
+        }).catch(() => {}));
+    }
+    Promise.all(tasks).then(finish, finish);
+    setTimeout(function () { if ($('detected').textContent.indexOf('Detecting') === 0) finish(); }, 2500);
+})();
+</script>
+}
