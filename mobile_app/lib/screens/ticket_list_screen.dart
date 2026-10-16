@@ -59,10 +59,10 @@ class _TicketListScreenState extends State<TicketListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: Text(_status == 'All' ? 'All Tickets' : '$_status Tickets'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
@@ -91,12 +91,12 @@ class _TicketListScreenState extends State<TicketListScreen> {
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
                     label: Text(s, style: TextStyle(
-                      color: _status == s ? Colors.white : const Color(0xFF374151),
+                      color: _status == s ? Colors.white : const Color(0xFF3B3556),
                       fontWeight: FontWeight.w600, fontSize: 12)),
                     selected: _status == s,
                     onSelected: (_) { setState(() => _status = s); _applyFilter(); },
-                    selectedColor: const Color(0xFF2563EB),
-                    backgroundColor: const Color(0xFFF3F4F6),
+                    selectedColor: const Color(0xFF6D4AFF),
+                    backgroundColor: const Color(0xFFEFEAFB),
                     side: BorderSide.none,
                   ),
                 )
@@ -144,7 +144,7 @@ class _TicketListScreenState extends State<TicketListScreen> {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Text(t.ticketNo, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB), fontSize: 12)),
+            Text(t.ticketNo, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6D4AFF), fontSize: 12)),
             const SizedBox(width: 8),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(color: t.statusColor.withOpacity(.1), borderRadius: BorderRadius.circular(20)),

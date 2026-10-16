@@ -46,10 +46,10 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: const Text('Purchases'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
@@ -62,9 +62,9 @@ class _PurchasesScreenState extends State<PurchasesScreen> {
               contentPadding: const EdgeInsets.symmetric(vertical: 8), isDense: true)),
         ])),
         if (!_loading && _error == null)
-          Container(width: double.infinity, color: const Color(0xFFEFF6FF), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          Container(width: double.infinity, color: const Color(0xFFF0EBFF), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text('Total: ₹${_totalThisList.toStringAsFixed(0)}  (${_filtered.length} purchases)',
-              style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 12))),
+              style: const TextStyle(color: Color(0xFF6D4AFF), fontWeight: FontWeight.bold, fontSize: 12))),
         Expanded(child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

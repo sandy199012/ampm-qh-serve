@@ -43,10 +43,10 @@ class _BillsScreenState extends State<BillsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: const Text('Bills'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
@@ -56,11 +56,11 @@ class _BillsScreenState extends State<BillsScreen> {
             children: _statuses.map((s) => Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilterChip(
-                label: Text(s, style: TextStyle(color: _status == s ? Colors.white : const Color(0xFF374151), fontWeight: FontWeight.w600, fontSize: 12)),
+                label: Text(s, style: TextStyle(color: _status == s ? Colors.white : const Color(0xFF3B3556), fontWeight: FontWeight.w600, fontSize: 12)),
                 selected: _status == s,
                 onSelected: (_) => setState(() => _status = s),
-                selectedColor: const Color(0xFF2563EB),
-                backgroundColor: const Color(0xFFF3F4F6), side: BorderSide.none,
+                selectedColor: const Color(0xFF6D4AFF),
+                backgroundColor: const Color(0xFFEFEAFB), side: BorderSide.none,
               ))).toList()))),
         Expanded(child: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -90,9 +90,9 @@ class _BillsScreenState extends State<BillsScreen> {
   Color _statusColor(String s) {
     switch (s) {
       case 'Paid':      return const Color(0xFF059669);
-      case 'Submitted': return const Color(0xFF2563EB);
+      case 'Submitted': return const Color(0xFF6D4AFF);
       case 'Overdue':   return const Color(0xFFDC2626);
-      case 'On Hold':   return const Color(0xFF6B7280);
+      case 'On Hold':   return const Color(0xFF6E6890);
       default:          return const Color(0xFFD97706);
     }
   }

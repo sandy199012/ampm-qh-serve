@@ -127,7 +127,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             // Expected Resolution Timeline (ETA) — same idea as the web
             // Acknowledge/Set ETA date+time picker, just via native pickers.
             const Text('Expected Resolution (ETA)',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF374151))),
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Color(0xFF3B3556))),
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -173,7 +173,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
                   }
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6D4AFF), foregroundColor: Colors.white),
                 child: const Text('Save Update', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
@@ -213,10 +213,10 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: Text(_ticket.ticketNo),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [
           if (_updating)
@@ -324,7 +324,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                 icon: const Icon(Icons.edit),
                 label: const Text('Update Ticket', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white,
+                  backgroundColor: const Color(0xFF6D4AFF), foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -342,11 +342,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border(left: BorderSide(color: color ?? const Color(0xFF2563EB), width: 4)),
+        border: Border(left: BorderSide(color: color ?? const Color(0xFF6D4AFF), width: 4)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 6)],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color ?? const Color(0xFF2563EB))),
+        Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color ?? const Color(0xFF6D4AFF))),
         const SizedBox(height: 10),
         ...rows,
       ]),
@@ -402,11 +402,11 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: const Border(left: BorderSide(color: Color(0xFF7C3AED), width: 4)),
+          border: const Border(left: BorderSide(color: Color(0xFF14B8A6), width: 4)),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 6)],
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Your Feedback', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF7C3AED))),
+          const Text('Your Feedback', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF14B8A6))),
           const SizedBox(height: 4),
           const Text('Kya problem actually resolve ho gayi?', style: TextStyle(fontSize: 11, color: Colors.grey)),
           const SizedBox(height: 6),
@@ -436,7 +436,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             height: 42,
             child: ElevatedButton(
               onPressed: _fbSubmitting ? null : _submitFeedback,
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7C3AED), foregroundColor: Colors.white,
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF14B8A6), foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
               child: _fbSubmitting
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))

@@ -68,10 +68,10 @@ class _EmployeeDirectoryScreenState extends State<EmployeeDirectoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: const Text('Employee Directory'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
@@ -101,12 +101,12 @@ class _EmployeeDirectoryScreenState extends State<EmployeeDirectoryScreen> {
                     padding: const EdgeInsets.only(right: 8),
                     child: FilterChip(
                       label: Text(d, style: TextStyle(
-                        color: _dept == d ? Colors.white : const Color(0xFF374151),
+                        color: _dept == d ? Colors.white : const Color(0xFF3B3556),
                         fontWeight: FontWeight.w600, fontSize: 12)),
                       selected: _dept == d,
                       onSelected: (_) { setState(() => _dept = d); _applyFilter(); },
                       selectedColor: const Color(0xFF059669),
-                      backgroundColor: const Color(0xFFF3F4F6),
+                      backgroundColor: const Color(0xFFEFEAFB),
                       side: BorderSide.none,
                     ),
                   )).toList(),
@@ -163,8 +163,8 @@ class _EmployeeDirectoryScreenState extends State<EmployeeDirectoryScreen> {
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 6)],
       ),
       child: Row(children: [
-        CircleAvatar(radius: 22, backgroundColor: const Color(0xFF2563EB).withOpacity(.12),
-            child: Text(initial, style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 16))),
+        CircleAvatar(radius: 22, backgroundColor: const Color(0xFF6D4AFF).withOpacity(.12),
+            child: Text(initial, style: const TextStyle(color: Color(0xFF6D4AFF), fontWeight: FontWeight.bold, fontSize: 16))),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),

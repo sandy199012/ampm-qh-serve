@@ -86,12 +86,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         title: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('AMPM IT Helpdesk', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
-          Text('Admin Dashboard', style: TextStyle(fontSize: 11, color: Color(0xFF06B6D4))),
+          Text('Admin Dashboard', style: TextStyle(fontSize: 11, color: Color(0xFFFF5C93))),
         ]),
         actions: [
           IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _load),
@@ -142,21 +142,21 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       Text(_error ?? '', style: const TextStyle(color: Colors.grey, fontSize: 12), textAlign: TextAlign.center),
       const SizedBox(height: 24),
       ElevatedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Retry'),
-          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white)),
+          style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6D4AFF), foregroundColor: Colors.white)),
     ])));
 
   Widget _buildBody() => ListView(padding: const EdgeInsets.all(16), children: [
     const UpdateBanner(),
     Container(margin: const EdgeInsets.only(bottom: 16), padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-          gradient: const LinearGradient(colors: [Color(0xFF0A192F), Color(0xFF153566)]),
+          gradient: const LinearGradient(colors: [Color(0xFF130A33), Color(0xFF3A1F8A)]),
           borderRadius: BorderRadius.circular(14)),
       child: Row(children: [
-        const CircleAvatar(backgroundColor: Color(0xFF7C3AED), child: Icon(Icons.admin_panel_settings, color: Colors.white)),
+        const CircleAvatar(backgroundColor: Color(0xFF14B8A6), child: Icon(Icons.admin_panel_settings, color: Colors.white)),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('IT Admin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-          Text('Sabhi tickets aur employees', style: TextStyle(color: Color(0xFF06B6D4), fontSize: 12)),
+          Text('Sabhi tickets aur employees', style: TextStyle(color: Color(0xFFFF5C93), fontSize: 12)),
         ])),
         Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(20)),
@@ -180,9 +180,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           builder: (_) => const WebPortalScreen(path: '/', title: 'AMPM IT Tool — Poori Website'))),
       child: Container(padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [Color(0xFF7C3AED), Color(0xFF2563EB)]),
+            gradient: const LinearGradient(colors: [Color(0xFF14B8A6), Color(0xFF6D4AFF)]),
             borderRadius: BorderRadius.circular(14),
-            boxShadow: [BoxShadow(color: const Color(0xFF7C3AED).withOpacity(.3), blurRadius: 10, offset: const Offset(0, 4))]),
+            boxShadow: [BoxShadow(color: const Color(0xFF14B8A6).withOpacity(.3), blurRadius: 10, offset: const Offset(0, 4))]),
         child: const Row(children: [
           Icon(Icons.public, color: Colors.white, size: 28),
           SizedBox(width: 12),
@@ -198,7 +198,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
 
     _menuCard(
       icon: Icons.confirmation_number,
-      color: const Color(0xFF2563EB),
+      color: const Color(0xFF6D4AFF),
       title: 'Sabhi Tickets',
       subtitle: 'View, assign, update, delete — sabhi employees ki tickets',
       onTap: () => Navigator.push(context,
@@ -217,21 +217,21 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     const SizedBox(height: 20),
     Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFBFDBFE))),
+      decoration: BoxDecoration(color: const Color(0xFFF0EBFF), borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFD8CEFF))),
       child: const Row(children: [
-        Icon(Icons.info_outline, color: Color(0xFF2563EB), size: 20),
+        Icon(Icons.info_outline, color: Color(0xFF6D4AFF), size: 20),
         SizedBox(width: 10),
         Expanded(child: Text(
           'Baaki modules (Assets, IT Store, Purchase Orders, Vendors, Budget, Bills, Licenses, IT Goals) upar "Full Website" button se seedha khulte hain — aage website mein koi naya feature aaye to bhi APK dobara install karne ki zarurat nahi.',
-          style: TextStyle(fontSize: 12, color: Color(0xFF1E3A8A)))),
+          style: TextStyle(fontSize: 12, color: Color(0xFF3B238F)))),
       ]),
     ),
 
     const SizedBox(height: 20),
     if (_tickets.isNotEmpty) ...[
       Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        const Text('Recent Tickets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF0A192F))),
+        const Text('Recent Tickets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF130A33))),
         TextButton(onPressed: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const TicketListScreen(all: true))).then((_) => _load()),
             child: const Text('Sab dekho')),
@@ -281,7 +281,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 6)]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Text(t.ticketNo, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB), fontSize: 12)),
+          Text(t.ticketNo, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6D4AFF), fontSize: 12)),
           const SizedBox(width: 8),
           Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             decoration: BoxDecoration(color: t.statusColor.withOpacity(.1), borderRadius: BorderRadius.circular(20)),

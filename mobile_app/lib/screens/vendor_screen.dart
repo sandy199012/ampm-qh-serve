@@ -38,10 +38,10 @@ class _VendorScreenState extends State<VendorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: const Text('Vendors'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
@@ -82,15 +82,15 @@ class _VendorScreenState extends State<VendorScreen> {
       onTap: () => _showDetail(v),
       child: Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-          border: const Border(left: BorderSide(color: Color(0xFF2563EB), width: 4)),
+          border: const Border(left: BorderSide(color: Color(0xFF6D4AFF), width: 4)),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 6)]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text((v['name'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
             if ((v['category'] ?? '').toString().isNotEmpty)
               Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(.1), borderRadius: BorderRadius.circular(20)),
-                child: Text((v['category'] ?? '').toString(), style: const TextStyle(color: Color(0xFF2563EB), fontSize: 10, fontWeight: FontWeight.bold))),
+                decoration: BoxDecoration(color: const Color(0xFF6D4AFF).withOpacity(.1), borderRadius: BorderRadius.circular(20)),
+                child: Text((v['category'] ?? '').toString(), style: const TextStyle(color: Color(0xFF6D4AFF), fontSize: 10, fontWeight: FontWeight.bold))),
           ]),
           if ((v['contactPerson'] ?? '').toString().isNotEmpty)
             Text('${v['contactPerson']} · ${v['phone'] ?? ''}', style: const TextStyle(color: Colors.grey, fontSize: 11)),

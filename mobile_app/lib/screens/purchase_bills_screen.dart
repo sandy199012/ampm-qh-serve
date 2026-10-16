@@ -36,18 +36,18 @@ class _PurchaseBillsScreenState extends State<PurchaseBillsScreen> {
   Widget build(BuildContext context) {
     final total = _bills.fold(0.0, (s, b) => s + ((b['totalAmount'] ?? 0) as num).toDouble());
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: const Text('Purchase Bills'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
       body: Column(children: [
         if (!_loading && _error == null)
-          Container(width: double.infinity, color: const Color(0xFFEFF6FF), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          Container(width: double.infinity, color: const Color(0xFFF0EBFF), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Text('Total: ₹${total.toStringAsFixed(0)}  (${_bills.length} bills)',
-              style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 12))),
+              style: const TextStyle(color: Color(0xFF6D4AFF), fontWeight: FontWeight.bold, fontSize: 12))),
         Expanded(child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -78,7 +78,7 @@ class _PurchaseBillsScreenState extends State<PurchaseBillsScreen> {
       onTap: () => _showDetail(b),
       child: Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-          border: const Border(left: BorderSide(color: Color(0xFF2563EB), width: 4)),
+          border: const Border(left: BorderSide(color: Color(0xFF6D4AFF), width: 4)),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 6)]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [

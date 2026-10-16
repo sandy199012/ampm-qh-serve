@@ -53,13 +53,13 @@ class _CartridgeScreenState extends State<CartridgeScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: const Text('Cartridges'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
-        bottom: TabBar(controller: _tabs, indicatorColor: const Color(0xFF06B6D4),
+        bottom: TabBar(controller: _tabs, indicatorColor: const Color(0xFFFF5C93),
           tabs: const [Tab(text: 'Stock'), Tab(text: 'Issue History')]),
       ),
       body: _loading
@@ -111,14 +111,14 @@ class _CartridgeScreenState extends State<CartridgeScreen> with SingleTickerProv
           Row(children: [
             Expanded(child: Text((c['name'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(.1), borderRadius: BorderRadius.circular(20)),
-              child: Text((c['type'] ?? '').toString(), style: const TextStyle(color: Color(0xFF2563EB), fontSize: 10, fontWeight: FontWeight.bold))),
+              decoration: BoxDecoration(color: const Color(0xFF6D4AFF).withOpacity(.1), borderRadius: BorderRadius.circular(20)),
+              child: Text((c['type'] ?? '').toString(), style: const TextStyle(color: Color(0xFF6D4AFF), fontSize: 10, fontWeight: FontWeight.bold))),
           ]),
           Text('${c['brand'] ?? ''}  ·  ${c['model'] ?? ''}  ·  ${c['color'] ?? ''}'.trim(),
               style: const TextStyle(color: Colors.grey, fontSize: 11)),
           const SizedBox(height: 8),
           Row(children: [
-            _qtyBadge('Total', c['totalQty'], const Color(0xFF374151)),
+            _qtyBadge('Total', c['totalQty'], const Color(0xFF3B3556)),
             const SizedBox(width: 6),
             _qtyBadge('Issued', c['issuedQty'], const Color(0xFFD97706)),
             const SizedBox(width: 6),
@@ -142,7 +142,7 @@ class _CartridgeScreenState extends State<CartridgeScreen> with SingleTickerProv
   Widget _issueCard(Map<String, dynamic> iss) {
     return Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-        border: const Border(left: BorderSide(color: Color(0xFF2563EB), width: 4)),
+        border: const Border(left: BorderSide(color: Color(0xFF6D4AFF), width: 4)),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 6)]),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -213,7 +213,7 @@ class _CartridgeScreenState extends State<CartridgeScreen> with SingleTickerProv
           Text('${c['type'] ?? ''} · ${c['color'] ?? ''}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
           const SizedBox(height: 12),
           Row(children: [
-            _qtyBadge('Total', c['totalQty'], const Color(0xFF374151)),
+            _qtyBadge('Total', c['totalQty'], const Color(0xFF3B3556)),
             const SizedBox(width: 8),
             _qtyBadge('Issued', c['issuedQty'], const Color(0xFFD97706)),
             const SizedBox(width: 8),
@@ -235,7 +235,7 @@ class _CartridgeScreenState extends State<CartridgeScreen> with SingleTickerProv
             Expanded(child: ElevatedButton.icon(
               onPressed: bal <= 0 ? null : () { Navigator.pop(ctx); _showIssue(c); },
               icon: const Icon(Icons.outbox), label: const Text('Issue'),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white))),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6D4AFF), foregroundColor: Colors.white))),
           ]),
         ])),
       ));

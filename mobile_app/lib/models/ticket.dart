@@ -116,22 +116,22 @@ class Ticket {
   Color get statusColor {
     switch (status) {
       case 'Open':          return const Color(0xFFDC2626);
-      case 'Acknowledged':  return const Color(0xFF7C3AED);
+      case 'Acknowledged':  return const Color(0xFF14B8A6);
       case 'In Progress':   return const Color(0xFFD97706);
-      case 'On Hold':       return const Color(0xFF64748B);
+      case 'On Hold':       return const Color(0xFF6E6890);
       case 'Resolved':      return const Color(0xFF059669);
-      case 'Closed':        return const Color(0xFF6B7280);
-      default:              return const Color(0xFF6B7280);
+      case 'Closed':        return const Color(0xFF6E6890);
+      default:              return const Color(0xFF6E6890);
     }
   }
 
   Color get priorityColor {
     switch (priority) {
-      case 'Critical': return const Color(0xFF7C3AED);
+      case 'Critical': return const Color(0xFF14B8A6);
       case 'High':     return const Color(0xFFDC2626);
       case 'Medium':   return const Color(0xFFD97706);
       case 'Low':      return const Color(0xFF059669);
-      default:         return const Color(0xFF6B7280);
+      default:         return const Color(0xFF6E6890);
     }
   }
 }

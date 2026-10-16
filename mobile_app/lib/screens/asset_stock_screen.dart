@@ -52,9 +52,9 @@ class _AssetStockScreenState extends State<AssetStockScreen> {
 
   Color _statusColor(String s) {
     switch (s) {
-      case 'Assigned':     return const Color(0xFF2563EB);
+      case 'Assigned':     return const Color(0xFF6D4AFF);
       case 'Under Repair': return const Color(0xFFD97706);
-      case 'Retired':      return const Color(0xFF6B7280);
+      case 'Retired':      return const Color(0xFF6E6890);
       case 'Lost':         return const Color(0xFFDC2626);
       default:             return const Color(0xFF059669); // In Stock
     }
@@ -63,10 +63,10 @@ class _AssetStockScreenState extends State<AssetStockScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: const Text('Asset Stock'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
@@ -92,12 +92,12 @@ class _AssetStockScreenState extends State<AssetStockScreen> {
                 padding: const EdgeInsets.only(right: 8),
                 child: FilterChip(
                   label: Text(s, style: TextStyle(
-                    color: _status == s ? Colors.white : const Color(0xFF374151),
+                    color: _status == s ? Colors.white : const Color(0xFF3B3556),
                     fontWeight: FontWeight.w600, fontSize: 12)),
                   selected: _status == s,
                   onSelected: (_) { setState(() => _status = s); _applyFilter(); },
-                  selectedColor: const Color(0xFF2563EB),
-                  backgroundColor: const Color(0xFFF3F4F6),
+                  selectedColor: const Color(0xFF6D4AFF),
+                  backgroundColor: const Color(0xFFEFEAFB),
                   side: BorderSide.none,
                 ),
               )).toList()),
@@ -153,7 +153,7 @@ class _AssetStockScreenState extends State<AssetStockScreen> {
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 6)]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Text((a['assetTag'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB), fontSize: 12)),
+            Text((a['assetTag'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6D4AFF), fontSize: 12)),
             const SizedBox(width: 8),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(color: c.withOpacity(.1), borderRadius: BorderRadius.circular(20)),
@@ -219,7 +219,7 @@ class _AssetStockScreenState extends State<AssetStockScreen> {
                 Expanded(child: ElevatedButton.icon(
                   onPressed: () { Navigator.pop(ctx); _showAssign(a); },
                   icon: const Icon(Icons.person_add), label: const Text('Assign'),
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6D4AFF), foregroundColor: Colors.white),
                 )),
             ]),
           ]),

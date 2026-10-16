@@ -33,9 +33,11 @@ class AMPMHelpdeskApp extends StatelessWidget {
         fontFamily: 'Roboto',
         scaffoldBackgroundColor: AppColors.bg,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.navy,
+          seedColor: AppColors.blue,
           primary: AppColors.blue,
           secondary: AppColors.cyan,
+          tertiary: AppColors.purple,
+          surface: Colors.white,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: AppColors.navy,
@@ -48,9 +50,43 @@ class AMPMHelpdeskApp extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             elevation: 0,
             padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           ),
         ),
+        textButtonTheme: TextButtonThemeData(
+          style: TextButton.styleFrom(foregroundColor: AppColors.blue),
+        ),
+        floatingActionButtonTheme: FloatingActionButtonThemeData(
+          backgroundColor: AppColors.cyan,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.cardBorder)),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.cardBorder)),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.blue, width: 1.8)),
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: const Color(0xFFEFEAFB),
+          selectedColor: AppColors.blue.withOpacity(.16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          side: BorderSide.none,
+        ),
+        snackBarTheme: SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.navy,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+        progressIndicatorTheme: const ProgressIndicatorThemeData(color: AppColors.blue),
+        dividerTheme: const DividerThemeData(color: AppColors.cardBorder),
+        pageTransitionsTheme: const PageTransitionsTheme(builders: {
+          TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+        }),
       ),
       home: const SplashScreen(),
     );

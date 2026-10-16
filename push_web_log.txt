@@ -1,0 +1,12 @@
+warning: in the working copy of 'push_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/AppUpdateController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'COPY_KEY_ONLY.bat', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'RUN_PUSH_WEB.bat', LF will be replaced by CRLF the next time Git touches it
+[main 0d97784] Update feed: fall back to releases.atom when GitHub API is rate-limited
+ 5 files changed, 197 insertions(+), 1 deletion(-)
+ create mode 100644 COPY_KEY_ONLY.bat
+ create mode 100644 RUN_PUSH_WEB.bat
+ create mode 100644 push_web_log.txt
+To https://github.com/sandy199012/ampm-qh-serve.git
+   93f30dc..0d97784  main -> main
+FINISHED errorlevel=0 

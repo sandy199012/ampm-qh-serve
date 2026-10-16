@@ -55,20 +55,20 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final totalProj = _budget.fold(0.0, (s, b) => s + _totalProjected(b));
     final totalAct = _budget.fold(0.0, (s, b) => s + _totalActual(b));
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: const Text('Budget'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
       body: Column(children: [
         if (!_loading && _error == null)
-          Container(width: double.infinity, color: const Color(0xFFEFF6FF), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          Container(width: double.infinity, color: const Color(0xFFF0EBFF), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Projected', style: TextStyle(color: Colors.grey, fontSize: 10)),
-                Text('₹${totalProj.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 14)),
+                Text('₹${totalProj.toStringAsFixed(0)}', style: const TextStyle(color: Color(0xFF6D4AFF), fontWeight: FontWeight.bold, fontSize: 14)),
               ])),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Actual', style: TextStyle(color: Colors.grey, fontSize: 10)),
@@ -77,7 +77,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Text('Variance', style: TextStyle(color: Colors.grey, fontSize: 10)),
                 Text('₹${(totalProj - totalAct).toStringAsFixed(0)}',
-                  style: TextStyle(color: (totalProj-totalAct)<0 ? const Color(0xFFDC2626) : const Color(0xFF374151), fontWeight: FontWeight.bold, fontSize: 14)),
+                  style: TextStyle(color: (totalProj-totalAct)<0 ? const Color(0xFFDC2626) : const Color(0xFF3B3556), fontWeight: FontWeight.bold, fontSize: 14)),
               ])),
             ])),
         Expanded(child: _loading
@@ -113,19 +113,19 @@ class _BudgetScreenState extends State<BudgetScreen> {
       onTap: () => _showDetail(b),
       child: Container(margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-          border: Border(left: BorderSide(color: over ? const Color(0xFFDC2626) : const Color(0xFF2563EB), width: 4)),
+          border: Border(left: BorderSide(color: over ? const Color(0xFFDC2626) : const Color(0xFF6D4AFF), width: 4)),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 6)]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text((b['description'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(.1), borderRadius: BorderRadius.circular(20)),
-              child: Text((b['type'] ?? '').toString(), style: const TextStyle(color: Color(0xFF2563EB), fontSize: 10, fontWeight: FontWeight.bold))),
+              decoration: BoxDecoration(color: const Color(0xFF6D4AFF).withOpacity(.1), borderRadius: BorderRadius.circular(20)),
+              child: Text((b['type'] ?? '').toString(), style: const TextStyle(color: Color(0xFF6D4AFF), fontSize: 10, fontWeight: FontWeight.bold))),
           ]),
           Text((b['section'] ?? '').toString(), style: const TextStyle(color: Colors.grey, fontSize: 11)),
           const SizedBox(height: 6),
           Row(children: [
-            Text('Proj: ₹${proj.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Color(0xFF2563EB), fontWeight: FontWeight.w600)),
+            Text('Proj: ₹${proj.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: Color(0xFF6D4AFF), fontWeight: FontWeight.w600)),
             const SizedBox(width: 10),
             Text('Actual: ₹${act.toStringAsFixed(0)}', style: TextStyle(fontSize: 12, color: over ? const Color(0xFFDC2626) : const Color(0xFF059669), fontWeight: FontWeight.w600)),
           ]),
@@ -156,7 +156,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               final md = Map<String, dynamic>.from(monthly[m] ?? {});
               return Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [
                 SizedBox(width: 60, child: Text(m, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
-                Expanded(child: Text('Proj: ₹${md['projected'] ?? 0}', style: const TextStyle(fontSize: 12, color: Color(0xFF2563EB)))),
+                Expanded(child: Text('Proj: ₹${md['projected'] ?? 0}', style: const TextStyle(fontSize: 12, color: Color(0xFF6D4AFF)))),
                 Expanded(child: Text('Actual: ₹${md['actual'] ?? 0}', style: const TextStyle(fontSize: 12, color: Color(0xFF059669)))),
               ]));
             }),

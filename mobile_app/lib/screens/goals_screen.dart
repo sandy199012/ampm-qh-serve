@@ -54,10 +54,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: const Text('IT Goals'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [
           IconButton(icon: const Icon(Icons.skip_next), tooltip: 'Carry forward incomplete goals to next week', onPressed: _carryForward),
@@ -71,11 +71,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
               children: _weeks.map((w) => Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: FilterChip(
-                  label: Text('Week $w', style: TextStyle(color: _weekFilter == w ? Colors.white : const Color(0xFF374151), fontWeight: FontWeight.w600, fontSize: 12)),
+                  label: Text('Week $w', style: TextStyle(color: _weekFilter == w ? Colors.white : const Color(0xFF3B3556), fontWeight: FontWeight.w600, fontSize: 12)),
                   selected: _weekFilter == w,
                   onSelected: (_) => setState(() => _weekFilter = w),
-                  selectedColor: const Color(0xFF2563EB),
-                  backgroundColor: const Color(0xFFF3F4F6), side: BorderSide.none,
+                  selectedColor: const Color(0xFF6D4AFF),
+                  backgroundColor: const Color(0xFFEFEAFB), side: BorderSide.none,
                 ))).toList()))),
         Expanded(child: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -126,10 +126,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
   Color _statusColor(String s) {
     switch (s) {
       case 'Completed':   return const Color(0xFF059669);
-      case 'In Progress': return const Color(0xFF2563EB);
+      case 'In Progress': return const Color(0xFF6D4AFF);
       case 'On Hold':     return const Color(0xFFD97706);
       case 'Cancelled':   return const Color(0xFFDC2626);
-      default:            return const Color(0xFF6B7280);
+      default:            return const Color(0xFF6E6890);
     }
   }
 
@@ -148,8 +148,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
             Expanded(child: Text((g['title'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
             if (g['isPending'] == true) ...[
               Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(color: const Color(0xFF7C3AED).withOpacity(.1), borderRadius: BorderRadius.circular(20)),
-                child: Text('Wk ${g['pendingFromWeek'] ?? ''}', style: const TextStyle(color: Color(0xFF7C3AED), fontSize: 10, fontWeight: FontWeight.bold))),
+                decoration: BoxDecoration(color: const Color(0xFF14B8A6).withOpacity(.1), borderRadius: BorderRadius.circular(20)),
+                child: Text('Wk ${g['pendingFromWeek'] ?? ''}', style: const TextStyle(color: Color(0xFF14B8A6), fontSize: 10, fontWeight: FontWeight.bold))),
               const SizedBox(width: 6),
             ],
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -159,7 +159,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
           Text('${g['category'] ?? ''} · ${g['priority'] ?? ''} · ${g['department'] ?? ''}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
           const SizedBox(height: 8),
           ClipRRect(borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(value: progress / 100, minHeight: 6, backgroundColor: const Color(0xFFF3F4F6),
+            child: LinearProgressIndicator(value: progress / 100, minHeight: 6, backgroundColor: const Color(0xFFEFEAFB),
               valueColor: AlwaysStoppedAnimation(c))),
           const SizedBox(height: 4),
           Text('$progress%  ·  Target: ${g['targetDate'] ?? '—'}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
@@ -205,7 +205,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
             Expanded(child: ElevatedButton.icon(
               onPressed: () { Navigator.pop(ctx); _showUpdateStatus(g); },
               icon: const Icon(Icons.update), label: const Text('Update Status'),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white))),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6D4AFF), foregroundColor: Colors.white))),
           ]),
         ])),
       ),
@@ -259,7 +259,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6D4AFF), foregroundColor: Colors.white),
             child: saving
               ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : const Text('Save Update', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
@@ -319,7 +319,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
           ]),
           const SizedBox(height: 10),
           Container(width: double.infinity, padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(color: const Color(0xFF0A192F), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: const Color(0xFF130A33), borderRadius: BorderRadius.circular(8)),
             child: Text('Week $weekNo   |   $weekStart  →  $weekEnd',
               style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
           const SizedBox(height: 12),

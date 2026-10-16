@@ -107,7 +107,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
           child:Column(children:[
             const Text('Ticket Number',style:TextStyle(color:Colors.grey,fontSize:12)),
             const SizedBox(height:4),
-            Text(ticketNo,style:const TextStyle(fontSize:26,fontWeight:FontWeight.bold,color:Color(0xFF2563EB))),
+            Text(ticketNo,style:const TextStyle(fontSize:26,fontWeight:FontWeight.bold,color:Color(0xFF6D4AFF))),
           ])),
         const SizedBox(height:12),
         const Text('The IT team has been notified!\nYou will get a response soon.',
@@ -128,28 +128,28 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:const Color(0xFFF0F4F8),
+      backgroundColor:const Color(0xFFF5F2FF),
       appBar:AppBar(title:const Text('Raise IT Ticket'),
-          backgroundColor:const Color(0xFF0A192F),foregroundColor:Colors.white),
+          backgroundColor:const Color(0xFF130A33),foregroundColor:Colors.white),
       body:Form(key:_formKey,child:ListView(padding:const EdgeInsets.all(16),children:[
         // Employee card (read-only)
         Container(padding:const EdgeInsets.all(14),margin:const EdgeInsets.only(bottom:16),
           decoration:BoxDecoration(
-              gradient:const LinearGradient(colors:[Color(0xFF0A192F),Color(0xFF153566)]),
+              gradient:const LinearGradient(colors:[Color(0xFF130A33),Color(0xFF3A1F8A)]),
               borderRadius:BorderRadius.circular(12)),
           child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-            const Text('Your Details',style:TextStyle(color:Color(0xFF06B6D4),fontWeight:FontWeight.bold,fontSize:12)),
+            const Text('Your Details',style:TextStyle(color:Color(0xFFFF5C93),fontWeight:FontWeight.bold,fontSize:12)),
             const SizedBox(height:8),
             Text(_empName,style:const TextStyle(color:Colors.white,fontWeight:FontWeight.bold,fontSize:16)),
             const SizedBox(height:2),
             Text('$_empId  •  $_empDept',style:const TextStyle(color:Colors.white70,fontSize:12)),
           ])),
-        _section('Additional Info',const Color(0xFF06B6D4),[
+        _section('Additional Info',const Color(0xFFFF5C93),[
           _field('Phone/Extension (optional)',_phone,hint:'Mobile or desk number'),
           _field('System/Location (optional)',_system,hint:'PC name or floor'),
         ]),
         const SizedBox(height:12),
-        _section('Issue Details',const Color(0xFF2563EB),[
+        _section('Issue Details',const Color(0xFF6D4AFF),[
           _drop('Category *',_categoryIssueMap.keys.toList(),_category,
               (v)=>setState((){_category=v;_selectedIssueTypes.clear();}),required:true),
           _issueTypeChecklist(),
@@ -187,7 +187,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
 
   Widget _field(String lbl,TextEditingController ctrl,{String? hint,bool required=false,int maxLines=1})=>
     Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Text(lbl,style:const TextStyle(fontWeight:FontWeight.w600,fontSize:12,color:Color(0xFF374151))),
+      Text(lbl,style:const TextStyle(fontWeight:FontWeight.w600,fontSize:12,color:Color(0xFF3B3556))),
       const SizedBox(height:5),
       TextFormField(controller:ctrl,maxLines:maxLines,
         decoration:InputDecoration(hintText:hint,hintStyle:const TextStyle(color:Colors.grey,fontSize:12),
@@ -198,7 +198,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
 
   Widget _drop(String lbl,List<String> items,String? val,Function(String?) onCh,{bool required=false})=>
     Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      Text(lbl,style:const TextStyle(fontWeight:FontWeight.w600,fontSize:12,color:Color(0xFF374151))),
+      Text(lbl,style:const TextStyle(fontWeight:FontWeight.w600,fontSize:12,color:Color(0xFF3B3556))),
       const SizedBox(height:5),
       DropdownButtonFormField<String>(value:val,isExpanded:true,
         items:items.map((e)=>DropdownMenuItem(value:e,child:Text(e,style:const TextStyle(fontSize:13)))).toList(),
@@ -213,7 +213,7 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
     final items = _category==null ? const <String>[] : (_categoryIssueMap[_category]??const []);
     return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
       const Text('Issue Type * (select all that apply)',
-          style:TextStyle(fontWeight:FontWeight.w600,fontSize:12,color:Color(0xFF374151))),
+          style:TextStyle(fontWeight:FontWeight.w600,fontSize:12,color:Color(0xFF3B3556))),
       const SizedBox(height:5),
       Container(
         constraints:const BoxConstraints(maxHeight:180),
@@ -243,9 +243,9 @@ class _RaiseTicketScreenState extends State<RaiseTicketScreen> {
 
   Widget _priorityPicker(){
     const ps=['Low','Medium','High','Critical'];
-    const cs=[Color(0xFF059669),Color(0xFFD97706),Color(0xFFDC2626),Color(0xFF7C3AED)];
+    const cs=[Color(0xFF059669),Color(0xFFD97706),Color(0xFFDC2626),Color(0xFF14B8A6)];
     return Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-      const Text('Priority',style:TextStyle(fontWeight:FontWeight.w600,fontSize:12,color:Color(0xFF374151))),
+      const Text('Priority',style:TextStyle(fontWeight:FontWeight.w600,fontSize:12,color:Color(0xFF3B3556))),
       const SizedBox(height:6),
       Row(children:List.generate(4,(i)=>Expanded(child:Padding(
         padding:EdgeInsets.only(right:i<3?8:0),

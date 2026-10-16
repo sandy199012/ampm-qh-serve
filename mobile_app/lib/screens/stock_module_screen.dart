@@ -71,13 +71,13 @@ class _StockModuleScreenState extends State<StockModuleScreen> with SingleTicker
   Widget build(BuildContext context) {
     final title = _p ? 'Peripheral Stock' : 'IT Store';
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: Text(title),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
-        bottom: TabBar(controller: _tabs, indicatorColor: const Color(0xFF06B6D4),
+        bottom: TabBar(controller: _tabs, indicatorColor: const Color(0xFFFF5C93),
           tabs: const [Tab(text: 'Stock'), Tab(text: 'Issue History')]),
       ),
       body: _loading
@@ -113,11 +113,11 @@ class _StockModuleScreenState extends State<StockModuleScreen> with SingleTicker
           children: ['All', ..._typeOptions].map((t) => Padding(
             padding: const EdgeInsets.only(right: 8),
             child: FilterChip(
-              label: Text(t, style: TextStyle(color: _typeFilter == t ? Colors.white : const Color(0xFF374151), fontWeight: FontWeight.w600, fontSize: 12)),
+              label: Text(t, style: TextStyle(color: _typeFilter == t ? Colors.white : const Color(0xFF3B3556), fontWeight: FontWeight.w600, fontSize: 12)),
               selected: _typeFilter == t,
               onSelected: (_) => setState(() => _typeFilter = t),
               selectedColor: const Color(0xFF059669),
-              backgroundColor: const Color(0xFFF3F4F6), side: BorderSide.none,
+              backgroundColor: const Color(0xFFEFEAFB), side: BorderSide.none,
             ))).toList())),
       ])),
       Expanded(child: _filteredItems.isEmpty
@@ -141,14 +141,14 @@ class _StockModuleScreenState extends State<StockModuleScreen> with SingleTicker
           Row(children: [
             Expanded(child: Text((it['name'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(color: const Color(0xFF2563EB).withOpacity(.1), borderRadius: BorderRadius.circular(20)),
-              child: Text((it[_typeKey] ?? '').toString(), style: const TextStyle(color: Color(0xFF2563EB), fontSize: 10, fontWeight: FontWeight.bold))),
+              decoration: BoxDecoration(color: const Color(0xFF6D4AFF).withOpacity(.1), borderRadius: BorderRadius.circular(20)),
+              child: Text((it[_typeKey] ?? '').toString(), style: const TextStyle(color: Color(0xFF6D4AFF), fontSize: 10, fontWeight: FontWeight.bold))),
           ]),
           if ((it['brand'] ?? '').toString().isNotEmpty)
             Text((it['brand'] ?? '').toString(), style: const TextStyle(color: Colors.grey, fontSize: 11)),
           const SizedBox(height: 8),
           Row(children: [
-            _qtyBadge('Total', it['totalQty'], const Color(0xFF374151)),
+            _qtyBadge('Total', it['totalQty'], const Color(0xFF3B3556)),
             const SizedBox(width: 6),
             _qtyBadge('Issued', it['issuedQty'], const Color(0xFFD97706)),
             const SizedBox(width: 6),
@@ -175,7 +175,7 @@ class _StockModuleScreenState extends State<StockModuleScreen> with SingleTicker
       case 'Issued':   return const Color(0xFFD97706);
       case 'Returned':  return const Color(0xFF059669);
       case 'Damaged':   return const Color(0xFFDC2626);
-      default:          return const Color(0xFF6B7280);
+      default:          return const Color(0xFF6E6890);
     }
   }
 
@@ -191,7 +191,7 @@ class _StockModuleScreenState extends State<StockModuleScreen> with SingleTicker
             onTap: status == 'Issued' ? () => _showReturnDialog(iss) : null,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
-                Text((iss['issueNo'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB), fontSize: 12)),
+                Text((iss['issueNo'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6D4AFF), fontSize: 12)),
                 const SizedBox(width: 8),
                 Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(color: c.withOpacity(.1), borderRadius: BorderRadius.circular(20)),
@@ -205,7 +205,7 @@ class _StockModuleScreenState extends State<StockModuleScreen> with SingleTicker
               Text('${iss['empName'] ?? ''} · ${iss['empDept'] ?? ''}', style: const TextStyle(color: Colors.grey, fontSize: 11)),
               if (status == 'Issued')
                 const Padding(padding: EdgeInsets.only(top: 6),
-                  child: Text('Tap to process the return', style: TextStyle(color: Color(0xFF2563EB), fontSize: 10, fontStyle: FontStyle.italic))),
+                  child: Text('Tap to process the return', style: TextStyle(color: Color(0xFF6D4AFF), fontSize: 10, fontStyle: FontStyle.italic))),
             ]),
           ),
           const SizedBox(height: 6),
@@ -242,7 +242,7 @@ class _StockModuleScreenState extends State<StockModuleScreen> with SingleTicker
           Text('${it[_typeKey] ?? ''} · ${it['brand'] ?? ''}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
           const SizedBox(height: 12),
           Row(children: [
-            _qtyBadge('Total', it['totalQty'], const Color(0xFF374151)),
+            _qtyBadge('Total', it['totalQty'], const Color(0xFF3B3556)),
             const SizedBox(width: 8),
             _qtyBadge('Issued', it['issuedQty'], const Color(0xFFD97706)),
             const SizedBox(width: 8),
@@ -262,7 +262,7 @@ class _StockModuleScreenState extends State<StockModuleScreen> with SingleTicker
             Expanded(child: ElevatedButton.icon(
               onPressed: avail <= 0 ? null : () { Navigator.pop(ctx); _showIssue(it); },
               icon: const Icon(Icons.outbox), label: const Text('Issue'),
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white))),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6D4AFF), foregroundColor: Colors.white))),
           ]),
         ])),
       ),
@@ -280,7 +280,7 @@ class _StockModuleScreenState extends State<StockModuleScreen> with SingleTicker
         ]),
         ListTile(leading: const Icon(Icons.add_circle, color: Color(0xFF059669)), title: const Text('Add New Item'),
           onTap: () { Navigator.pop(ctx); _showAddItem(); }),
-        ListTile(leading: const Icon(Icons.add_box, color: Color(0xFF2563EB)), title: const Text('Stock In (existing item)'),
+        ListTile(leading: const Icon(Icons.add_box, color: Color(0xFF6D4AFF)), title: const Text('Stock In (existing item)'),
           onTap: () { Navigator.pop(ctx); _pickItemThen(_showStockIn); }),
         ListTile(leading: const Icon(Icons.outbox, color: Color(0xFFD97706)), title: const Text('Issue Item'),
           onTap: () { Navigator.pop(ctx); _pickItemThen(_showIssue); }),
@@ -449,7 +449,7 @@ class _StockModuleScreenState extends State<StockModuleScreen> with SingleTicker
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2563EB), foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6D4AFF), foregroundColor: Colors.white),
             child: saving
               ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
               : const Text('Add Stock', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),

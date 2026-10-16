@@ -50,18 +50,18 @@ class _POScreenState extends State<POScreen> {
     switch (s) {
       case 'Received':  return const Color(0xFF059669);
       case 'Cancelled': return const Color(0xFFDC2626);
-      case 'Issued':    return const Color(0xFF2563EB);
-      default:          return const Color(0xFF6B7280); // Draft
+      case 'Issued':    return const Color(0xFF6D4AFF);
+      default:          return const Color(0xFF6E6890); // Draft
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F4F8),
+      backgroundColor: const Color(0xFFF5F2FF),
       appBar: AppBar(
         title: const Text('Purchase Orders'),
-        backgroundColor: const Color(0xFF0A192F),
+        backgroundColor: const Color(0xFF130A33),
         foregroundColor: Colors.white,
         actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
       ),
@@ -77,11 +77,11 @@ class _POScreenState extends State<POScreen> {
             children: _statuses.map((s) => Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilterChip(
-                label: Text(s, style: TextStyle(color: _status == s ? Colors.white : const Color(0xFF374151), fontWeight: FontWeight.w600, fontSize: 12)),
+                label: Text(s, style: TextStyle(color: _status == s ? Colors.white : const Color(0xFF3B3556), fontWeight: FontWeight.w600, fontSize: 12)),
                 selected: _status == s,
                 onSelected: (_) => setState(() => _status = s),
-                selectedColor: const Color(0xFF2563EB),
-                backgroundColor: const Color(0xFFF3F4F6), side: BorderSide.none,
+                selectedColor: const Color(0xFF6D4AFF),
+                backgroundColor: const Color(0xFFEFEAFB), side: BorderSide.none,
               ))).toList())),
         ])),
         Expanded(child: _loading
@@ -120,7 +120,7 @@ class _POScreenState extends State<POScreen> {
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(.04), blurRadius: 6)]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text((p['poNumber'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB), fontSize: 12))),
+            Expanded(child: Text((p['poNumber'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF6D4AFF), fontSize: 12))),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(color: c.withOpacity(.1), borderRadius: BorderRadius.circular(20)),
               child: Text(status, style: TextStyle(color: c, fontSize: 10, fontWeight: FontWeight.bold))),
@@ -163,7 +163,7 @@ class _POScreenState extends State<POScreen> {
               const Spacer(),
               IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx), padding: EdgeInsets.zero, constraints: const BoxConstraints()),
             ]),
-            Text((p['poNumber'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF2563EB))),
+            Text((p['poNumber'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF6D4AFF))),
             Text((p['vendorName'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
             const SizedBox(height: 12),
             _row('Status', p['status']), _row('Priority', p['priority']), _row('PO Date', p['poDate']),
@@ -363,7 +363,7 @@ class _POScreenState extends State<POScreen> {
                 final rateC = TextEditingController(text: (it['rate'] ?? 0).toString());
                 final gstC = TextEditingController(text: (it['gst'] ?? 18).toString());
                 return Container(margin: const EdgeInsets.only(bottom: 8), padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: const Color(0xFFF8FAFC), borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(color: const Color(0xFFF8F5FF), borderRadius: BorderRadius.circular(8)),
                   child: Column(children: [
                     Row(children: [
                       Expanded(child: TextField(controller: descC, onChanged: (v) => it['desc'] = v,
@@ -390,7 +390,7 @@ class _POScreenState extends State<POScreen> {
                   ]));
               }),
               const SizedBox(height: 8),
-              Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8)),
+              Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFF0EBFF), borderRadius: BorderRadius.circular(8)),
                 child: Column(children: [
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Subtotal', style: TextStyle(fontSize: 12)), Text('₹${sub.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12))]),
                   Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('GST', style: TextStyle(fontSize: 12)), Text('₹${gst.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12))]),

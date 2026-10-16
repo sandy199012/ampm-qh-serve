@@ -3,32 +3,39 @@ import 'package:flutter/material.dart';
 // Shared design tokens for the AMPM Helpdesk app — one place for colors,
 // gradients and shadows so every screen stays visually consistent.
 class AppColors {
-  static const navy = Color(0xFF0A192F);
-  static const navyLight = Color(0xFF16324F);
-  static const cyan = Color(0xFF06B6D4);
-  static const blue = Color(0xFF2563EB);
+  static const navy = Color(0xFF130A33);
+  static const navyLight = Color(0xFF2B1766);
+  static const cyan = Color(0xFFFF5C93);
+  static const blue = Color(0xFF6D4AFF);
   static const green = Color(0xFF059669);
   static const amber = Color(0xFFD97706);
   static const red = Color(0xFFDC2626);
-  static const purple = Color(0xFF7C3AED);
-  static const bg = Color(0xFFF3F6FA);
-  static const cardBorder = Color(0xFFE7ECF3);
-  static const textDark = Color(0xFF0F172A);
-  static const textMuted = Color(0xFF64748B);
+  static const purple = Color(0xFF14B8A6);
+  static const bg = Color(0xFFF5F2FF);
+  static const cardBorder = Color(0xFFE6E0F7);
+  static const textDark = Color(0xFF1A1033);
+  static const textMuted = Color(0xFF6E6890);
 
+  // "Aurora" theme: midnight violet -> electric violet, with a rose accent.
+  // (blue = electric violet, cyan = rose, purple = mint; names kept so every screen follows.)
   static const navyGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [navy, navyLight],
+    colors: [navy, navyLight, Color(0xFF4A2BC9)],
+  );
+  static const accentGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [blue, cyan],
   );
 }
 
 class AppShadows {
   static List<BoxShadow> soft = [
-    BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 18, offset: const Offset(0, 6)),
+    BoxShadow(color: const Color(0xFF6D4AFF).withOpacity(.10), blurRadius: 22, offset: const Offset(0, 8)),
   ];
   static List<BoxShadow> tight = [
-    BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 10, offset: const Offset(0, 3)),
+    BoxShadow(color: const Color(0xFF6D4AFF).withOpacity(.08), blurRadius: 12, offset: const Offset(0, 4)),
   ];
 }
 
@@ -67,7 +74,7 @@ class StatTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.cardBorder),
           boxShadow: AppShadows.tight,
         ),
