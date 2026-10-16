@@ -1,0 +1,96 @@
+# Builds the Helpdesk Android app (mobile_app/) on every push and publishes the
+# APK as a GitHub Release tagged "app-v<version>" in THIS repository.
+# The web server (/api/app/latest, /app) announces it; installed apps then show
+# "Naya update available".
+# Needs ONE secret in this repo: DEBUG_KEYSTORE_B64 (the key the phones' current
+# app was signed with - SETUP_AUTO_UPDATE.bat copies it for you).
+name: Build Helpdesk app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mobile_app/**'
+      - '.github/workflows/build-app.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: build-app
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile_app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check signing secret
+        working-directory: .
+        env:
+          KS: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          [ -n "$KS" ] || { echo "::error::Secret DEBUG_KEYSTORE_B64 is missing - run SETUP_AUTO_UPDATE.bat again"; exit 1; }
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Restore the signing key
+        env:
+          KS: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          mkdir -p ~/.android
+          echo "$KS" | base64 -d > ~/.android/debug.keystore
+          keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey | head -n 6
+
+      - name: Version number
+        id: ver
+        run: |
+          base=$(grep -E '^version:' pubspec.yaml | sed -E 's/^version:[[:space:]]*([0-9]+\.[0-9]+)\..*/\1/')
+          echo "name=${base}.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "code=$((100 + GITHUB_RUN_NUMBER))" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare Android project
+        run: |
+          chmod +x android/gradlew
+          flutter --version
+          flutter pub get
+          if [ ! -f android/local.properties ]; then
+            echo "flutter.sdk=$(dirname "$(dirname "$(which flutter)")")" > android/local.properties
+          fi
+
+      - name: Build release APK
+        run: |
+          flutter build apk --release --no-tree-shake-icons \
+            --android-skip-build-dependency-validation \
+            --build-name="${{ steps.ver.outputs.name }}" \
+            --build-number="${{ steps.ver.outputs.code }}"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.name }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk AMPM_Helpdesk.apk
+          sha=$(sha256sum AMPM_Helpdesk.apk | cut -d' ' -f1)
+          git log -1 --pretty=%B > notes.txt
+          printf '\n\nsha256:%s\n' "$sha" >> notes.txt
+          gh release create "app-v${VERSION}" AMPM_Helpdesk.apk \
+            --repo "${{ github.repository }}" \
+            --title "Helpdesk app ${VERSION}" \
+            --notes-file notes.txt \
+            --target "${{ github.sha }}"
+          echo "Published app-v${VERSION}" >> "$GITHUB_STEP_SUMMARY"

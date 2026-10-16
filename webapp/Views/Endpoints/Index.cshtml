@@ -166,6 +166,7 @@
                         <th>IMEI</th>
                         <th>Serial</th>
                         <th>Asset Tag</th>
+                        <th>App Ver.</th>
                         <th>Battery</th>
                         <th>Logged-in User</th>
                         <th>Last Seen</th>
@@ -184,6 +185,7 @@
                             <td class="font-monospace small">@d.GetValueOrDefault("imei")</td>
                             <td class="font-monospace small">@d.GetValueOrDefault("serial")</td>
                             <td class="font-monospace small">@d.GetValueOrDefault("assetTag")</td>
+                            <td class="small">@d.GetValueOrDefault("appVersion")</td>
                             <td>@(string.IsNullOrEmpty(d.GetValueOrDefault("battery")?.ToString()) ? "" : d.GetValueOrDefault("battery") + "%")</td>
                             <td>@d.GetValueOrDefault("user")</td>
                             <td>@d.GetValueOrDefault("lastSeen")</td>

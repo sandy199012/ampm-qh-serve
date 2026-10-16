@@ -415,6 +415,7 @@ public class EndpointsController : Controller
         SetIf("user", "user");
         SetIf("empId", "empId");
         SetIf("empName", "empName");
+        SetIf("appVersion", "appVersion");   // installed Helpdesk app version, for update roll-out tracking
         rec["lastSeen"] = IstTime.Now.ToString("yyyy-MM-dd HH:mm");
 
         if (existing == null) devices.Add(rec);

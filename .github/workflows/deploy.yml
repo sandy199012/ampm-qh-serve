@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    # an app-only change (mobile_app/) must not restart the website
+    paths-ignore:
+      - 'mobile_app/**'
+      - '.github/workflows/build-app.yml'
 
 jobs:
   deploy:

@@ -113,6 +113,10 @@
         <button class="btn btn-outline-primary" type="button" onclick="copyMobLink()"><i class="bi bi-clipboard"></i> Copy link</button>
         <a class="btn btn-outline-secondary" href="/MyDevice" target="_blank"><i class="bi bi-box-arrow-up-right"></i> Open</a>
     </div>
+    <div class="small mb-2">
+        <b>Helpdesk Android app:</b> share <a href="/app" target="_blank" class="font-monospace" id="appLink">/app</a>
+        &mdash; always gives the newest APK. Installed apps update themselves from inside the app.
+    </div>
     <div class="small text-muted">
         A browser or normal app can never read IMEI / serial on Android 10+ or iOS &mdash; only an MDM (Mobile Device Management) tool can do that fully automatically.
         Results show in <b>Asset Stock</b> and in <b>Monitor &rarr; Mobile Devices</b>.
@@ -132,6 +136,7 @@
 @section Scripts {
 <script>
     document.getElementById('mobLink').value = location.origin + '/MyDevice';
+    document.getElementById('appLink').textContent = location.origin + '/app';
     function copyMobLink() {
         const el = document.getElementById('mobLink');
         el.select();

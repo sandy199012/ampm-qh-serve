@@ -29,8 +29,10 @@ public class ModulePermissionFilter : IActionFilter
     // MyDevice is the "register my phone" self-service page: any logged-in user may
     // record THEIR OWN phone/tablet; the controller checks the login itself and only
     // lets admins touch a device that belongs to somebody else.
+    // AppUpdate serves the mobile app's update feed + APK download page (only a
+    // version number and the public APK; see AppUpdateController).
     static readonly HashSet<string> ExemptControllers = new(StringComparer.OrdinalIgnoreCase)
-        { "Account", "Home", "Api", "MyHelpdesk", "MyDevice" };
+        { "Account", "Home", "Api", "MyHelpdesk", "MyDevice", "AppUpdate" };
 
     public void OnActionExecuting(ActionExecutingContext context)
     {

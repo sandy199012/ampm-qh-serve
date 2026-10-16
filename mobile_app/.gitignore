@@ -1,0 +1,27 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.idea/
+*.iml
+
+# Android local files
+android/.gradle/
+android/.kotlin/
+android/build/
+android/local.properties
+android/app/build/
+*.keystore
+*.jks
+key.properties
+
+# Local build outputs and logs
+*.apk
+build_log.txt
+{lib/
+
+# OS
+.DS_Store
+Thumbs.db
