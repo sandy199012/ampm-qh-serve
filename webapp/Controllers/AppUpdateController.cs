@@ -31,7 +31,7 @@ public class AppUpdateController : Controller
     // No auto-redirect: for the download we want GitHub's short-lived file URL, not the file itself.
     static readonly HttpClient Http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(15) };
 
-    sealed record Rel(string Version, string Notes, string Sha256, bool Mandatory, long AssetId, long Size);
+    sealed record Rel(string Version, string Notes, string Sha256, bool Mandatory, long AssetId, long Size, string? DirectUrl = null);
 
     static Rel? _cache;
     static DateTime _cacheUntil = DateTime.MinValue;
@@ -91,11 +91,63 @@ public class AppUpdateController : Controller
             }
             catch { /* GitHub unreachable: fall through and keep the previous answer if any */ }
 
+            // The GitHub API is rate-limited per IP (60/hour without a token) and Render's
+            // shared IPs often hit that limit. The public releases feed and the plain
+            // download link are not limited, so use them when the API gave no answer.
+            if (found == null && Token == null) found = await LoadFromAtomAsync();
+
             if (found != null) { _cache = found; _cacheUntil = DateTime.UtcNow.AddMinutes(5); }
             else if (_cache != null) _cacheUntil = DateTime.UtcNow.AddMinutes(1);   // keep serving the last known release
             return _cache;
         }
         finally { Gate.Release(); }
+    }
+
+
+    // Fallback for a PUBLIC repository: releases.atom (newest first) + direct download link.
+    static async Task<Rel?> LoadFromAtomAsync()
+    {
+        try
+        {
+            using var res = await Http.SendAsync(Gh($"https://github.com/{Repo}/releases.atom", "application/atom+xml"));
+            if (!res.IsSuccessStatusCode) return null;
+            var xml = await res.Content.ReadAsStringAsync();
+            foreach (Match e in Regex.Matches(xml, @"<entry>(.*?)</entry>", RegexOptions.Singleline))
+            {
+                var block = e.Groups[1].Value;
+                var lm = Regex.Match(block, @"/releases/tag/([^""<\s]+)");
+                if (!lm.Success) continue;
+                var tag = Uri.UnescapeDataString(lm.Groups[1].Value);
+                if (!tag.StartsWith("app-v", StringComparison.OrdinalIgnoreCase)) continue;
+                var cm = Regex.Match(block, @"<content[^>]*>(.*?)</content>", RegexOptions.Singleline);
+                var body = cm.Success ? System.Net.WebUtility.HtmlDecode(cm.Groups[1].Value) : "";
+                body = Regex.Replace(body, @"<\s*(br|/p|/li|/div)\s*/?>", "\n", RegexOptions.IgnoreCase);
+                body = Regex.Replace(body, @"<[^>]+>", "");
+                body = System.Net.WebUtility.HtmlDecode(body).Replace("\r", "").Trim();
+                var sha = "";
+                var m = Regex.Match(body, @"sha256:\s*([0-9a-fA-F]{64})");
+                if (m.Success) { sha = m.Groups[1].Value.ToLowerInvariant(); body = body.Replace(m.Value, "").Trim(); }
+                var mandatory = body.Contains("[mandatory]", StringComparison.OrdinalIgnoreCase);
+                body = Regex.Replace(body, @"\[mandatory\]", "", RegexOptions.IgnoreCase).Trim();
+                var url = $"https://github.com/{Repo}/releases/download/{Uri.EscapeDataString(tag)}/AMPM_Helpdesk.apk";
+                // size: ask the download link itself (headers only)
+                long size = 0;
+                try
+                {
+                    using var head = await Http.SendAsync(Gh(url, "application/octet-stream"), HttpCompletionOption.ResponseHeadersRead);
+                    var loc = head.Headers.Location;
+                    if (loc != null)
+                    {
+                        using var h2 = await Http.SendAsync(new HttpRequestMessage(HttpMethod.Head, loc), HttpCompletionOption.ResponseHeadersRead);
+                        size = h2.Content.Headers.ContentLength ?? 0;
+                    }
+                }
+                catch { }
+                return new Rel(tag.Substring(5), body, sha, mandatory, 0, size, url);
+            }
+        }
+        catch { }
+        return null;
     }
 
     [HttpGet("/api/app/latest")]
@@ -112,6 +164,7 @@ public class AppUpdateController : Controller
     {
         var r = await LoadAsync();
         if (r == null) return NotFound("No app release published yet.");
+        if (r.DirectUrl != null) { Response.Headers["Cache-Control"] = "no-store"; return Redirect(r.DirectUrl); }
         try
         {
             using var res = await Http.SendAsync(Gh($"https://api.github.com/repos/{Repo}/releases/assets/{r.AssetId}", "application/octet-stream"),
