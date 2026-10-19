@@ -1,0 +1,10 @@
+warning: in the working copy of 'push_exitfix_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/AssetsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Assets/Index.cshtml', LF will be replaced by CRLF the next time Git touches it
+[main cb6f66b] Assets: add Assigned/Unassigned status filter and clickable stat cards
+ 5 files changed, 42 insertions(+), 6 deletions(-)
+ create mode 100644 RUN_PUSH_FILTER.bat
+ create mode 100644 push_filter_log.txt
+To https://github.com/sandy199012/ampm-qh-serve.git
+   689bd1d..cb6f66b  main -> main
+FINISHED errorlevel=0 

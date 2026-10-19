@@ -15,7 +15,7 @@ public class AssetsController : Controller
         => _db.Execute("INSERT INTO kv (k,v) VALUES ('asset_stock',@v) ON CONFLICT (k) DO UPDATE SET v=@v",
             new { v = JsonConvert.SerializeObject(assets) });
 
-    public IActionResult Index(string? search, string? type, string? status)
+    public IActionResult Index(string? search, string? type)
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         ViewBag.Employees = _db.GetEmployees()
@@ -27,8 +27,9 @@ public class AssetsController : Controller
         var assets = _db.GetAssets().Where(a => !AssetTags.IsNetworkType(a.GetValueOrDefault("assetType")?.ToString())).ToList();
         ViewBag.NetDevices = _db.GetAssets()
             .Where(a => AssetTags.IsNetworkType(a.GetValueOrDefault("assetType")?.ToString()))
-            .OrderBy(a => a.GetValueOrDefault("assetType")?.ToString())
-            .ThenBy(a => a.GetValueOrDefault("assetTag")?.ToString())
+            .GroupBy(a => a.GetValueOrDefault("assetType")?.ToString() ?? "")
+            .OrderBy(g => g.Key)
+            .SelectMany(g => AssetTags.SortByTag(g))
             .ToList();
         ViewBag.NetScanInfo = _db.KGetObj<Dictionary<string,object?>>("network_scan_last");
         if (!string.IsNullOrEmpty(search))
@@ -48,19 +49,12 @@ public class AssetsController : Controller
         }
         if (!string.IsNullOrEmpty(type))
             assets = assets.Where(a => a.GetValueOrDefault("assetType")?.ToString() == type).ToList();
-        bool IsAsg(Dictionary<string,object?> a) => !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToEmp")?.ToString()) || !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToName")?.ToString());
-        ViewBag.CntAll = assets.Count;
-        ViewBag.CntAssigned = assets.Count(IsAsg);
-        ViewBag.CntUnassigned = assets.Count - (int)ViewBag.CntAssigned;
-        if (status == "assigned")        assets = assets.Where(IsAsg).ToList();
-        else if (status == "unassigned") assets = assets.Where(a => !IsAsg(a)).ToList();
         ViewBag.Search = search;
         ViewBag.TypeFilter = type;
-        ViewBag.StatusFilter = status ?? "";
         // Last network-printer scan summary (written by EndpointsController.ReportPrinters)
         ViewBag.PrinterScanInfo = _db.KGetObj<Dictionary<string,object?>>("printer_scan_last");
         ViewBag.Types = _db.GetAssets().Select(a => a.GetValueOrDefault("assetType")?.ToString() ?? "").Where(t => !string.IsNullOrEmpty(t) && !AssetTags.IsNetworkType(t)).Distinct().OrderBy(t => t).ToList();
-        return View(assets);
+        return View(AssetTags.SortByTag(assets));
     }
 
     [HttpGet]
@@ -591,6 +585,23 @@ public static class AgentPackage
 public static class AssetTags
 {
     public const string PrinterPrefix = "PRN-";
+
+    // Natural tag order: AMPM-001, AMPM-002 ... AMPM-010 (prefix, then the number, then raw text).
+    public static List<Dictionary<string,object?>> SortByTag(IEnumerable<Dictionary<string,object?>> src)
+    {
+        static (string pre, long num, bool hasNum) Key(Dictionary<string,object?> a)
+        {
+            var t = (a.GetValueOrDefault("assetTag")?.ToString() ?? "").Trim();
+            int i = t.Length;
+            while (i > 0 && char.IsDigit(t[i - 1])) i--;
+            var pre = t.Substring(0, i);
+            return (pre, long.TryParse(t.Substring(i), out var n) ? n : 0, i < t.Length);
+        }
+        return src.OrderBy(a => Key(a).pre, StringComparer.OrdinalIgnoreCase)
+                  .ThenBy(a => Key(a).num)
+                  .ThenBy(a => a.GetValueOrDefault("assetTag")?.ToString() ?? "", StringComparer.OrdinalIgnoreCase)
+                  .ToList();
+    }
 
     // Next free tag for a prefix series: highest existing number + 1,
     // zero-padded to 4 digits (PRN-0001, PRN-0002, ...).
