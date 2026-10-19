@@ -1,0 +1,40 @@
+
+[1/3] App ka code mobile_app folder me copy ho raha hai...
+[2/3] GitHub workflow files theek kar raha hoon...
+[3/3] GitHub par bhej raha hoon...
+warning: in the working copy of 'mobile_app/lib/app_theme.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/main.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/models/ticket.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/admin_home_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/asset_stock_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/bills_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/budget_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/cartridge_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/employee_directory_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/goals_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/license_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/po_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/purchase_bills_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/purchases_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/raise_ticket_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/stock_module_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/ticket_detail_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/ticket_list_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/vendor_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'push_web_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'RUN_PUSH_THEME.bat', LF will be replaced by CRLF the next time Git touches it
+[main ccf88c1] Helpdesk app: new Aurora theme (violet + rose), rounded inputs, softer shadows
+ 22 files changed, 224 insertions(+), 164 deletions(-)
+ create mode 100644 RUN_PUSH_THEME.bat
+ create mode 100644 push_theme_log.txt
+To https://github.com/sandy199012/ampm-qh-serve.git
+   0d97784..ccf88c1  main -> main
+
+ ============================================================
+  Bhej diya! 8-12 minute me naya APK ban ke release ho jayega.
+  Phir sabke phone me app kholte hi "Naya update available" aayega.
+  Progress: https://github.com/sandy199012/ampm-qh-serve/actions
+  APK link (naye phone ke liye): https://ampm-qh-serve-1.onrender.com/app
+ ============================================================
+
+FINISHED errorlevel=0 

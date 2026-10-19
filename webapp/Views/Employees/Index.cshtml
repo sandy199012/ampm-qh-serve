@@ -11,6 +11,9 @@
             <form method="post" action="/Employees/ProvisionMobileLogins" class="d-inline" onsubmit="return confirm('Create a mobile app login for every active employee who doesn\'t have one yet? Initial password = their employee code, and they will be asked to change it on first login.')">
                 <button type="submit" class="btn btn-outline-dark btn-sm px-3" title="Create mobile app logins for employees who don't have one"><i class="bi bi-phone"></i> Provision Mobile Logins</button>
             </form>
+            <form method="post" action="/Employees/ReleaseExitedAssets" class="d-inline" onsubmit="return confirm('Unassign every asset that is still assigned to an exited employee and return it to stock?')">
+                <button type="submit" class="btn btn-outline-danger btn-sm px-3" title="Return assets still held by exited employees to stock"><i class="bi bi-box-arrow-in-down"></i> Free Exited Employees' Assets</button>
+            </form>
         }
         <a href="/Employees/Create" class="btn btn-primary btn-sm px-3"><i class="bi bi-plus-circle"></i> Add Employee</a>
     </div>

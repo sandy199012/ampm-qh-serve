@@ -63,7 +63,10 @@ public class EmployeesController : Controller
         var data = raw != null ? JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new() : new();
         foreach (var key in form.Keys) data[key] = form[key].ToString();
         _db.Execute("UPDATE employees SET data=@d WHERE emp=@e", new { d=JsonConvert.SerializeObject(data), e=id });
-        TempData["Success"] = $"Employee {id} updated!";
+        int freed = string.IsNullOrWhiteSpace(data.GetValueOrDefault("exitDate")?.ToString()) ? 0 : ReleaseAssetsOf(id);
+        TempData["Success"] = freed > 0
+            ? $"Employee {id} updated! {freed} asset(s) unassigned and returned to stock."
+            : $"Employee {id} updated!";
         return RedirectToAction("Details", new { id });
     }
 
@@ -119,6 +122,60 @@ public class EmployeesController : Controller
         return RedirectToAction("Index");
     }
 
+    // When an employee leaves, every asset still assigned to them goes back to stock
+    // (same fields the Assets > Unassign button clears). The previous holder is kept
+    // in prevAssignedTo* so the Exit Form can still list what was returned.
+    int ReleaseAssetsOf(string empCode)
+    {
+        var assets = _db.GetAssets();
+        var today = IstTime.Today.ToString("yyyy-MM-dd");
+        int n = 0;
+        foreach (var a in assets)
+        {
+            if (a.GetValueOrDefault("assignedToEmp")?.ToString() != empCode) continue;
+            a["prevAssignedToEmp"]  = empCode;
+            a["prevAssignedToName"] = a.GetValueOrDefault("assignedToName")?.ToString() ?? "";
+            a["assignedToName"] = "";
+            a["assignedToEmp"]  = "";
+            a["assignedToDept"] = "";
+            a["returnDate"]     = today;
+            n++;
+        }
+        if (n > 0) _db.SaveAssets(assets);
+        return n;
+    }
+
+    // One-time clean-up: employees who were marked exited BEFORE this fix still hold
+    // their assets. Returns all of those assets to stock. Admin only.
+    [HttpPost("/Employees/ReleaseExitedAssets")]
+    public IActionResult ReleaseExitedAssets()
+    {
+        var me = _auth.GetCurrentUser(HttpContext);
+        if (me == null || !me.IsAdmin) return Unauthorized();
+        var exited = _db.GetEmployees()
+            .Where(e => !string.IsNullOrWhiteSpace(e.GetValueOrDefault("exitDate")?.ToString()))
+            .Select(e => e.GetValueOrDefault("emp")?.ToString() ?? "")
+            .Where(c => c != "").ToHashSet();
+        var assets = _db.GetAssets();
+        var today = IstTime.Today.ToString("yyyy-MM-dd");
+        int n = 0;
+        foreach (var a in assets)
+        {
+            var code = a.GetValueOrDefault("assignedToEmp")?.ToString() ?? "";
+            if (code == "" || !exited.Contains(code)) continue;
+            a["prevAssignedToEmp"]  = code;
+            a["prevAssignedToName"] = a.GetValueOrDefault("assignedToName")?.ToString() ?? "";
+            a["assignedToName"] = ""; a["assignedToEmp"] = ""; a["assignedToDept"] = "";
+            a["returnDate"] = today;
+            n++;
+        }
+        if (n > 0) _db.SaveAssets(assets);
+        TempData["Success"] = n > 0
+            ? $"{n} asset(s) held by exited employees were unassigned and returned to stock."
+            : "No assets are assigned to exited employees.";
+        return RedirectToAction("Index");
+    }
+
     [HttpPost]
     public IActionResult MarkExited(string id)
     {
@@ -127,7 +184,10 @@ public class EmployeesController : Controller
         var data = JsonConvert.DeserializeObject<Dictionary<string,object?>>(raw) ?? new();
         data["exitDate"] = IstTime.Today.ToString("yyyy-MM-dd");
         _db.Execute("UPDATE employees SET data=@d WHERE emp=@e", new { d=JsonConvert.SerializeObject(data), e=id });
-        TempData["Success"] = $"Employee {id} marked exited.";
+        int freed = ReleaseAssetsOf(id);
+        TempData["Success"] = freed > 0
+            ? $"Employee {id} marked exited. {freed} asset(s) unassigned and returned to stock."
+            : $"Employee {id} marked exited.";
         return RedirectToAction("Index");
     }
 
@@ -393,8 +453,11 @@ table.items td.mono{font-family:monospace;font-size:10.5px}
         string S(string k) => e.GetValueOrDefault(k)?.ToString() ?? "";
         var exitDate = string.IsNullOrEmpty(S("exitDate")) ? IstTime.Today.ToString("yyyy-MM-dd") : S("exitDate");
 
+        // still-assigned assets + the ones auto-returned to stock when the employee was marked exited
         var assignedAssets = _db.GetAssets()
-            .Where(a => a.GetValueOrDefault("assignedToEmp")?.ToString() == id)
+            .Where(a => a.GetValueOrDefault("assignedToEmp")?.ToString() == id
+                     || (a.GetValueOrDefault("prevAssignedToEmp")?.ToString() == id
+                         && string.IsNullOrWhiteSpace(a.GetValueOrDefault("assignedToEmp")?.ToString())))
             .ToList();
 
         var sb = new System.Text.StringBuilder();
