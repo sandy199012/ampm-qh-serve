@@ -1,0 +1,11 @@
+warning: in the working copy of 'push_theme_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/EmployeesController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Employees/Index.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'RUN_PUSH_EXITFIX.bat', LF will be replaced by CRLF the next time Git touches it
+[main 689bd1d] Exit employee: auto-unassign their assets; button to free assets of already-exited employees
+ 5 files changed, 115 insertions(+), 3 deletions(-)
+ create mode 100644 RUN_PUSH_EXITFIX.bat
+ create mode 100644 push_exitfix_log.txt
+To https://github.com/sandy199012/ampm-qh-serve.git
+   ccf88c1..689bd1d  main -> main
+FINISHED errorlevel=0 

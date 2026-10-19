@@ -33,6 +33,13 @@
     </div>
 }
 
+@{
+    string sf = ViewBag.StatusFilter?.ToString() ?? "";
+    string qSearch = System.Uri.EscapeDataString(ViewBag.Search?.ToString() ?? "");
+    string qType = System.Uri.EscapeDataString(ViewBag.TypeFilter?.ToString() ?? "");
+    int cAll = (int)ViewBag.CntAll, cAsg = (int)ViewBag.CntAssigned, cUn = (int)ViewBag.CntUnassigned;
+    string qs(string st) => "?search=" + qSearch + "&type=" + qType + "&status=" + st;
+}
 <div class="card border-0 shadow-sm mb-3">
     <div class="card-body py-2">
         <form method="get" class="row g-2 align-items-center">
@@ -47,6 +54,13 @@
                     {if(tf==t){<option selected>@t</option>}else{<option>@t</option>}}
                 </select>
             </div>
+            <div class="col-md-2">
+                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="" selected="@(sf=="")">All Status</option>
+                    <option value="assigned" selected="@(sf=="assigned")">Assigned</option>
+                    <option value="unassigned" selected="@(sf=="unassigned")">Unassigned</option>
+                </select>
+            </div>
             <div class="col-auto">
                 <button class="btn btn-primary btn-sm">Filter</button>
                 <a href="/Assets/Index" class="btn btn-outline-secondary btn-sm">Clear</a>
@@ -56,13 +70,11 @@
 </div>
 
 @{
-    var assigned   = Model.Count(a => !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToEmp")?.ToString()) || !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToName")?.ToString()));
-    var unassigned = Model.Count - assigned;
 }
 <div class="row g-2 mb-3">
-    <div class="col-4"><div class="card border-0 bg-primary-subtle text-center py-2"><div class="fw-bold fs-4 text-primary">@Model.Count</div><div class="small text-muted">Total</div></div></div>
-    <div class="col-4"><div class="card border-0 bg-success-subtle text-center py-2"><div class="fw-bold fs-4 text-success">@assigned</div><div class="small text-muted">Assigned</div></div></div>
-    <div class="col-4"><div class="card border-0 bg-warning-subtle text-center py-2"><div class="fw-bold fs-4 text-warning">@unassigned</div><div class="small text-muted">Unassigned</div></div></div>
+    <div class="col-4"><a href="@qs("")" class="text-decoration-none"><div class="card border-0 bg-primary-subtle text-center py-2 @(sf==""?"border border-primary":"")"><div class="fw-bold fs-4 text-primary">@cAll</div><div class="small text-muted">Total</div></div></a></div>
+    <div class="col-4"><a href="@qs("assigned")" class="text-decoration-none"><div class="card border-0 bg-success-subtle text-center py-2 @(sf=="assigned"?"border border-success":"")"><div class="fw-bold fs-4 text-success">@cAsg</div><div class="small text-muted">Assigned</div></div></a></div>
+    <div class="col-4"><a href="@qs("unassigned")" class="text-decoration-none"><div class="card border-0 bg-warning-subtle text-center py-2 @(sf=="unassigned"?"border border-warning":"")"><div class="fw-bold fs-4 text-warning">@cUn</div><div class="small text-muted">Unassigned</div></div></a></div>
 </div>
 
 <div class="card border-0 shadow-sm">
