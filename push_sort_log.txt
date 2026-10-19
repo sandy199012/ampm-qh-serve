@@ -1,0 +1,9 @@
+warning: in the working copy of 'push_filter_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/AssetsController.cs', LF will be replaced by CRLF the next time Git touches it
+[main 1d50af1] Assets: sort by asset tag (AMPM-001, AMPM-002...)
+ 4 files changed, 38 insertions(+), 11 deletions(-)
+ create mode 100644 RUN_PUSH_SORT.bat
+ create mode 100644 push_sort_log.txt
+To https://github.com/sandy199012/ampm-qh-serve.git
+   cb6f66b..1d50af1  main -> main
+FINISHED errorlevel=0 

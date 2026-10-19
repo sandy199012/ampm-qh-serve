@@ -37,7 +37,9 @@
     string sf = ViewBag.StatusFilter?.ToString() ?? "";
     string qSearch = System.Uri.EscapeDataString(ViewBag.Search?.ToString() ?? "");
     string qType = System.Uri.EscapeDataString(ViewBag.TypeFilter?.ToString() ?? "");
-    int cAll = (int)ViewBag.CntAll, cAsg = (int)ViewBag.CntAssigned, cUn = (int)ViewBag.CntUnassigned;
+    int cAll = ViewBag.CntAll is int c1 ? c1 : Model.Count;
+    int cAsg = ViewBag.CntAssigned is int c2 ? c2 : 0;
+    int cUn  = ViewBag.CntUnassigned is int c3 ? c3 : Model.Count - cAsg;
     string qs(string st) => "?search=" + qSearch + "&type=" + qType + "&status=" + st;
 }
 <div class="card border-0 shadow-sm mb-3">

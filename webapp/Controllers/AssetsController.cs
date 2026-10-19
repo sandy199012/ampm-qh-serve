@@ -15,7 +15,7 @@ public class AssetsController : Controller
         => _db.Execute("INSERT INTO kv (k,v) VALUES ('asset_stock',@v) ON CONFLICT (k) DO UPDATE SET v=@v",
             new { v = JsonConvert.SerializeObject(assets) });
 
-    public IActionResult Index(string? search, string? type)
+    public IActionResult Index(string? search, string? type, string? status)
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         ViewBag.Employees = _db.GetEmployees()
@@ -49,8 +49,15 @@ public class AssetsController : Controller
         }
         if (!string.IsNullOrEmpty(type))
             assets = assets.Where(a => a.GetValueOrDefault("assetType")?.ToString() == type).ToList();
+        bool IsAsg(Dictionary<string,object?> a) => !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToEmp")?.ToString()) || !string.IsNullOrEmpty(a.GetValueOrDefault("assignedToName")?.ToString());
+        ViewBag.CntAll = assets.Count;
+        ViewBag.CntAssigned = assets.Count(IsAsg);
+        ViewBag.CntUnassigned = assets.Count - (int)ViewBag.CntAssigned;
+        if (status == "assigned")        assets = assets.Where(IsAsg).ToList();
+        else if (status == "unassigned") assets = assets.Where(a => !IsAsg(a)).ToList();
         ViewBag.Search = search;
         ViewBag.TypeFilter = type;
+        ViewBag.StatusFilter = status ?? "";
         // Last network-printer scan summary (written by EndpointsController.ReportPrinters)
         ViewBag.PrinterScanInfo = _db.KGetObj<Dictionary<string,object?>>("printer_scan_last");
         ViewBag.Types = _db.GetAssets().Select(a => a.GetValueOrDefault("assetType")?.ToString() ?? "").Where(t => !string.IsNullOrEmpty(t) && !AssetTags.IsNetworkType(t)).Distinct().OrderBy(t => t).ToList();
@@ -589,13 +596,12 @@ public static class AssetTags
     // Natural tag order: AMPM-001, AMPM-002 ... AMPM-010 (prefix, then the number, then raw text).
     public static List<Dictionary<string,object?>> SortByTag(IEnumerable<Dictionary<string,object?>> src)
     {
-        static (string pre, long num, bool hasNum) Key(Dictionary<string,object?> a)
+        static (string pre, long num) Key(Dictionary<string,object?> a)
         {
             var t = (a.GetValueOrDefault("assetTag")?.ToString() ?? "").Trim();
             int i = t.Length;
             while (i > 0 && char.IsDigit(t[i - 1])) i--;
-            var pre = t.Substring(0, i);
-            return (pre, long.TryParse(t.Substring(i), out var n) ? n : 0, i < t.Length);
+            return (t.Substring(0, i), long.TryParse(t.Substring(i), out var n) ? n : 0);
         }
         return src.OrderBy(a => Key(a).pre, StringComparer.OrdinalIgnoreCase)
                   .ThenBy(a => Key(a).num)
