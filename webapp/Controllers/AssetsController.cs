@@ -546,6 +546,10 @@ public static class AgentPackage
                 prefix = "AMPM_Printer_Agent"; zipName = "AMPM_Printer_Agent.zip";
                 readme = "AMPM PRINTER AGENT\r\n==================\r\nFinds network printers on the office LAN and reports them to Asset Stock (PRN- tags).\r\nRun it on ONE PC that is on the office network.\r\n\r\n1. Extract this ZIP anywhere.\r\n2. Double-click AMPM_Printer_Agent.bat to scan now (10-30 seconds).\r\n3. Optional: right-click AMPM_Printer_Agent_Setup.bat -> Run as administrator to scan every day at 11:00.\r\n\r\nOther subnet? Open AMPM_Printer_Agent.ps1 in Notepad and add it to $extraSubnets (for example '192.168.2').\r\nUSB printers are reported by the PC Agent of the PC they are plugged into.\r\nLog file: ampm_printer_log.txt\r\n";
                 break;
+            case "mac":
+                prefix = "AMPM_Mac_Agent"; zipName = "AMPM_Mac_Agent.zip";
+                readme = "AMPM MAC AGENT\r\n==============\r\nReports this Mac (hardware, installed apps, USB printers) to the AMPM IT Tool - the same details the Windows PC Agent sends.\r\n\r\n1. Unzip this file (double-click it in Finder).\r\n2. Double-click AMPM_Mac_Agent.command to report once (shows the result).\r\n   If macOS says it cannot be opened: right-click the file -> Open -> Open.\r\n3. Double-click AMPM_Mac_Agent_Setup.command ONCE (it asks for the Mac's admin password) so the Mac\r\n   reports by itself at every restart and every 10 minutes.\r\n\r\nTerminal alternative:  cd to the unzipped folder, then run:  sudo bash AMPM_Mac_Agent_Setup.command\r\n\r\nTo update: download the agent again from the website and run the Setup file again.\r\nLog file: ampm_agent_log.txt (next to the script, and in /Library/Application Support/AMPM/PcAgent for the automatic runs).\r\n";
+                break;
             case "network":
                 prefix = "AMPM_Network_Agent"; zipName = "AMPM_Network_Agent.zip";
                 readme = "AMPM NETWORK DEVICE AGENT\r\n=========================\r\nFinds switches, WiFi access points / routers, NVR / DVR and IP cameras on the office LAN and\r\nreports them to Asset Stock -> Network Devices (SW-, WIFI-, NVR-, CAM-, NET- tags).\r\nRun it on ONE PC that is on the office network.\r\n\r\n1. Extract this ZIP anywhere.\r\n2. Double-click AMPM_Network_Agent.bat to scan now (2-4 minutes).\r\n3. Optional: right-click AMPM_Network_Agent_Setup.bat -> Run as administrator to scan every day at 11:30.\r\n\r\nOther subnet? Open AMPM_Network_Agent.ps1 in Notepad and add it to $extraSubnets (for example '192.168.2').\r\nSwitches / WiFi are recognised best with SNMP v1/v2c (community 'public') enabled on them; if you use another\r\ncommunity put it in $snmpCommunity. Cameras / NVR: switch ONVIF on in their settings for model details.\r\nDevices that cannot be identified come in as NET- 'Other Network Device' - open Edit on the website and choose the real type.\r\nLog file: ampm_network_log.txt (one line per device - useful when something is not recognised).\r\n";
@@ -565,10 +569,15 @@ public static class AgentPackage
             foreach (var f in files)
             {
                 var entry = zip.CreateEntry(Path.GetFileName(f));
+                var isMacScript = f.EndsWith(".sh", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".command", StringComparison.OrdinalIgnoreCase);
+                // Unix permissions (rwxr-xr-x) so a Mac can double-click the .command files after unzipping.
+                if (isMacScript) entry.ExternalAttributes = unchecked((int)(0x81EDu << 16));
                 using var es = entry.Open();
-                if (f.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase))
+                if (f.EndsWith(".ps1", StringComparison.OrdinalIgnoreCase) || isMacScript)
                 {
                     var text = System.IO.File.ReadAllText(f).Replace(Placeholder, key);
+                    // Mac scripts must have Unix (LF) line endings whatever git did on Windows.
+                    if (isMacScript) text = text.Replace("\r\n", "\n");
                     var bytes = new System.Text.UTF8Encoding(false).GetBytes(text);
                     es.Write(bytes, 0, bytes.Length);
                 }

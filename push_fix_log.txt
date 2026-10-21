@@ -1,0 +1,10 @@
+warning: in the working copy of 'push_sort_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/AssetsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Assets/Index.cshtml', LF will be replaced by CRLF the next time Git touches it
+[main 9e6e47a] Fix Assets 500: restore status filter in controller, make view null-safe
+ 5 files changed, 28 insertions(+), 5 deletions(-)
+ create mode 100644 RUN_PUSH_FIX.bat
+ create mode 100644 push_fix_log.txt
+To https://github.com/sandy199012/ampm-qh-serve.git
+   1d50af1..9e6e47a  main -> main
+FINISHED errorlevel=0 
