@@ -63,6 +63,52 @@
     </div>
 </div>
 
+@{
+    var myAssets = ViewBag.MyAssets as List<Dictionary<string,object?>> ?? new List<Dictionary<string,object?>>();
+}
+@if (!noEmp)
+{
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-header bg-white border-0 pt-3 pb-1 d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="bi bi-pc-display text-primary"></i> My Assigned Assets <span class="badge bg-primary-subtle text-primary ms-1">@myAssets.Count</span></h6>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3">Asset Tag</th>
+                    <th>Type</th>
+                    <th>Brand / Model</th>
+                    <th>Serial No.</th>
+                    <th>Assigned On</th>
+                    <th>Condition</th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!myAssets.Any())
+            {
+                <tr><td colspan="6" class="text-center text-muted py-4 small">No asset is assigned to you right now.</td></tr>
+            }
+            @foreach (var a in myAssets)
+            {
+                var bm = ((a.GetValueOrDefault("brand")?.ToString() ?? "") + " " + (a.GetValueOrDefault("model")?.ToString() ?? "")).Trim();
+                var cond = a.GetValueOrDefault("condition")?.ToString() ?? "";
+                var cb = cond == "Good" ? "success" : cond == "Fair" ? "warning text-dark" : cond == "Poor" ? "danger" : "secondary";
+                <tr>
+                    <td class="ps-3 font-monospace fw-bold small text-primary">@a.GetValueOrDefault("assetTag")</td>
+                    <td><span class="badge bg-light text-dark border">@a.GetValueOrDefault("assetType")</span></td>
+                    <td class="small">@bm</td>
+                    <td class="small font-monospace">@a.GetValueOrDefault("serial")</td>
+                    <td class="small text-muted">@a.GetValueOrDefault("assignedDate")</td>
+                    <td>@if (cond != "") {<span class="badge bg-@cb">@cond</span>}</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+}
+
 <div class="card border-0 shadow-sm">
     <div class="table-responsive">
         <table class="table table-hover mb-0">

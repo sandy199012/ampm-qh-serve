@@ -35,6 +35,15 @@ public class MyHelpdeskController : Controller
                  .OrderByDescending(t => t.GetValueOrDefault("ticketId")?.ToString())
                  .ToList();
 
+        // Assets currently assigned to this employee (Asset Stock, matched by employee code).
+        ViewBag.MyAssets = string.IsNullOrWhiteSpace(empId)
+            ? new List<Dictionary<string, object?>>()
+            : _db.GetAssets()
+                 .Where(a => string.Equals((a.GetValueOrDefault("assignedToEmp")?.ToString() ?? "").Trim(), empId.Trim(), StringComparison.OrdinalIgnoreCase))
+                 .OrderBy(a => a.GetValueOrDefault("assetType")?.ToString() ?? "")
+                 .ThenBy(a => a.GetValueOrDefault("assetTag")?.ToString() ?? "")
+                 .ToList();
+
         ViewBag.NoEmployeeLinked = string.IsNullOrWhiteSpace(empId);
         return View(tickets);
     }

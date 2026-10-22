@@ -1,0 +1,15 @@
+warning: in the working copy of 'push_mac_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/AssetsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/EndpointsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Filters/ModulePermissionFilter.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Assets/Agents.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/tools/AMPM_Mac_Agent_Setup.command', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/tools/AMPM_Mac_Install.sh', LF will be replaced by CRLF the next time Git touches it
+[main 5582ef0] Mac Agent: Terminal one-line installer (avoids macOS Gatekeeper warning)
+ 9 files changed, 130 insertions(+), 9 deletions(-)
+ create mode 100644 RUN_PUSH_MACFIX.bat
+ create mode 100644 push_macfix_log.txt
+ create mode 100644 webapp/wwwroot/tools/AMPM_Mac_Install.sh
+To https://github.com/sandy199012/ampm-qh-serve.git
+   9c70687..5582ef0  main -> main
+FINISHED errorlevel=0 
