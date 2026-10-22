@@ -40,6 +40,7 @@ cat > "$PLIST" <<PLISTEOF
 </plist>
 PLISTEOF
 chown root:wheel "$PLIST"; chmod 644 "$PLIST"
+[ -f "$PLIST" ] || { echo " INSTALL FAILED - could not write $PLIST"; exit 1; }
 
 launchctl bootout system "$PLIST" >/dev/null 2>&1
 if launchctl bootstrap system "$PLIST" 2>/dev/null || launchctl load -w "$PLIST" 2>/dev/null; then

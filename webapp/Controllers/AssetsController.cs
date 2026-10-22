@@ -509,6 +509,7 @@ table.kv td.v{color:#0F172A}
         ViewBag.PrinterScanInfo = _db.KGetObj<Dictionary<string,object?>>("printer_scan_last");
         ViewBag.NetScanInfo = _db.KGetObj<Dictionary<string,object?>>("network_scan_last");
         ViewBag.KeyFromEnv = Environment.GetEnvironmentVariable("AMPM_AGENT_KEY") is { Length: > 7 };
+        ViewBag.AgentKey = EndpointsController.CurrentAgentKey;
         return View();
     }
 
@@ -548,7 +549,7 @@ public static class AgentPackage
                 break;
             case "mac":
                 prefix = "AMPM_Mac_Agent"; zipName = "AMPM_Mac_Agent.zip";
-                readme = "AMPM MAC AGENT\r\n==============\r\nReports this Mac (hardware, installed apps, USB printers) to the AMPM IT Tool - the same details the Windows PC Agent sends.\r\n\r\n1. Unzip this file (double-click it in Finder).\r\n2. Double-click AMPM_Mac_Agent.command to report once (shows the result).\r\n   If macOS says it cannot be opened: right-click the file -> Open -> Open.\r\n3. Double-click AMPM_Mac_Agent_Setup.command ONCE (it asks for the Mac's admin password) so the Mac\r\n   reports by itself at every restart and every 10 minutes.\r\n\r\nTerminal alternative:  cd to the unzipped folder, then run:  sudo bash AMPM_Mac_Agent_Setup.command\r\n\r\nTo update: download the agent again from the website and run the Setup file again.\r\nLog file: ampm_agent_log.txt (next to the script, and in /Library/Application Support/AMPM/PcAgent for the automatic runs).\r\n";
+                readme = "AMPM MAC AGENT\r\n==============\r\nReports this Mac (hardware, installed apps, USB printers) to the AMPM IT Tool - the same details the Windows PC Agent sends.\r\n\r\nRECOMMENDED (no macOS security warning): on the website open Asset Stock -> Agents -> Mac Agent, copy the\r\nTerminal command, paste it in Terminal on the Mac and press Enter (it asks the Mac's admin password once).\r\n\r\nUsing this ZIP instead:\r\n1. Unzip it, open Terminal, type:  cd ~/Downloads/AMPM_Mac_Agent   (the unzipped folder)\r\n2. Run:  xattr -dr com.apple.quarantine .   then:  sudo bash AMPM_Mac_Agent_Setup.command\r\n   (Double-clicking the .command files may show \"Apple could not verify ... is free of malware\" - this is because the\r\n   file is not signed by Apple. The two Terminal commands above avoid that.)\r\n\r\nTo update: install again (the command / ZIP always carries the newest agent).\r\nLog file: /Library/Application Support/AMPM/PcAgent/ampm_agent_log.txt\r\n";
                 break;
             case "network":
                 prefix = "AMPM_Network_Agent"; zipName = "AMPM_Network_Agent.zip";

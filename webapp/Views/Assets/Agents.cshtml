@@ -107,12 +107,13 @@
       <div class="card-body">
         <h6 class="fw-bold"><i class="bi bi-apple text-dark"></i> Mac Agent <span class="badge bg-light text-dark border fw-normal">macOS</span></h6>
         <p class="small text-muted mb-2">The same as the PC Agent, but for <b>MacBook / iMac / Mac mini</b>. Sends hostname, IP, MAC, macOS version, model, serial number, chip / CPU, RAM, disk, installed apps, the signed-in user and any <b>USB printers</b> &mdash; at every restart and every 10 minutes.</p>
-        <a href="/Assets/AgentDownload?type=mac" class="btn btn-dark btn-sm"><i class="bi bi-download"></i> Download Mac Agent</a>
-        <ol class="small mt-3 mb-0 ps-3">
-            <li>Unzip the file on the Mac (double-click it).</li>
-            <li>Double-click <b>AMPM_Mac_Agent.command</b> to report once. If macOS blocks it: right-click &rarr; <b>Open</b> &rarr; <b>Open</b>.</li>
-            <li>Double-click <b>AMPM_Mac_Agent_Setup.command</b> (once, asks the Mac's admin password) &mdash; after that it reports by itself.</li>
-        </ol>
+        <div class="small fw-semibold mb-1">Install (recommended) &mdash; copy, paste in <b>Terminal</b> on the Mac, press Enter:</div>
+        <div class="input-group input-group-sm mb-1">
+            <input type="text" class="form-control font-monospace" id="macCmd" readonly style="font-size:11px"/>
+            <button class="btn btn-dark" type="button" onclick="copyMacCmd()"><i class="bi bi-clipboard"></i> Copy</button>
+        </div>
+        <div class="small text-muted mb-2">It asks the Mac's admin password once, then the Mac reports by itself at every restart and every 10 minutes. No file is downloaded, so macOS shows no &ldquo;harmful / cannot verify&rdquo; warning.</div>
+        <div class="small text-muted">Prefer a file? <a href="/Assets/AgentDownload?type=mac">Download Mac Agent ZIP</a> &mdash; macOS blocks unsigned files, so open Terminal in the unzipped folder and run <code>xattr -dr com.apple.quarantine .</code> then <code>sudo bash AMPM_Mac_Agent_Setup.command</code>.</div>
         <div class="small text-muted mt-2">Data goes to <b>Endpoints &rarr; PC Inventory</b> and the Mac's row in Asset Stock (same as Windows PCs).</div>
       </div>
     </div>
@@ -122,9 +123,9 @@
       <div class="card-body small text-muted">
         <b>Mac tips.</b>
         <ul class="mb-2 mt-1 ps-3">
-            <li>Prefer Terminal? Open the unzipped folder in Terminal and run <code>sudo bash AMPM_Mac_Agent_Setup.command</code>.</li>
+            <li>macOS blocks files that are not signed by Apple (&ldquo;Apple could not verify &hellip; free of malware&rdquo;). The Terminal command above avoids that completely.</li>
             <li>The Mac must be on the internet (the agent talks to this website). It works on both Apple Silicon and Intel Macs.</li>
-            <li>Log file: <code>ampm_agent_log.txt</code> next to the script, and in <code>/Library/Application Support/AMPM/PcAgent</code> for the automatic runs. If a Mac does not show up here, that log says why.</li>
+            <li>Log file: <code>/Library/Application Support/AMPM/PcAgent/ampm_agent_log.txt</code>. If a Mac does not show up here, that log says why.</li>
             <li>To stop it on a Mac: <code>sudo launchctl bootout system /Library/LaunchDaemons/com.ampm.pcagent.plist</code> and delete that file.</li>
             <li>The Mac's name in the list is its <b>Sharing &rarr; Local hostname</b> (System Settings &rarr; General &rarr; Sharing), for example <code>Sandys-MacBook-Pro</code>.</li>
         </ul>
@@ -169,6 +170,11 @@
 @section Scripts {
 <script>
     document.getElementById('mobLink').value = location.origin + '/MyDevice';
+    document.getElementById('macCmd').value = 'sudo bash -c "$(curl -fsSL \'' + location.origin + '/api/endpoints/mac-install?key=' + encodeURIComponent(@Html.Raw(System.Text.Json.JsonSerializer.Serialize((string)(ViewBag.AgentKey ?? "")))) + '\')"';
+    function copyMacCmd() {
+        const el = document.getElementById('macCmd'); el.select();
+        if (navigator.clipboard) navigator.clipboard.writeText(el.value).catch(() => document.execCommand('copy')); else document.execCommand('copy');
+    }
     document.getElementById('appLink').textContent = location.origin + '/app';
     function copyMobLink() {
         const el = document.getElementById('mobLink');

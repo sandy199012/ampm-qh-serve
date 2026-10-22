@@ -1,0 +1,16 @@
+warning: in the working copy of 'push_fix_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/AssetsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Assets/Agents.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/tools/AMPM_Mac_Agent.command', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/tools/AMPM_Mac_Agent.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/tools/AMPM_Mac_Agent_Setup.command', LF will be replaced by CRLF the next time Git touches it
+[main 9c70687] Agents: add Mac Agent (macOS PC inventory) download
+ 8 files changed, 317 insertions(+), 1 deletion(-)
+ create mode 100644 RUN_PUSH_MAC.bat
+ create mode 100644 push_mac_log.txt
+ create mode 100644 webapp/wwwroot/tools/AMPM_Mac_Agent.command
+ create mode 100644 webapp/wwwroot/tools/AMPM_Mac_Agent.sh
+ create mode 100644 webapp/wwwroot/tools/AMPM_Mac_Agent_Setup.command
+To https://github.com/sandy199012/ampm-qh-serve.git
+   9e6e47a..9c70687  main -> main
+FINISHED errorlevel=0 

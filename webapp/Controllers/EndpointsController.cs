@@ -104,6 +104,28 @@ public class EndpointsController : Controller
         return File(pkg.Value.Bytes, "application/zip", pkg.Value.FileName);
     }
 
+    // Mac Agent one-line installer. A Mac downloads the agent through Terminal (curl)
+    // instead of the browser, so macOS Gatekeeper ("Apple could not verify ... is free
+    // of malware") never sees a quarantined file. Same shared-key pattern as ReportPc
+    // (see the matching exemption in Filters/ModulePermissionFilter.cs).
+    //   ?file=agent  -> AMPM_Mac_Agent.sh with the key filled in
+    //   (default)    -> AMPM_Mac_Install.sh (key + this site's address filled in)
+    [HttpGet("/api/endpoints/mac-install")]
+    public IActionResult MacInstall(string? key, string? file, [FromServices] Microsoft.AspNetCore.Hosting.IWebHostEnvironment env)
+    {
+        if (!KeyOk(key, AgentKey)) return Unauthorized("Invalid or missing key");
+        var name = string.Equals(file, "agent", StringComparison.OrdinalIgnoreCase) ? "AMPM_Mac_Agent.sh" : "AMPM_Mac_Install.sh";
+        var path = Path.Combine(env.WebRootPath ?? Path.Combine(env.ContentRootPath, "wwwroot"), "tools", name);
+        if (!System.IO.File.Exists(path)) return NotFound("Mac agent files are not deployed on the server yet.");
+        var host = Request.Host.Host;
+        var proto = (host == "localhost" || host == "127.0.0.1") ? Request.Scheme : "https";
+        var text = System.IO.File.ReadAllText(path).Replace("\r\n", "\n")
+            .Replace(AgentPackage.Placeholder, AgentKey)
+            .Replace("__AMPM_BASE_URL__", $"{proto}://{Request.Host}");
+        Response.Headers["Cache-Control"] = "no-store";
+        return Content(text, "text/plain; charset=utf-8");
+    }
+
     // Called by AMPM_PC_Agent.ps1/.bat — run once (or on a schedule) on any office
     // PC, it collects that PC's own hostname/IP/OS/CPU/RAM/disk and pushes it here,
     // so PC Inventory fills itself in instead of typing/CSV-importing every machine.

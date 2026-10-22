@@ -54,6 +54,11 @@ public class ModulePermissionFilter : IActionFilter
         if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-mobile", StringComparison.OrdinalIgnoreCase))
             return;
 
+        // Mac Agent one-line installer (Terminal: curl ... | sudo bash) - shared key,
+        // no cookie session (EndpointsController.MacInstall).
+        if (ctx.Request.Path.StartsWithSegments("/api/endpoints/mac-install", StringComparison.OrdinalIgnoreCase))
+            return;
+
         // Network-printer scanner (AMPM_Printer_Scanner.ps1, run inside the office
         // LAN) pushes discovered printers here — shared key, no cookie session
         // (EndpointsController.ReportPrinters).
