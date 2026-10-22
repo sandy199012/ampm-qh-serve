@@ -92,6 +92,32 @@ public class ApiController : Controller
         return Json(new { ok = true });
     }
 
+    // The logged-in employee's own assigned assets (Asset Stock rows whose assignedToEmp
+    // is their employee code) — shown on the app's home screen. Never returns anyone else's.
+    [HttpGet("my-assets")]
+    public IActionResult GetMyAssets()
+    {
+        var user = AuthenticateRequest();
+        if (user == null) return Unauthorized();
+        var empId = (user.EmpId ?? "").Trim();
+        if (empId == "") return Json(new List<Dictionary<string, object?>>());
+        var list = _db.GetAssets()
+            .Where(a => string.Equals((a.GetValueOrDefault("assignedToEmp")?.ToString() ?? "").Trim(), empId, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(a => a.GetValueOrDefault("assetType")?.ToString() ?? "")
+            .ThenBy(a => a.GetValueOrDefault("assetTag")?.ToString() ?? "")
+            .Select(a => new Dictionary<string, object?>
+            {
+                ["assetTag"] = a.GetValueOrDefault("assetTag")?.ToString() ?? "",
+                ["assetType"] = a.GetValueOrDefault("assetType")?.ToString() ?? "",
+                ["brand"] = a.GetValueOrDefault("brand")?.ToString() ?? "",
+                ["model"] = a.GetValueOrDefault("model")?.ToString() ?? "",
+                ["serial"] = a.GetValueOrDefault("serial")?.ToString() ?? "",
+                ["assignedDate"] = a.GetValueOrDefault("assignedDate")?.ToString() ?? "",
+                ["condition"] = a.GetValueOrDefault("condition")?.ToString() ?? "",
+            }).ToList();
+        return Json(list);
+    }
+
     [HttpGet("tickets")]
     public IActionResult GetTickets()
     {

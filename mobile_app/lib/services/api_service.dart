@@ -295,6 +295,9 @@ class ApiService {
     throw Exception('Failed: ${res.statusCode}');
   }
 
+  // The logged-in employee's own assigned assets (shown on the home screen).
+  static Future<List<Map<String, dynamic>>> getMyAssets() => _getList('/api/my-assets');
+
   // ── Asset Stock ────────────────────────────────────────────
   static Future<List<Map<String, dynamic>>> getAssets({String? status}) async {
     final q = (status != null && status != 'All') ? '?status=${Uri.encodeComponent(status)}' : '';

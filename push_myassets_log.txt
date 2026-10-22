@@ -1,0 +1,10 @@
+warning: in the working copy of 'push_macfix_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/MyHelpdeskController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/MyHelpdesk/Index.cshtml', LF will be replaced by CRLF the next time Git touches it
+[main c71b7aa] My Helpdesk: show the employee their assigned assets
+ 5 files changed, 76 insertions(+)
+ create mode 100644 RUN_PUSH_MYASSETS.bat
+ create mode 100644 push_myassets_log.txt
+To https://github.com/sandy199012/ampm-qh-serve.git
+   5582ef0..c71b7aa  main -> main
+FINISHED errorlevel=0 

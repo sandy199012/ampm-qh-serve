@@ -21,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Ticket> _tickets = [];
+  List<Map<String, dynamic>> _assets = [];
   bool _loading = true;
   String? _error;
   String _empName = '', _empId = '', _empDept = '';
@@ -57,9 +58,88 @@ class _HomeScreenState extends State<HomeScreen> {
       _notifyStatusChanges(t);
       setState(() { _tickets = t; _loading = false; });
       _lastStatusById = { for (final tk in t) tk.ticketId: tk.status };
+      _loadAssets();
     } catch (e) {
       if (!silent) setState(() { _loading = false; _error = e.toString(); });
     }
+  }
+
+  // Assets assigned to this employee. A failure here (e.g. an older server without
+  // the endpoint) must never break the tickets screen, so it is swallowed.
+  Future<void> _loadAssets() async {
+    try {
+      final a = await ApiService.getMyAssets();
+      if (mounted) setState(() => _assets = a);
+    } catch (_) {}
+  }
+
+  IconData _assetIcon(String type) {
+    final t = type.toLowerCase();
+    if (t.contains('laptop')) return Icons.laptop_mac_rounded;
+    if (t.contains('desktop') || t.contains('pc') || t.contains('cpu')) return Icons.desktop_windows_rounded;
+    if (t.contains('phone') || t.contains('mobile') || t.contains('ipad') || t.contains('tablet')) return Icons.smartphone_rounded;
+    if (t.contains('printer')) return Icons.print_rounded;
+    if (t.contains('monitor') || t.contains('screen')) return Icons.monitor_rounded;
+    return Icons.devices_other_rounded;
+  }
+
+  Widget _assetCard(Map<String, dynamic> a) {
+    String v(String k) => (a[k] ?? '').toString().trim();
+    final type = v('assetType');
+    final brandModel = [v('brand'), v('model')].where((x) => x.isNotEmpty).join(' ');
+    final serial = v('serial');
+    final since = v('assignedDate');
+    final cond = v('condition');
+    final condColor = cond == 'Good' ? AppColors.green : cond == 'Fair' ? AppColors.amber : cond == 'Poor' ? AppColors.red : AppColors.textMuted;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: AppShadows.tight,
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          width: 42, height: 42,
+          decoration: BoxDecoration(color: AppColors.blue.withOpacity(.10), borderRadius: BorderRadius.circular(12)),
+          child: Icon(_assetIcon(type), color: AppColors.blue, size: 22),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Flexible(child: Text(v('assetTag'),
+                style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.blue, fontSize: 13),
+                overflow: TextOverflow.ellipsis)),
+            if (type.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(20)),
+                child: Text(type, style: const TextStyle(color: AppColors.textMuted, fontSize: 10, fontWeight: FontWeight.w600)),
+              ),
+            ],
+            const Spacer(),
+            if (cond.isNotEmpty)
+              Text(cond, style: TextStyle(color: condColor, fontSize: 10.5, fontWeight: FontWeight.bold)),
+          ]),
+          if (brandModel.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(brandModel, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textDark),
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+          ],
+          if (serial.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text('S/N: $serial', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          ],
+          if (since.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text('Assigned: $since', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          ],
+        ])),
+      ]),
+    );
   }
 
   // Compares the freshly-fetched tickets against what we saw last time and
@@ -234,6 +314,28 @@ class _HomeScreenState extends State<HomeScreen> {
         ]),
       ),
     ),
+    const SizedBox(height: 22),
+    // Assets assigned to this employee
+    Row(children: [
+      const Text('Mere Assets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textDark)),
+      const SizedBox(width: 8),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(color: AppColors.blue.withOpacity(.10), borderRadius: BorderRadius.circular(20)),
+        child: Text('${_assets.length}', style: const TextStyle(color: AppColors.blue, fontSize: 11, fontWeight: FontWeight.bold)),
+      ),
+    ]),
+    const SizedBox(height: 10),
+    if (_assets.isEmpty)
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.cardBorder)),
+        child: const Text('Abhi aapko koi asset assign nahi hai.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
+      )
+    else
+      ..._assets.map(_assetCard),
     const SizedBox(height: 22),
     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
       const Text('Meri Tickets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textDark)),
