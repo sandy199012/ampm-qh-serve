@@ -6,6 +6,8 @@
     var fPrn    = (string)(ViewBag.FPrinter ?? "");
     var fPc     = (string)(ViewBag.FPc ?? "");
     var fQ      = (string)(ViewBag.FQ ?? "");
+    var fEmp    = (string)(ViewBag.FEmp ?? "");
+    var emps    = (List<string>)ViewBag.Emps;
     var users   = (List<string>)ViewBag.Users;
     var printers = (List<string>)ViewBag.Printers;
     var pcs     = (List<string>)ViewBag.Pcs;
@@ -16,7 +18,7 @@
     int totalJobs = (int)ViewBag.TotalJobs;
     long totalPages = (long)ViewBag.TotalPages;
     int shown = (int)ViewBag.Shown;
-    var qs = $"from={Uri.EscapeDataString(dFrom)}&to={Uri.EscapeDataString(dTo)}&user={Uri.EscapeDataString(fUser)}&printer={Uri.EscapeDataString(fPrn)}&pc={Uri.EscapeDataString(fPc)}&q={Uri.EscapeDataString(fQ)}";
+    var qs = $"from={Uri.EscapeDataString(dFrom)}&to={Uri.EscapeDataString(dTo)}&user={Uri.EscapeDataString(fUser)}&printer={Uri.EscapeDataString(fPrn)}&pc={Uri.EscapeDataString(fPc)}&q={Uri.EscapeDataString(fQ)}&emp={Uri.EscapeDataString(fEmp)}";
     string Fmt(string s) => DateTime.TryParse(s, out var d) ? d.ToString("dd-MMM-yyyy hh:mm tt") : s;
 }
 
@@ -42,6 +44,9 @@
       <div class="col-6 col-md-2"><label class="form-label small mb-0">PC</label>
         <select name="pc" class="form-select form-select-sm"><option value="">All PCs</option>
         @foreach (var c in pcs) { <option value="@c" selected="@(c == fPc)">@c</option> }</select></div>
+      <div class="col-6 col-md-2"><label class="form-label small mb-0">Employee (PC assigned to)</label>
+        <select name="emp" class="form-select form-select-sm"><option value="">All employees</option>
+        @foreach (var e in emps) { <option value="@e" selected="@(e == fEmp)">@e</option> }</select></div>
       <div class="col-6 col-md-2"><label class="form-label small mb-0">Document contains</label><input type="text" name="q" value="@fQ" class="form-control form-control-sm"/></div>
     </div>
     <div class="mt-2 d-flex gap-2">
@@ -73,9 +78,9 @@
       <h6 class="fw-bold">By user</h6>
       <div class="table-responsive" style="max-height:320px;overflow:auto">
       <table class="table table-sm table-hover small mb-0">
-        <thead class="table-light"><tr><th>User</th><th class="text-end">Jobs</th><th class="text-end">Pages</th><th>Last print</th></tr></thead>
+        <thead class="table-light"><tr><th>User (Windows login)</th><th>PC assigned to</th><th class="text-end">Jobs</th><th class="text-end">Pages</th><th>Last print</th></tr></thead>
         <tbody>
-        @foreach (var r in byUser) { <tr><td><a href="/Endpoints/PrintLog?from=@dFrom&to=@dTo&user=@Uri.EscapeDataString((string)r[0])">@r[0]</a></td><td class="text-end">@r[1]</td><td class="text-end fw-semibold">@r[2]</td><td>@Fmt((string)r[3])</td></tr> }
+        @foreach (var r in byUser) { <tr><td><a href="/Endpoints/PrintLog?from=@dFrom&to=@dTo&user=@Uri.EscapeDataString((string)r[0])">@r[0]</a></td><td>@r[4]</td><td class="text-end">@r[1]</td><td class="text-end fw-semibold">@r[2]</td><td>@Fmt((string)r[3])</td></tr> }
         </tbody>
       </table></div>
     </div></div>
@@ -98,12 +103,12 @@
   <h6 class="fw-bold">Every print job <span class="text-muted fw-normal small">(latest @shown of @totalJobs.ToString("N0") &mdash; the Excel has all of them)</span></h6>
   <div class="table-responsive">
   <table class="table table-sm table-hover small mb-0">
-    <thead class="table-light"><tr><th>Date &amp; time</th><th>User</th><th>PC</th><th>Printer</th><th>Document</th><th class="text-end">Pages</th><th class="text-end">Size</th></tr></thead>
+    <thead class="table-light"><tr><th>Date &amp; time</th><th>User</th><th>PC</th><th>Assigned to</th><th>Printer</th><th>Document</th><th class="text-end">Pages</th><th class="text-end">Size</th></tr></thead>
     <tbody>
     @foreach (var r in rows)
     {
-        var kb = (long)r[6];
-        <tr><td class="text-nowrap">@Fmt((string)r[0])</td><td>@r[1]</td><td>@r[2]</td><td>@r[3]</td><td>@r[4]</td><td class="text-end fw-semibold">@r[5]</td><td class="text-end text-muted">@(kb > 0 ? Math.Max(1, (long)Math.Round(kb / 1024.0)).ToString() + " KB" : "")</td></tr>
+        var kb = (long)r[8];
+        <tr><td class="text-nowrap">@Fmt((string)r[0])</td><td>@r[1]</td><td>@r[2]</td><td>@r[3]<span class="text-muted">@(string.IsNullOrEmpty((string)r[4]) ? "" : " (" + (string)r[4] + ")")</span></td><td>@r[5]</td><td>@r[6]</td><td class="text-end fw-semibold">@r[7]</td><td class="text-end text-muted">@(kb > 0 ? Math.Max(1, (long)Math.Round(kb / 1024.0)).ToString() + " KB" : "")</td></tr>
     }
     </tbody>
   </table></div>

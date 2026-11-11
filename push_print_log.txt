@@ -1,0 +1,21 @@
+warning: in the working copy of 'push_appassets_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/AssetsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/EndpointsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Filters/ModulePermissionFilter.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Assets/Agents.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Shared/_Layout.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/EndpointsPrintController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Endpoints/PrintLog.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/tools/AMPM_Print_Agent.ps1', LF will be replaced by CRLF the next time Git touches it
+[main 6876a33] Print Monitor: Print Agent (Windows print history), Monitor Print Log page + Excel download
+ 13 files changed, 803 insertions(+), 1 deletion(-)
+ create mode 100644 RUN_PUSH_PRINT.bat
+ create mode 100644 push_print_log.txt
+ create mode 100644 webapp/Controllers/EndpointsPrintController.cs
+ create mode 100644 webapp/Views/Endpoints/PrintLog.cshtml
+ create mode 100644 webapp/wwwroot/tools/AMPM_Print_Agent.bat
+ create mode 100644 webapp/wwwroot/tools/AMPM_Print_Agent.ps1
+ create mode 100644 webapp/wwwroot/tools/AMPM_Print_Agent_Setup.bat
+To https://github.com/sandy199012/ampm-qh-serve.git
+   ef33f63..6876a33  main -> main
+FINISHED errorlevel=0 

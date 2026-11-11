@@ -102,13 +102,13 @@ public partial class EndpointsController
     // ---- web page -----------------------------------------------------------
     sealed class PrintRow
     {
-        public string Pc = "", User = "", Printer = "", Document = "", Port = "", When = "";
+        public string Pc = "", User = "", Printer = "", Document = "", Port = "", When = "", Emp = "", Dept = "";
         public int Pages; public long Bytes;
     }
 
     // Reads the filtered rows. Dates are text (yyyy-MM-dd HH:mm:ss, India time), so
     // plain string comparison is a correct date comparison.
-    List<PrintRow> LoadPrints(string? dateFrom, string? dateTo, string? user, string? printer, string? pc, string? q, int limit)
+    List<PrintRow> LoadPrints(string? dateFrom, string? dateTo, string? user, string? printer, string? pc, string? q, int limit, string? emp = null)
     {
         EnsurePrintTable();
         var conds = new List<string>();
@@ -139,7 +139,31 @@ public partial class EndpointsController
                 When = r.IsDBNull(7) ? "" : r.GetString(7),
             });
         }
+        // Who the PC is assigned to (Asset Stock): matched on hostname / asset tag.
+        var map = AssignMap();
+        foreach (var x in list)
+            if (map.TryGetValue(x.Pc.Trim().ToUpperInvariant(), out var a)) { x.Emp = a.Name; x.Dept = a.Dept; }
+        if (!string.IsNullOrWhiteSpace(emp))
+            list = list.Where(x => string.Equals(x.Emp, emp.Trim(), StringComparison.OrdinalIgnoreCase)).ToList();
         return list;
+    }
+
+    // hostname / asset tag (UPPER, trimmed) -> (assigned employee, department) from Asset Stock.
+    Dictionary<string, (string Name, string Dept)> AssignMap()
+    {
+        var d = new Dictionary<string, (string Name, string Dept)>();
+        foreach (var a in _db.GetAssets())
+        {
+            var name = (a.GetValueOrDefault("assignedToName")?.ToString() ?? "").Trim();
+            if (name.Length == 0 || name.Equals("Unassigned", StringComparison.OrdinalIgnoreCase)) continue;
+            var dept = (a.GetValueOrDefault("assignedToDept")?.ToString() ?? "").Trim();
+            foreach (var key in new[] { a.GetValueOrDefault("hostname")?.ToString(), a.GetValueOrDefault("assetTag")?.ToString() })
+            {
+                var k = (key ?? "").Trim().ToUpperInvariant();
+                if (k.Length > 0 && !d.ContainsKey(k)) d[k] = (name, dept);
+            }
+        }
+        return d;
     }
 
     List<string> DistinctPrint(string col)
@@ -150,7 +174,7 @@ public partial class EndpointsController
     }
 
     [HttpGet("/Endpoints/PrintLog")]
-    public IActionResult PrintLog([FromQuery(Name = "from")] string? dateFrom, [FromQuery(Name = "to")] string? dateTo, string? user, string? printer, string? pc, string? q)
+    public IActionResult PrintLog([FromQuery(Name = "from")] string? dateFrom, [FromQuery(Name = "to")] string? dateTo, string? user, string? printer, string? pc, string? q, string? emp)
     {
         ViewBag.User = _auth.GetCurrentUser(HttpContext);
         // default range: this month so far
@@ -160,21 +184,24 @@ public partial class EndpointsController
             dateFrom = new DateTime(today.Year, today.Month, 1).ToString("yyyy-MM-dd");
             dateTo = today.ToString("yyyy-MM-dd");
         }
-        var all = LoadPrints(dateFrom, dateTo, user, printer, pc, q, 0);
+        var all = LoadPrints(dateFrom, dateTo, user, printer, pc, q, 0, emp);
         ViewBag.From = dateFrom; ViewBag.To = dateTo; ViewBag.FUser = user ?? ""; ViewBag.FPrinter = printer ?? "";
-        ViewBag.FPc = pc ?? ""; ViewBag.FQ = q ?? "";
+        ViewBag.FPc = pc ?? ""; ViewBag.FQ = q ?? ""; ViewBag.FEmp = emp ?? "";
         ViewBag.Users = DistinctPrint("user_name");
         ViewBag.Printers = DistinctPrint("printer");
         ViewBag.Pcs = DistinctPrint("pc");
+        var amap = AssignMap();
+        ViewBag.Emps = ((List<string>)ViewBag.Pcs).Select(h => amap.TryGetValue(h.Trim().ToUpperInvariant(), out var a) ? a.Name : "")
+            .Where(n => n.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(n => n, StringComparer.OrdinalIgnoreCase).ToList();
         ViewBag.TotalJobs = all.Count;
         ViewBag.TotalPages = all.Sum(x => (long)x.Pages);
         ViewBag.ByUser = all.GroupBy(x => x.User)
-            .Select(g => new object[] { g.Key, g.Count(), g.Sum(x => (long)x.Pages), g.Max(x => x.When) })
+            .Select(g => new object[] { g.Key, g.Count(), g.Sum(x => (long)x.Pages), g.Max(x => x.When), string.Join(", ", g.Select(x => x.Emp).Where(n => n.Length > 0).Distinct()) })
             .OrderByDescending(a => (long)a[2]).ToList();
         ViewBag.ByPrinter = all.GroupBy(x => x.Printer)
             .Select(g => new object[] { g.Key, g.Count(), g.Sum(x => (long)x.Pages), g.Select(x => x.User).Distinct().Count() })
             .OrderByDescending(a => (long)a[2]).ToList();
-        ViewBag.Rows = all.Take(500).Select(x => new object[] { x.When, x.User, x.Pc, x.Printer, x.Document, x.Pages, x.Bytes }).ToList();
+        ViewBag.Rows = all.Take(500).Select(x => new object[] { x.When, x.User, x.Pc, x.Emp, x.Dept, x.Printer, x.Document, x.Pages, x.Bytes }).ToList();
         ViewBag.Shown = Math.Min(500, all.Count);
         var agents = _db.KGetObj<Dictionary<string, Dictionary<string, string>>>("print_agents") ?? new();
         ViewBag.Agents = agents.OrderBy(a => a.Key, StringComparer.OrdinalIgnoreCase).ToList();
@@ -184,34 +211,34 @@ public partial class EndpointsController
     // ---- Excel download -----------------------------------------------------
     // Genuine SpreadsheetML 2003 workbook (opens in Excel), same look as the Assets export.
     [HttpGet("/Endpoints/PrintLogExport")]
-    public IActionResult PrintLogExport([FromQuery(Name = "from")] string? dateFrom, [FromQuery(Name = "to")] string? dateTo, string? user, string? printer, string? pc, string? q)
+    public IActionResult PrintLogExport([FromQuery(Name = "from")] string? dateFrom, [FromQuery(Name = "to")] string? dateTo, string? user, string? printer, string? pc, string? q, string? emp)
     {
-        var all = LoadPrints(dateFrom, dateTo, user, printer, pc, q, 200000);
+        var all = LoadPrints(dateFrom, dateTo, user, printer, pc, q, 200000, emp);
         string range = (string.IsNullOrWhiteSpace(dateFrom) ? "start" : dateFrom) + " to " + (string.IsNullOrWhiteSpace(dateTo) ? "today" : dateTo);
         string Kb(long b) => b <= 0 ? "" : Math.Max(1, (long)Math.Round(b / 1024.0)).ToString();
 
-        var detHeads = new[] { "#", "Date", "Time", "User", "PC", "Printer", "Document", "Pages", "Size (KB)" };
-        var detW = new[] { 30, 75, 60, 110, 110, 190, 300, 50, 65 };
+        var detHeads = new[] { "#", "Date", "Time", "User", "PC", "Assigned To", "Department", "Printer", "Document", "Pages", "Size (KB)" };
+        var detW = new[] { 30, 75, 60, 100, 100, 150, 130, 190, 300, 50, 65 };
         var detRows = new List<string[]>();
         foreach (var x in all.OrderBy(a => a.When, StringComparer.Ordinal))
         {
             var dt = DateTime.TryParse(x.When, out var d) ? d : (DateTime?)null;
             detRows.Add(new[] { (detRows.Count + 1).ToString(), dt?.ToString("dd-MMM-yyyy") ?? x.When, dt?.ToString("hh:mm tt") ?? "",
-                x.User, x.Pc, x.Printer, x.Document, x.Pages.ToString(), Kb(x.Bytes) });
+                x.User, x.Pc, x.Emp, x.Dept, x.Printer, x.Document, x.Pages.ToString(), Kb(x.Bytes) });
         }
 
-        var uHeads = new[] { "#", "User", "Print jobs", "Total pages", "Printers used", "First print", "Last print" };
-        var uW = new[] { 30, 140, 70, 80, 220, 120, 120 };
+        var uHeads = new[] { "#", "User", "PC Assigned To", "Print jobs", "Total pages", "Printers used", "First print", "Last print" };
+        var uW = new[] { 30, 110, 170, 70, 80, 220, 120, 120 };
         var uRows = new List<string[]>();
         foreach (var g in all.GroupBy(x => x.User).OrderByDescending(g => g.Sum(x => (long)x.Pages)))
-            uRows.Add(new[] { (uRows.Count + 1).ToString(), g.Key, g.Count().ToString(), g.Sum(x => (long)x.Pages).ToString(),
+            uRows.Add(new[] { (uRows.Count + 1).ToString(), g.Key, string.Join(", ", g.Select(x => x.Emp).Where(n => n.Length > 0).Distinct()), g.Count().ToString(), g.Sum(x => (long)x.Pages).ToString(),
                 string.Join(", ", g.Select(x => x.Printer).Distinct().OrderBy(s => s)), Dt(g.Min(x => x.When)), Dt(g.Max(x => x.When)) });
 
-        var upHeads = new[] { "#", "User", "Printer", "Print jobs", "Total pages" };
-        var upW = new[] { 30, 140, 230, 70, 80 };
+        var upHeads = new[] { "#", "User", "PC Assigned To", "Printer", "Print jobs", "Total pages" };
+        var upW = new[] { 30, 110, 170, 230, 70, 80 };
         var upRows = new List<string[]>();
         foreach (var g in all.GroupBy(x => new { x.User, x.Printer }).OrderBy(g => g.Key.User, StringComparer.OrdinalIgnoreCase).ThenByDescending(g => g.Sum(x => (long)x.Pages)))
-            upRows.Add(new[] { (upRows.Count + 1).ToString(), g.Key.User, g.Key.Printer, g.Count().ToString(), g.Sum(x => (long)x.Pages).ToString() });
+            upRows.Add(new[] { (upRows.Count + 1).ToString(), g.Key.User, string.Join(", ", g.Select(x => x.Emp).Where(n => n.Length > 0).Distinct()), g.Key.Printer, g.Count().ToString(), g.Sum(x => (long)x.Pages).ToString() });
 
         var dHeads = new[] { "#", "Date", "User", "Printer", "Print jobs", "Total pages" };
         var dW = new[] { 30, 90, 140, 230, 70, 80 };
@@ -229,11 +256,11 @@ public partial class EndpointsController
         foreach (var g in all.GroupBy(x => x.Printer).OrderByDescending(g => g.Sum(x => (long)x.Pages)))
             pRows.Add(new[] { (pRows.Count + 1).ToString(), g.Key, g.Count().ToString(), g.Sum(x => (long)x.Pages).ToString(), g.Select(x => x.User).Distinct().Count().ToString() });
 
-        var cHeads = new[] { "#", "PC", "Print jobs", "Total pages", "Last print" };
-        var cW = new[] { 30, 140, 70, 80, 120 };
+        var cHeads = new[] { "#", "PC", "Assigned To", "Department", "Print jobs", "Total pages", "Last print" };
+        var cW = new[] { 30, 110, 170, 140, 70, 80, 120 };
         var cRows = new List<string[]>();
         foreach (var g in all.GroupBy(x => x.Pc).OrderByDescending(g => g.Sum(x => (long)x.Pages)))
-            cRows.Add(new[] { (cRows.Count + 1).ToString(), g.Key, g.Count().ToString(), g.Sum(x => (long)x.Pages).ToString(), Dt(g.Max(x => x.When)) });
+            cRows.Add(new[] { (cRows.Count + 1).ToString(), g.Key, g.Select(x => x.Emp).FirstOrDefault(n => n.Length > 0) ?? "", g.Select(x => x.Dept).FirstOrDefault(n => n.Length > 0) ?? "", g.Count().ToString(), g.Sum(x => (long)x.Pages).ToString(), Dt(g.Max(x => x.When)) });
 
         string title = "AMPM FASHIONS PVT. LTD. — PRINT LOG (" + range + ")";
         var sb = new System.Text.StringBuilder();
@@ -297,7 +324,7 @@ public partial class EndpointsController
                 // # column centred; "Pages", "Print jobs", "Total pages", "Users", "Size (KB)" numeric
                 var h = heads[c];
                 bool numeric = h == "Pages" || h == "Print jobs" || h == "Total pages" || h == "Users" || h == "Size (KB)";
-                string st = c == 0 ? "aCenter" : numeric ? "aCenter" : (h == "User" || h == "Printer" || h == "PC") ? "aBold" : "aCell";
+                string st = c == 0 ? "aCenter" : numeric ? "aCenter" : (h == "User" || h == "Printer" || h == "PC" || h == "Assigned To" || h == "PC Assigned To") ? "aBold" : "aCell";
                 sb.Append(PCell(r[c], st, 0, numeric));
             }
             sb.Append("</Row>");
