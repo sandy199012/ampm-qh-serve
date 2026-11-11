@@ -65,6 +65,11 @@ public class ModulePermissionFilter : IActionFilter
         if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-printers", StringComparison.OrdinalIgnoreCase))
             return;
 
+        // Print Monitor agent (AMPM_Print_Agent.ps1) pushes each PC's print history here -
+        // shared key, no cookie session (EndpointsController.ReportPrints).
+        if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-prints", StringComparison.OrdinalIgnoreCase))
+            return;
+
         // Same scan, second request: switches / WiFi / NVR / cameras
         // (EndpointsController.ReportNetwork).
         if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-network", StringComparison.OrdinalIgnoreCase))

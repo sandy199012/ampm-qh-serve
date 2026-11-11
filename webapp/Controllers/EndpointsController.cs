@@ -9,7 +9,7 @@ using DocumentFormat.OpenXml.Spreadsheet;
 
 namespace AMPMWeb.Controllers;
 
-public class EndpointsController : Controller
+public partial class EndpointsController : Controller
 {
     private readonly DbService _db;
     private readonly AuthService _auth;

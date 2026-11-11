@@ -48,6 +48,7 @@
                 @if (curUser.CanView("Bills")) { <li class="nav-item"><a class="nav-link" href="/Bills/Index"><i class="bi bi-lightning-charge"></i> Bills</a></li> }
                 @if (curUser.CanView("Vendors")) { <li class="nav-item"><a class="nav-link" href="/Vendors/Index"><i class="bi bi-shop"></i> Vendors</a></li> }
                 @if (curUser.CanView("Endpoints")) { <li class="nav-item"><a class="nav-link" href="/Endpoints/Index"><i class="bi bi-activity"></i> Monitor</a></li> }
+                @if (curUser.CanView("Endpoints")) { <li class="nav-item"><a class="nav-link" href="/Endpoints/PrintLog"><i class="bi bi-printer"></i> Print Log</a></li> }
                 @if (curUser.IsAdmin) { <li class="nav-item"><a class="nav-link" href="/Users/Index"><i class="bi bi-people-fill"></i> Users</a></li> }
             </ul>
             <ul class="navbar-nav">

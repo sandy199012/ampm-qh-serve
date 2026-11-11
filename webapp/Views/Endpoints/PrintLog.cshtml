@@ -1,0 +1,128 @@
+@{
+    ViewData["Title"] = "Print Log";
+    var dFrom   = (string)(ViewBag.From ?? "");
+    var dTo     = (string)(ViewBag.To ?? "");
+    var fUser   = (string)(ViewBag.FUser ?? "");
+    var fPrn    = (string)(ViewBag.FPrinter ?? "");
+    var fPc     = (string)(ViewBag.FPc ?? "");
+    var fQ      = (string)(ViewBag.FQ ?? "");
+    var users   = (List<string>)ViewBag.Users;
+    var printers = (List<string>)ViewBag.Printers;
+    var pcs     = (List<string>)ViewBag.Pcs;
+    var byUser  = (List<object[]>)ViewBag.ByUser;
+    var byPrn   = (List<object[]>)ViewBag.ByPrinter;
+    var rows    = (List<object[]>)ViewBag.Rows;
+    var agents  = (List<KeyValuePair<string, Dictionary<string, string>>>)ViewBag.Agents;
+    int totalJobs = (int)ViewBag.TotalJobs;
+    long totalPages = (long)ViewBag.TotalPages;
+    int shown = (int)ViewBag.Shown;
+    var qs = $"from={Uri.EscapeDataString(dFrom)}&to={Uri.EscapeDataString(dTo)}&user={Uri.EscapeDataString(fUser)}&printer={Uri.EscapeDataString(fPrn)}&pc={Uri.EscapeDataString(fPc)}&q={Uri.EscapeDataString(fQ)}";
+    string Fmt(string s) => DateTime.TryParse(s, out var d) ? d.ToString("dd-MMM-yyyy hh:mm tt") : s;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h5 class="fw-bold mb-0"><i class="bi bi-printer-fill" style="color:#0EA5E9"></i> Print Log &mdash; who printed what, when and where</h5>
+    <div class="d-flex gap-2">
+        <a href="/Endpoints/PrintLogExport?@Html.Raw(qs)" class="btn btn-success btn-sm"><i class="bi bi-file-earmark-excel"></i> Download Excel</a>
+        <a href="/Assets/Agents" class="btn btn-outline-secondary btn-sm"><i class="bi bi-cloud-download"></i> Print Monitor Agent</a>
+    </div>
+</div>
+
+<form method="get" class="card border-0 shadow-sm mb-3">
+  <div class="card-body">
+    <div class="row g-2 align-items-end">
+      <div class="col-6 col-md-2"><label class="form-label small mb-0">From</label><input type="date" name="from" value="@dFrom" class="form-control form-control-sm"/></div>
+      <div class="col-6 col-md-2"><label class="form-label small mb-0">To</label><input type="date" name="to" value="@dTo" class="form-control form-control-sm"/></div>
+      <div class="col-6 col-md-2"><label class="form-label small mb-0">User</label>
+        <select name="user" class="form-select form-select-sm"><option value="">All users</option>
+        @foreach (var u in users) { <option value="@u" selected="@(u == fUser)">@u</option> }</select></div>
+      <div class="col-6 col-md-2"><label class="form-label small mb-0">Printer</label>
+        <select name="printer" class="form-select form-select-sm"><option value="">All printers</option>
+        @foreach (var p in printers) { <option value="@p" selected="@(p == fPrn)">@p</option> }</select></div>
+      <div class="col-6 col-md-2"><label class="form-label small mb-0">PC</label>
+        <select name="pc" class="form-select form-select-sm"><option value="">All PCs</option>
+        @foreach (var c in pcs) { <option value="@c" selected="@(c == fPc)">@c</option> }</select></div>
+      <div class="col-6 col-md-2"><label class="form-label small mb-0">Document contains</label><input type="text" name="q" value="@fQ" class="form-control form-control-sm"/></div>
+    </div>
+    <div class="mt-2 d-flex gap-2">
+        <button class="btn btn-primary btn-sm" type="submit"><i class="bi bi-funnel"></i> Show</button>
+        <a href="/Endpoints/PrintLog" class="btn btn-outline-secondary btn-sm">This month</a>
+        <a href="/Endpoints/PrintLog?from=2000-01-01&to=2100-01-01" class="btn btn-outline-secondary btn-sm">All time</a>
+    </div>
+  </div>
+</form>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2"><div class="small text-muted">Print jobs</div><div class="fs-4 fw-bold">@totalJobs.ToString("N0")</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2"><div class="small text-muted">Total pages</div><div class="fs-4 fw-bold">@totalPages.ToString("N0")</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2"><div class="small text-muted">Users who printed</div><div class="fs-4 fw-bold">@byUser.Count</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2"><div class="small text-muted">Printers used</div><div class="fs-4 fw-bold">@byPrn.Count</div></div></div></div>
+</div>
+
+@if (totalJobs == 0)
+{
+    <div class="alert alert-info small">
+        No prints recorded for this selection yet. Install the <a href="/Assets/Agents">Print Monitor Agent</a> on the PCs
+        (<b>AMPM_Print_Agent_Setup.bat</b> &rarr; Run as administrator). Only prints made after the install are recorded.
+    </div>
+}
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h6 class="fw-bold">By user</h6>
+      <div class="table-responsive" style="max-height:320px;overflow:auto">
+      <table class="table table-sm table-hover small mb-0">
+        <thead class="table-light"><tr><th>User</th><th class="text-end">Jobs</th><th class="text-end">Pages</th><th>Last print</th></tr></thead>
+        <tbody>
+        @foreach (var r in byUser) { <tr><td><a href="/Endpoints/PrintLog?from=@dFrom&to=@dTo&user=@Uri.EscapeDataString((string)r[0])">@r[0]</a></td><td class="text-end">@r[1]</td><td class="text-end fw-semibold">@r[2]</td><td>@Fmt((string)r[3])</td></tr> }
+        </tbody>
+      </table></div>
+    </div></div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100"><div class="card-body">
+      <h6 class="fw-bold">By printer</h6>
+      <div class="table-responsive" style="max-height:320px;overflow:auto">
+      <table class="table table-sm table-hover small mb-0">
+        <thead class="table-light"><tr><th>Printer</th><th class="text-end">Jobs</th><th class="text-end">Pages</th><th class="text-end">Users</th></tr></thead>
+        <tbody>
+        @foreach (var r in byPrn) { <tr><td><a href="/Endpoints/PrintLog?from=@dFrom&to=@dTo&printer=@Uri.EscapeDataString((string)r[0])">@r[0]</a></td><td class="text-end">@r[1]</td><td class="text-end fw-semibold">@r[2]</td><td class="text-end">@r[3]</td></tr> }
+        </tbody>
+      </table></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3"><div class="card-body">
+  <h6 class="fw-bold">Every print job <span class="text-muted fw-normal small">(latest @shown of @totalJobs.ToString("N0") &mdash; the Excel has all of them)</span></h6>
+  <div class="table-responsive">
+  <table class="table table-sm table-hover small mb-0">
+    <thead class="table-light"><tr><th>Date &amp; time</th><th>User</th><th>PC</th><th>Printer</th><th>Document</th><th class="text-end">Pages</th><th class="text-end">Size</th></tr></thead>
+    <tbody>
+    @foreach (var r in rows)
+    {
+        var kb = (long)r[6];
+        <tr><td class="text-nowrap">@Fmt((string)r[0])</td><td>@r[1]</td><td>@r[2]</td><td>@r[3]</td><td>@r[4]</td><td class="text-end fw-semibold">@r[5]</td><td class="text-end text-muted">@(kb > 0 ? Math.Max(1, (long)Math.Round(kb / 1024.0)).ToString() + " KB" : "")</td></tr>
+    }
+    </tbody>
+  </table></div>
+</div></div>
+
+<div class="card border-0 shadow-sm"><div class="card-body">
+  <h6 class="fw-bold">PCs with the Print Agent <span class="badge bg-light text-dark border fw-normal">@agents.Count</span></h6>
+  @if (agents.Count == 0) { <div class="small text-muted">No PC has reported yet.</div> }
+  else
+  {
+    <div class="table-responsive"><table class="table table-sm small mb-0">
+      <thead class="table-light"><tr><th>PC</th><th>IP</th><th>Last report</th><th>Agent version</th></tr></thead>
+      <tbody>
+      @foreach (var a in agents)
+      {
+          <tr><td>@a.Key</td><td>@a.Value.GetValueOrDefault("ip")</td><td>@Fmt(a.Value.GetValueOrDefault("lastSeen") ?? "")</td><td>@a.Value.GetValueOrDefault("version")</td></tr>
+      }
+      </tbody>
+    </table></div>
+    <div class="small text-muted mt-1">A PC that stopped reporting here has lost the agent or is switched off.</div>
+  }
+</div></div>

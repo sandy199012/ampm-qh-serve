@@ -508,6 +508,9 @@ table.kv td.v{color:#0F172A}
         ViewBag.PcNewestHost = newestHost;
         ViewBag.PrinterScanInfo = _db.KGetObj<Dictionary<string,object?>>("printer_scan_last");
         ViewBag.NetScanInfo = _db.KGetObj<Dictionary<string,object?>>("network_scan_last");
+        var printAgents = _db.KGetObj<Dictionary<string, Dictionary<string, string>>>("print_agents") ?? new();
+        ViewBag.PrintAgentCount = printAgents.Count;
+        ViewBag.PrintAgentRecent = printAgents.Count(x => DateTime.TryParse(x.Value.GetValueOrDefault("lastSeen"), out var ls) && (now - ls).TotalHours <= 1);
         ViewBag.KeyFromEnv = Environment.GetEnvironmentVariable("AMPM_AGENT_KEY") is { Length: > 7 };
         ViewBag.AgentKey = EndpointsController.CurrentAgentKey;
         return View();
@@ -554,6 +557,10 @@ public static class AgentPackage
             case "network":
                 prefix = "AMPM_Network_Agent"; zipName = "AMPM_Network_Agent.zip";
                 readme = "AMPM NETWORK DEVICE AGENT\r\n=========================\r\nFinds switches, WiFi access points / routers, NVR / DVR and IP cameras on the office LAN and\r\nreports them to Asset Stock -> Network Devices (SW-, WIFI-, NVR-, CAM-, NET- tags).\r\nRun it on ONE PC that is on the office network.\r\n\r\n1. Extract this ZIP anywhere.\r\n2. Double-click AMPM_Network_Agent.bat to scan now (2-4 minutes).\r\n3. Optional: right-click AMPM_Network_Agent_Setup.bat -> Run as administrator to scan every day at 11:30.\r\n\r\nOther subnet? Open AMPM_Network_Agent.ps1 in Notepad and add it to $extraSubnets (for example '192.168.2').\r\nSwitches / WiFi are recognised best with SNMP v1/v2c (community 'public') enabled on them; if you use another\r\ncommunity put it in $snmpCommunity. Cameras / NVR: switch ONVIF on in their settings for model details.\r\nDevices that cannot be identified come in as NET- 'Other Network Device' - open Edit on the website and choose the real type.\r\nLog file: ampm_network_log.txt (one line per device - useful when something is not recognised).\r\n";
+                break;
+            case "print":
+                prefix = "AMPM_Print_Agent"; zipName = "AMPM_Print_Agent.zip";
+                readme = "AMPM PRINT MONITOR AGENT\r\n========================\r\nRecords every document printed from this PC - who printed, when, on which printer, how many pages - and sends it to the AMPM IT Tool (Monitor -> Print Log, with an Excel download).\r\n\r\n1. Extract this ZIP anywhere on the PC.\r\n2. Right-click AMPM_Print_Agent_Setup.bat -> Run as administrator, ONCE. It switches on the Windows print history and sends the data at every start-up and every 5 minutes.\r\n3. (Optional) Double-click AMPM_Print_Agent.bat to send now and see the result.\r\n\r\nNotes:\r\n- Only prints made AFTER the Setup are recorded (Windows does not keep print history before that).\r\n- Installed on the PC the user prints from. If everybody prints through one shared print server, install it on that server instead.\r\n- The document name is sent along with user, printer and page count.\r\nTo update: download again from the website and run the Setup file again.\r\nLog file: ampm_print_log.txt (in C:\\ProgramData\\AMPM\\PrintAgent for the automatic runs).\r\n";
                 break;
             default:
                 return null;
