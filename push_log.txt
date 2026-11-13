@@ -1,0 +1,35 @@
+
+[1/3] App ka code mobile_app folder me copy ho raha hai...
+[2/3] GitHub workflow files theek kar raha hoon...
+[3/3] GitHub par bhej raha hoon...
+warning: in the working copy of 'mobile_app/lib/screens/admin_home_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/home_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/services/api_service.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/pubspec.yaml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'push_print2_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Filters/ModulePermissionFilter.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Shared/_Layout.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/chat_list_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/screens/chat_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'mobile_app/lib/widgets/chat_button.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/ChatController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Chat/Index.cshtml', LF will be replaced by CRLF the next time Git touches it
+[main b78c9f7] Helpdesk app 1.1 - in-app updates, My Device, new look
+ 14 files changed, 1229 insertions(+), 128 deletions(-)
+ create mode 100644 RUN_PUSH_CHAT.bat
+ create mode 100644 mobile_app/lib/screens/chat_list_screen.dart
+ create mode 100644 mobile_app/lib/screens/chat_screen.dart
+ create mode 100644 mobile_app/lib/widgets/chat_button.dart
+ create mode 100644 webapp/Controllers/ChatController.cs
+ create mode 100644 webapp/Views/Chat/Index.cshtml
+To https://github.com/sandy199012/ampm-qh-serve.git
+   472ac89..b78c9f7  main -> main
+
+ ============================================================
+  Bhej diya! 8-12 minute me naya APK ban ke release ho jayega.
+  Phir sabke phone me app kholte hi "Naya update available" aayega.
+  Progress: https://github.com/sandy199012/ampm-qh-serve/actions
+  APK link (naye phone ke liye): https://ampm-qh-serve-1.onrender.com/app
+ ============================================================
+
+FINISHED errorlevel=0 
