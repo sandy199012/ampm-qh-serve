@@ -68,7 +68,7 @@ class _PurchaseBillsScreenState extends State<PurchaseBillsScreen> {
         onPressed: () => _showEdit(null),
         backgroundColor: const Color(0xFF059669),
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Nayi Bill', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: const Text('New Bill', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
   }

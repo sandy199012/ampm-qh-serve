@@ -139,7 +139,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
       const Icon(Icons.wifi_off, size: 64, color: Color(0xFFDC2626)),
       const SizedBox(height: 16),
-      const Text('Server se connect nahi hua', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      const Text('Could not connect to the server', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       const SizedBox(height: 8),
       Text(_error ?? '', style: const TextStyle(color: Colors.grey, fontSize: 12), textAlign: TextAlign.center),
       const SizedBox(height: 24),
@@ -158,7 +158,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('IT Admin', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-          Text('Sabhi tickets aur employees', style: TextStyle(color: Color(0xFFFF5C93), fontSize: 12)),
+          Text('All tickets and employees', style: TextStyle(color: Color(0xFFFF5C93), fontSize: 12)),
         ])),
         Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(color: Colors.white12, borderRadius: BorderRadius.circular(20)),
@@ -174,12 +174,12 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     ]),
     const SizedBox(height: 20),
 
-    // Superadmin ke liye poori website — bina APK dobara build kiye Assets,
+    // Full website for the superadmin — Assets, without rebuilding the APK,
     // IT Store, Purchase Orders, Vendors, Budget, Bills, Licenses, Goals,
-    // Users, Employees — sab kuch, seedha yahin se.
+    // Users, Employees — everything, straight from here.
     GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(
-          builder: (_) => const WebPortalScreen(path: '/', title: 'AMPM IT Tool — Poori Website'))),
+          builder: (_) => const WebPortalScreen(path: '/', title: 'AMPM IT Tool — Full Website'))),
       child: Container(padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
             gradient: const LinearGradient(colors: [Color(0xFF14B8A6), Color(0xFF6D4AFF)]),
@@ -189,8 +189,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           Icon(Icons.public, color: Colors.white, size: 28),
           SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Full Website — Sabhi Modules', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
-            Text('Assets, IT Store, PO, Vendors, Budget, Bills, Licenses, Goals, Users — sab yahan',
+            Text('Full Website — All Modules', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+            Text('Assets, IT Store, PO, Vendors, Budget, Bills, Licenses, Goals, Users — all in one place',
                 style: TextStyle(color: Colors.white70, fontSize: 11)),
           ])),
           Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
@@ -201,8 +201,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
     _menuCard(
       icon: Icons.confirmation_number,
       color: const Color(0xFF6D4AFF),
-      title: 'Sabhi Tickets',
-      subtitle: 'View, assign, update, delete — sabhi employees ki tickets',
+      title: 'All Tickets',
+      subtitle: 'View, assign, update, delete — tickets of all employees',
       onTap: () => Navigator.push(context,
           MaterialPageRoute(builder: (_) => const TicketListScreen(all: true))).then((_) => _load()),
     ),
@@ -211,7 +211,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
       icon: Icons.people_alt,
       color: const Color(0xFF059669),
       title: 'Employee Directory',
-      subtitle: 'Search karo aur call karo — sabhi employees',
+      subtitle: 'Search and call — all employees',
       onTap: () => Navigator.push(context,
           MaterialPageRoute(builder: (_) => const EmployeeDirectoryScreen())),
     ),
@@ -225,7 +225,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         Icon(Icons.info_outline, color: Color(0xFF6D4AFF), size: 20),
         SizedBox(width: 10),
         Expanded(child: Text(
-          'Baaki modules (Assets, IT Store, Purchase Orders, Vendors, Budget, Bills, Licenses, IT Goals) upar "Full Website" button se seedha khulte hain — aage website mein koi naya feature aaye to bhi APK dobara install karne ki zarurat nahi.',
+          'The remaining modules (Assets, IT Store, Purchase Orders, Vendors, Budget, Bills, Licenses, IT Goals) open directly from the "Full Website" button above — new website features will also appear without reinstalling the APK.',
           style: TextStyle(fontSize: 12, color: Color(0xFF3B238F)))),
       ]),
     ),
@@ -236,7 +236,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
         const Text('Recent Tickets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF130A33))),
         TextButton(onPressed: () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const TicketListScreen(all: true))).then((_) => _load()),
-            child: const Text('Sab dekho')),
+            child: const Text('View all')),
       ]),
       ..._tickets.take(8).map((t) => _ticketCard(t)),
     ],

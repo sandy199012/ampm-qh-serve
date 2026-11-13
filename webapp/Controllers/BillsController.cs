@@ -142,7 +142,7 @@ public class BillsController : Controller
     {
         if (_auth.GetCurrentUser(HttpContext)?.CanApprove("Bills") != true)
         {
-            TempData["Error"] = "Aapke paas bills approve/pay karne ki permission nahi hai.";
+            TempData["Error"] = "You do not have permission to approve or pay bills.";
             return RedirectToAction("Index");
         }
 

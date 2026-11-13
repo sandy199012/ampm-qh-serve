@@ -513,7 +513,7 @@ class ApiService {
     Map<String, dynamic> j = {};
     try { j = jsonDecode(res.body) as Map<String, dynamic>; } catch (_) {}
     if (res.statusCode != 200 || j['ok'] != true) {
-      throw Exception((j['error'] ?? 'Message send nahi hua').toString());
+      throw Exception((j['error'] ?? 'Message could not be sent').toString());
     }
   }
 
@@ -529,15 +529,15 @@ class ApiService {
     Map<String, dynamic> j = {};
     try { j = jsonDecode(body) as Map<String, dynamic>; } catch (_) {}
     if (streamed.statusCode != 200 || j['ok'] != true) {
-      throw Exception((j['error'] ?? 'File send nahi hui (${streamed.statusCode})').toString());
+      throw Exception((j['error'] ?? 'File could not be sent (${streamed.statusCode})').toString());
     }
   }
 
   /// Downloads a chat file into the app's documents folder and returns its path.
   static Future<String> downloadChatFile(String fileId, String fileName) async {
     final res = await _get('/api/chat/file/${Uri.encodeComponent(fileId)}', timeout: const Duration(minutes: 3));
-    if (res.statusCode == 410) throw Exception('File auto-delete ho chuki hai (2 din se purani).');
-    if (res.statusCode != 200) throw Exception('Download nahi hui (${res.statusCode})');
+    if (res.statusCode == 410) throw Exception('This file was automatically deleted (older than 2 days).');
+    if (res.statusCode != 200) throw Exception('Download failed (${res.statusCode})');
     final base = await getApplicationDocumentsDirectory();
     final dir = Directory('${base.path}/chat_files');
     if (!await dir.exists()) await dir.create(recursive: true);

@@ -83,7 +83,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
     if (!mounted) return;
     setState(() {
       if (msg == null) {
-        _phase = _Phase.ready;      // installer is open; if the user backs out, "Install karo" is still here
+        _phase = _Phase.ready;      // installer is open; if the user backs out, "Install" is still here
         _error = '';
       } else {
         _phase = _Phase.failed;
@@ -118,7 +118,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           ),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(info.mandatory ? 'Zaroori update' : 'Naya update available',
+            Text(info.mandatory ? 'Required update' : 'New update available',
                 style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textDark)),
             Text(
               'v${UpdateService.currentVersion}  →  v${info.version}'
@@ -132,7 +132,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           child: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               if (info.notes.isNotEmpty) ...[
-                const Text('Isme naya kya hai', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textDark)),
+                const Text('What is new', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textDark)),
                 const SizedBox(height: 6),
                 Container(
                   width: double.infinity,
@@ -141,10 +141,10 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   child: Text(info.notes, style: const TextStyle(fontSize: 12.5, height: 1.4, color: AppColors.textDark)),
                 ),
               ] else
-                const Text('Bug fixes aur improvements.', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                const Text('Bug fixes and improvements.', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
               if (info.mandatory) ...[
                 const SizedBox(height: 10),
-                const Text('Ye update install kiye bina app aage nahi chalegi.',
+                const Text('The app cannot be used until this update is installed.',
                     style: TextStyle(fontSize: 12, color: AppColors.red, fontWeight: FontWeight.w600)),
               ],
               if (busy) ...[
@@ -159,13 +159,13 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(_progress > 0 ? 'Download ho raha hai… ${(_progress * 100).round()}%' : 'Shuru ho raha hai…',
+                Text(_progress > 0 ? 'Downloading… ${(_progress * 100).round()}%' : 'Starting…',
                     style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
               ],
               if (_phase == _Phase.ready) ...[
                 const SizedBox(height: 14),
-                const Text('Install screen khul gayi hai — wahan "Install" dabao. '
-                    'Install ke baad app apne aap naye version me khulegi.',
+                const Text('The install screen is open — tap "Install" there. '
+                    'After installing, the app will open in the new version automatically.',
                     style: TextStyle(fontSize: 12.5, color: AppColors.green, fontWeight: FontWeight.w600)),
               ],
               if (_phase == _Phase.failed) ...[
@@ -184,10 +184,10 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                 await UpdateService.snooze(info);
                 if (context.mounted) Navigator.of(context).pop();
               },
-              child: const Text('Baad me'),
+              child: const Text('Later'),
             ),
           if (_phase == _Phase.failed)
-            TextButton(onPressed: _viaBrowser, child: const Text('Browser se')),
+            TextButton(onPressed: _viaBrowser, child: const Text('Via browser')),
           if (!busy)
             ElevatedButton.icon(
               onPressed: _phase == _Phase.ready || (_phase == _Phase.failed && _file != null)
@@ -195,8 +195,8 @@ class _UpdateDialogState extends State<_UpdateDialog> {
                   : _start,
               icon: Icon(_phase == _Phase.idle ? Icons.download_rounded : Icons.install_mobile_rounded, size: 18),
               label: Text(_phase == _Phase.idle
-                  ? 'Update karo'
-                  : (_phase == _Phase.failed && _file == null ? 'Dobara try karo' : 'Install karo')),
+                  ? 'Update'
+                  : (_phase == _Phase.failed && _file == null ? 'Try again' : 'Install')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.blue,
                 foregroundColor: Colors.white,
@@ -241,9 +241,9 @@ class UpdateBanner extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Naya version ${info.version} available',
+                    Text('New version ${info.version} available',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-                    const Text('Tap karke update karo', style: TextStyle(color: Colors.white70, fontSize: 11.5)),
+                    const Text('Tap to update', style: TextStyle(color: Colors.white70, fontSize: 11.5)),
                   ])),
                   const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 15),
                 ]),

@@ -63,7 +63,7 @@
         <div id="emptyState" class="chat-empty">
             <i class="bi bi-chat-dots" style="font-size:54px"></i>
             <h5 class="mt-2">AMPM Chat</h5>
-            <div class="small">Left side se kisi employee ko chuno aur chat shuru karo.<br/>Chat sirf aap dono ko dikhti hai &middot; messages hamesha save rahte hain &middot; files 2 din baad auto-delete hoti hain.</div>
+            <div class="small">Select an employee on the left to start a chat.<br/>Only you and the other person can see this chat &middot; messages are saved permanently &middot; files are deleted automatically after 2 days.</div>
         </div>
         <div id="convo" style="display:none;flex:1;flex-direction:column;min-height:0">
             <div class="chat-head">
@@ -75,8 +75,8 @@
             <div id="upStatus" class="small px-3 py-1 bg-warning-subtle" style="display:none"></div>
             <div class="chat-compose">
                 <input type="file" id="fileIn" style="display:none"/>
-                <button class="btn-round btn-attach" id="attachBtn" title="File bhejo (max @maxMb MB)"><i class="bi bi-paperclip"></i></button>
-                <textarea id="txt" rows="1" placeholder="Message likho... (Enter = send, Shift+Enter = nayi line)"></textarea>
+                <button class="btn-round btn-attach" id="attachBtn" title="Send a file (max @maxMb MB)"><i class="bi bi-paperclip"></i></button>
+                <textarea id="txt" rows="1" placeholder="Type a message... (Enter = send, Shift+Enter = new line)"></textarea>
                 <button class="btn-round" id="sendBtn" title="Send"><i class="bi bi-send-fill"></i></button>
             </div>
         </div>
@@ -136,7 +136,7 @@
                 '<div class="pv"><span class="t">' + (c.last ? (c.mine ? 'You: ' : '') + esc(c.last) : '<i>' + esc(c.dept || '') + '</i>') + '</span>' +
                 (c.unread > 0 ? '<span class="unread-badge">' + c.unread + '</span>' : '') + '</div></div></div>';
         });
-        $('list').innerHTML = html || '<div class="p-3 text-muted small">Koi nahi mila.</div>';
+        $('list').innerHTML = html || '<div class="p-3 text-muted small">No results found.</div>';
         var total = contacts.reduce(function (a, c) { return a + (c.unread || 0); }, 0);
         document.title = (total > 0 ? '(' + total + ') ' : '') + 'Chat — AMPM IT Tool';
     }
@@ -175,7 +175,7 @@
         if (m.fileId || m.fileName) {
             var url = '/api/chat/file/' + encodeURIComponent(m.fileId);
             if (m.fileExpired) {
-                body += '<div class="file-card"><i class="bi ' + fileIcon(m.fileName) + ' ic"></i><div><div class="fn">' + esc(m.fileName) + '</div><div class="file-exp">File auto-delete ho chuki hai (2 din se purani)</div></div></div>';
+                body += '<div class="file-card"><i class="bi ' + fileIcon(m.fileName) + ' ic"></i><div><div class="fn">' + esc(m.fileName) + '</div><div class="file-exp">File was automatically deleted (older than 2 days)</div></div></div>';
             } else {
                 if (isImg(m.fileName)) body += '<a href="' + url + '?inline=true" target="_blank"><img class="pic" src="' + url + '?inline=true" alt=""/></a>';
                 body += '<div class="file-card"><i class="bi ' + fileIcon(m.fileName) + ' ic"></i><div style="flex:1"><div class="fn">' + esc(m.fileName) + '</div><div class="fs">' + fmtSize(m.fileSize) + '</div></div>' +
@@ -209,8 +209,8 @@
         var t = $('txt').value.trim(); if (!t || !peer) return;
         $('txt').value = ''; autoGrow();
         api('/api/chat/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: peer.username, text: t }) })
-            .then(function (j) { if (!j.ok) alert(j.error || 'Send nahi hua'); poll(); })
-            .catch(function () { alert('Send nahi hua - internet check karo'); });
+            .then(function (j) { if (!j.ok) alert(j.error || 'Could not send the message'); poll(); })
+            .catch(function () { alert('Could not send the message - please check your internet connection'); });
     }
     $('sendBtn').addEventListener('click', sendText);
     $('txt').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } });
@@ -220,14 +220,14 @@
     $('attachBtn').addEventListener('click', function () { $('fileIn').click(); });
     $('fileIn').addEventListener('change', function () {
         var f = this.files[0]; this.value = ''; if (!f || !peer) return;
-        if (f.size > MAXB) { alert('File bahut badi hai (max @maxMb MB).'); return; }
+        if (f.size > MAXB) { alert('File is too large (max @maxMb MB).'); return; }
         var fd = new FormData(); fd.append('to', peer.username); fd.append('text', $('txt').value.trim()); fd.append('file', f);
         $('txt').value = ''; autoGrow();
-        var st = $('upStatus'); st.style.display = 'block'; st.textContent = 'Bhej rahi hoon: ' + f.name + ' ...';
+        var st = $('upStatus'); st.style.display = 'block'; st.textContent = 'Sending: ' + f.name + ' ...';
         fetch('/api/chat/upload', { method: 'POST', body: fd, credentials: 'same-origin' })
             .then(function (r) { return r.json(); })
-            .then(function (j) { st.style.display = 'none'; if (!j.ok) alert(j.error || 'File send nahi hui'); poll(); })
-            .catch(function () { st.style.display = 'none'; alert('File send nahi hui - internet check karo'); });
+            .then(function (j) { st.style.display = 'none'; if (!j.ok) alert(j.error || 'Could not send the file'); poll(); })
+            .catch(function () { st.style.display = 'none'; alert('Could not send the file - please check your internet connection'); });
     });
 
     // ---------- start ----------

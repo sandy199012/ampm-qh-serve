@@ -243,14 +243,14 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Icon(Icons.wifi_off_rounded, size: 34, color: AppColors.red),
       ),
       const SizedBox(height: 18),
-      const Text('Server se connect nahi hua', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+      const Text('Could not connect to the server', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark)),
       const SizedBox(height: 8),
       Text(_error ?? '', style: const TextStyle(color: AppColors.textMuted, fontSize: 12), textAlign: TextAlign.center),
       const SizedBox(height: 24),
       ElevatedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh_rounded), label: const Text('Retry'),
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.blue, foregroundColor: Colors.white)),
       TextButton(onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const SetupScreen())),
-          child: const Text('Settings change karo')),
+          child: const Text('Change settings')),
     ])));
 
   Widget _buildBody() => ListView(padding: const EdgeInsets.all(16), children: [
@@ -308,9 +308,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 14),
           const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('IT Problem Report karo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+            Text('Report an IT Problem', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
             SizedBox(height: 2),
-            Text('Nayi ticket raise karo', style: TextStyle(color: Colors.white70, fontSize: 12)),
+            Text('Raise a new ticket', style: TextStyle(color: Colors.white70, fontSize: 12)),
           ])),
           const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 15),
         ]),
@@ -319,7 +319,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const SizedBox(height: 22),
     // Assets assigned to this employee
     Row(children: [
-      const Text('Mere Assets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textDark)),
+      const Text('My Assets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textDark)),
       const SizedBox(width: 8),
       Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -333,18 +333,18 @@ class _HomeScreenState extends State<HomeScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.cardBorder)),
-        child: const Text('Abhi aapko koi asset assign nahi hai.',
+        child: const Text('No assets are assigned to you yet.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 12.5)),
       )
     else
       ..._assets.map(_assetCard),
     const SizedBox(height: 22),
     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      const Text('Meri Tickets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textDark)),
+      const Text('My Tickets', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textDark)),
       TextButton(
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TicketListScreen())).then((_) => _load()),
         style: TextButton.styleFrom(foregroundColor: AppColors.blue),
-        child: const Text('Sab dekho'),
+        child: const Text('View all'),
       ),
     ]),
     const SizedBox(height: 4),
@@ -355,9 +355,9 @@ class _HomeScreenState extends State<HomeScreen> {
         child: const Column(children: [
           Icon(Icons.check_circle_outline_rounded, size: 44, color: AppColors.green),
           SizedBox(height: 10),
-          Text('Koi open ticket nahi!', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
+          Text('No open tickets!', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
           SizedBox(height: 2),
-          Text('Sab theek hai', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          Text('Everything is fine', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
         ]))
     else
       ..._tickets.take(10).map((t) => _ticketCard(t)),
@@ -398,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
         if ((t.status == 'Resolved' || t.status == 'Closed') && t.empFeedbackStatus.isEmpty) ...[
           const SizedBox(height: 3),
-          const Text('Feedback pending — apna feedback do',
+          const Text('Feedback pending — please share your feedback',
               style: TextStyle(color: AppColors.red, fontSize: 10.5, fontWeight: FontWeight.w600)),
         ],
       ]),

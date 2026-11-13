@@ -105,7 +105,7 @@ class UpdateService {
       UpdateInfo? latest = await _fromServer();
       latest ??= await _fromGithub();
       if (latest == null) {
-        throw Exception('Update server se jawab nahi mila');
+        throw Exception('No response from the update server');
       }
       await prefs.setInt('upd_last_check', DateTime.now().millisecondsSinceEpoch);
 
@@ -189,7 +189,7 @@ class UpdateService {
     return null;
   }
 
-  // ── "Baad me" (remind later) ─────────────────────────────────────────────
+  // ── "Later" (remind later) ─────────────────────────────────────────────
   static Future<bool> shouldPrompt(UpdateInfo info) async {
     if (info.mandatory) return true;
     try {
@@ -244,13 +244,13 @@ class UpdateService {
       }
       if (info.sizeBytes > 0 && got != info.sizeBytes) {
         await file.delete();
-        throw Exception('Download adhura reh gaya ($got / ${info.sizeBytes} bytes) — dobara try karo');
+        throw Exception('Download incomplete ($got / ${info.sizeBytes} bytes) — please try again');
       }
       if (info.sha256.isNotEmpty) {
         final digest = await sha256.bind(file.openRead()).first;
         if (digest.toString() != info.sha256) {
           await file.delete();
-          throw Exception('File check (SHA-256) match nahi hua — install nahi kiya');
+          throw Exception('File check (SHA-256) did not match — the update was not installed');
         }
       }
       onProgress(1.0);
@@ -270,13 +270,13 @@ class UpdateService {
         case ResultType.done:
           return null;
         case ResultType.permissionDenied:
-          return 'Install ki permission nahi mili. Phone Settings me "AMPM Helpdesk" ko '
-              '"Install unknown apps" allow karo, phir dobara "Install karo" dabao.';
+          return 'Install permission was not granted. In phone Settings, allow '
+              '"Install unknown apps" for "AMPM Helpdesk", then tap "Install" again.';
         default:
-          return 'Installer nahi khul paya (${r.message}).';
+          return 'Could not open the installer (${r.message}).';
       }
     } catch (e) {
-      return 'Installer nahi khul paya ($e).';
+      return 'Could not open the installer ($e).';
     }
   }
 }

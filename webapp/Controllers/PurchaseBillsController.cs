@@ -96,8 +96,8 @@ public class PurchaseBillsController : Controller
 
         SaveBills(bills);
         TempData["Success"] = uploaded > 0
-            ? $"{uploaded} bill PDF(s) uploaded. Ab neeche list mein har bill ko PO aur Budget line se map kar dein."
-            : "Upload failed — koi file save nahi hui.";
+            ? $"{uploaded} bill PDF(s) uploaded. Please map each bill to a PO and Budget line in the list below."
+            : "Upload failed — no file was saved.";
         return RedirectToAction("Index", new { status = "Unmapped" });
     }
 

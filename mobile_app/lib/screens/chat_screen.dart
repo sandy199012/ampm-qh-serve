@@ -91,7 +91,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       if (mounted && _loading) {
         setState(() {
           _loading = false;
-          _error = 'Chat load nahi hui. Internet check karo.';
+          _error = 'Could not load the chat. Please check your internet connection.';
         });
       }
     } finally {
@@ -125,7 +125,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       if (path == null) return;
       final size = await File(path).length();
       if (size > _maxFileBytes) {
-        _snack('File bahut badi hai (max 25 MB).');
+        _snack('File is too large (max 25 MB).');
         return;
       }
       setState(() => _sending = true);
@@ -142,15 +142,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   Future<void> _openFile(Map<String, dynamic> m) async {
     if (m['fileExpired'] == true) {
-      _snack('File auto-delete ho chuki hai (2 din se purani).');
+      _snack('This file was automatically deleted (older than 2 days).');
       return;
     }
-    _snack('Download ho rahi hai...');
+    _snack('Downloading...');
     try {
       final path = await ApiService.downloadChatFile(m['fileId'].toString(), m['fileName'].toString());
       final r = await OpenFilex.open(path);
       if (r.type != ResultType.done) {
-        _snack('File save ho gayi, par kholne ke liye koi app nahi mili.');
+        _snack('File saved, but no app was found to open it.');
       }
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
@@ -200,7 +200,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 Text(fileName.isEmpty ? 'File' : fileName,
                     maxLines: 2, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                Text(expired ? 'File auto-delete ho chuki hai (2 din)' : '${_size((m['fileSize'] ?? 0) as num)}  ·  tap = download',
+                Text(expired ? 'File automatically deleted (2 days)' : '${_size((m['fileSize'] ?? 0) as num)}  ·  tap to download',
                     style: TextStyle(fontSize: 11, color: expired ? Colors.orange.shade800 : AppColors.textMuted)),
               ]),
             ),
@@ -252,7 +252,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               : _error != null
                   ? Center(child: Text(_error!, style: const TextStyle(color: AppColors.textMuted)))
                   : _msgs.isEmpty
-                      ? const Center(child: Text('Abhi koi message nahi. Pehla message bhejo.',
+                      ? const Center(child: Text('No messages yet. Send the first message.',
                           style: TextStyle(color: AppColors.textMuted)))
                       : ListView.builder(
                           controller: _scroll,
@@ -284,7 +284,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
             child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
               IconButton(
-                tooltip: 'File bhejo (max 25 MB)',
+                tooltip: 'Send a file (max 25 MB)',
                 icon: const Icon(Icons.attach_file_rounded, color: AppColors.textMuted),
                 onPressed: _sending ? null : _attach,
               ),
@@ -295,7 +295,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   maxLines: 5,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: InputDecoration(
-                    hintText: 'Message likho...',
+                    hintText: 'Type a message...',
                     filled: true,
                     fillColor: Colors.white,
                     isDense: true,

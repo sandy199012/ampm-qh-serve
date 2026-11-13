@@ -33,13 +33,13 @@ class _AboutScreenState extends State<AboutScreen> {
       if (info == null) {
         setState(() {
           _checking = false;
-          _status = 'Aapka app latest version par hai ✓';
+          _status = 'Your app is up to date ✓';
           _statusColor = AppColors.green;
         });
       } else {
         setState(() {
           _checking = false;
-          _status = 'Naya version ${info.version} available hai';
+          _status = 'New version ${info.version} is available';
           _statusColor = AppColors.blue;
         });
         await UpdateUi.showUpdateDialog(context, info);
@@ -48,7 +48,7 @@ class _AboutScreenState extends State<AboutScreen> {
       if (!mounted) return;
       setState(() {
         _checking = false;
-        _status = 'Check nahi ho paya — internet dekho aur dobara try karo.';
+        _status = 'Could not check for updates — please check your internet connection and try again.';
         _statusColor = AppColors.red;
       });
     }
@@ -93,7 +93,7 @@ class _AboutScreenState extends State<AboutScreen> {
             icon: _checking
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.system_update_rounded),
-            label: Text(_checking ? 'Check ho raha hai…' : 'Update check karo'),
+            label: Text(_checking ? 'Checking…' : 'Check for updates'),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.blue, foregroundColor: Colors.white),
           ),
         if (_status.isNotEmpty) ...[
@@ -111,13 +111,13 @@ class _AboutScreenState extends State<AboutScreen> {
             border: Border.all(color: AppColors.cardBorder),
           ),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Updates kaise milte hain?',
+            const Text('How do updates work?',
                 style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
             const SizedBox(height: 6),
             const Text(
-              'Jab bhi IT naya version release karta hai, app kholte hi "Naya update available" '
-              'dikhta hai. "Update karo" dabao — app download karke install screen kholti hai, '
-              'bas ek baar "Install" dabana hota hai. Purana app delete ya dobara install karne ki zaroorat nahi.',
+              'Whenever IT releases a new version, the app shows "New update available" when opened. '
+              'Tap "Update" — the app downloads it and opens the install screen, '
+              'where you only need to tap "Install" once. You do not need to delete or reinstall the old app.',
               style: TextStyle(fontSize: 12.5, height: 1.45, color: AppColors.textMuted),
             ),
             const SizedBox(height: 10),

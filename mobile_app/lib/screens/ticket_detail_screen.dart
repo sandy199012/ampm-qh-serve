@@ -408,7 +408,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Your Feedback', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF14B8A6))),
           const SizedBox(height: 4),
-          const Text('Kya problem actually resolve ho gayi?', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          const Text('Was the problem actually resolved?', style: TextStyle(fontSize: 11, color: Colors.grey)),
           const SizedBox(height: 6),
           Row(children: [
             Expanded(child: RadioListTile<String>(

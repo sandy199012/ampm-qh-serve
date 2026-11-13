@@ -40,7 +40,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       setState(() { _contacts = c; _loading = false; _error = null; });
     } catch (e) {
       if (!mounted) return;
-      if (!silent || _contacts.isEmpty) setState(() { _loading = false; _error = 'Chat list load nahi hui. Internet check karo.'; });
+      if (!silent || _contacts.isEmpty) setState(() { _loading = false; _error = 'Could not load the chat list. Please check your internet connection.'; });
     }
   }
 
@@ -82,7 +82,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
           child: TextField(
             onChanged: (v) => setState(() => _query = v),
             decoration: InputDecoration(
-              hintText: 'Naam ya department search karo',
+              hintText: 'Search by name or department',
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
               fillColor: Colors.white,
