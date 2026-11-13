@@ -43,9 +43,12 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Pinned: Flutter 3.50.0 (stable since Nov 2026) breaks this app's Gradle setup
+      # ("ApplicationExtension.getDefaultConfig()" error); 3.47.7 is the version that built fine.
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.47.7'
           cache: true
 
       - name: Restore the signing key

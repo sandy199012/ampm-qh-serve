@@ -1,0 +1,20 @@
+
+[1/3] App ka code mobile_app folder me copy ho raha hai...
+[2/3] GitHub workflow files theek kar raha hoon...
+[3/3] GitHub par bhej raha hoon...
+warning: in the working copy of 'mobile_app/lib/screens/chat_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'push_log.txt', LF will be replaced by CRLF the next time Git touches it
+[main 506d169] Chat: employee se employee chat (WhatsApp jaisa), file bhejo/download karo, chat history save, files 2 din baad auto-delete
+ 2 files changed, 35 insertions(+)
+ create mode 100644 push_chat_log.txt
+To https://github.com/sandy199012/ampm-qh-serve.git
+   b78c9f7..506d169  main -> main
+
+ ============================================================
+  Bhej diya! 8-12 minute me naya APK ban ke release ho jayega.
+  Phir sabke phone me app kholte hi "Naya update available" aayega.
+  Progress: https://github.com/sandy199012/ampm-qh-serve/actions
+  APK link (naye phone ke liye): https://ampm-qh-serve-1.onrender.com/app
+ ============================================================
+
+FINISHED errorlevel=0 
