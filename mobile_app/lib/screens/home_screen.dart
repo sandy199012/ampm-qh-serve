@@ -12,6 +12,7 @@ import 'setup_screen.dart';
 import 'change_password_screen.dart';
 import 'about_screen.dart';
 import '../widgets/update_ui.dart';
+import '../widgets/chat_button.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -183,6 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text('$_empName  ·  $_empId', style: const TextStyle(fontSize: 11, color: AppColors.cyan)),
         ]),
         actions: [
+          const ChatIconButton(),
           IconButton(icon: const Icon(Icons.refresh_rounded, color: Colors.white), onPressed: _load),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded, color: Colors.white),

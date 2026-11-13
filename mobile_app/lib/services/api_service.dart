@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/ticket.dart';
 
 class ApiService {
@@ -482,4 +483,67 @@ class ApiService {
 
   // ── Dashboard Alerts ───────────────────────────────────────
   static Future<List<Map<String, dynamic>>> getAlerts() => _getList('/api/alerts');
+
+  // ── Chat (employee to employee) ────────────────────────────
+  // Same server rules as the website: only the two people in a chat can read it,
+  // messages are kept for ever, files are deleted by the server after 2 days.
+  static Future<List<Map<String, dynamic>>> getChatContacts() async {
+    final res = await _get('/api/chat/contacts');
+    if (res.statusCode != 200) throw Exception('Failed: ${res.statusCode}');
+    final j = jsonDecode(res.body) as Map<String, dynamic>;
+    return ((j['contacts'] ?? []) as List).cast<Map<String, dynamic>>();
+  }
+
+  static Future<List<Map<String, dynamic>>> getChatMessages(String peer, {int after = 0}) async {
+    final res = await _get('/api/chat/messages?peer=${Uri.encodeQueryComponent(peer)}&after=$after');
+    if (res.statusCode != 200) throw Exception('Failed: ${res.statusCode}');
+    final j = jsonDecode(res.body) as Map<String, dynamic>;
+    return ((j['messages'] ?? []) as List).cast<Map<String, dynamic>>();
+  }
+
+  static Future<int> getChatUnread() async {
+    final res = await _get('/api/chat/unread', timeout: const Duration(seconds: 10));
+    if (res.statusCode != 200) return 0;
+    final j = jsonDecode(res.body) as Map<String, dynamic>;
+    return ((j['unread'] ?? 0) as num).toInt();
+  }
+
+  static Future<void> sendChatMessage(String to, String text) async {
+    final res = await _postRaw('/api/chat/send', jsonEncode({'to': to, 'text': text}));
+    Map<String, dynamic> j = {};
+    try { j = jsonDecode(res.body) as Map<String, dynamic>; } catch (_) {}
+    if (res.statusCode != 200 || j['ok'] != true) {
+      throw Exception((j['error'] ?? 'Message send nahi hua').toString());
+    }
+  }
+
+  static Future<void> sendChatFile(String to, String path, String fileName, {String text = ''}) async {
+    final headers = await _authHeaders();
+    final req = http.MultipartRequest('POST', Uri.parse('$_baseUrl/api/chat/upload'));
+    req.headers.addAll(headers);
+    req.fields['to'] = to;
+    req.fields['text'] = text;
+    req.files.add(await http.MultipartFile.fromPath('file', path, filename: fileName));
+    final streamed = await req.send().timeout(const Duration(minutes: 5));
+    final body = await streamed.stream.bytesToString();
+    Map<String, dynamic> j = {};
+    try { j = jsonDecode(body) as Map<String, dynamic>; } catch (_) {}
+    if (streamed.statusCode != 200 || j['ok'] != true) {
+      throw Exception((j['error'] ?? 'File send nahi hui (${streamed.statusCode})').toString());
+    }
+  }
+
+  /// Downloads a chat file into the app's documents folder and returns its path.
+  static Future<String> downloadChatFile(String fileId, String fileName) async {
+    final res = await _get('/api/chat/file/${Uri.encodeComponent(fileId)}', timeout: const Duration(minutes: 3));
+    if (res.statusCode == 410) throw Exception('File auto-delete ho chuki hai (2 din se purani).');
+    if (res.statusCode != 200) throw Exception('Download nahi hui (${res.statusCode})');
+    final base = await getApplicationDocumentsDirectory();
+    final dir = Directory('${base.path}/chat_files');
+    if (!await dir.exists()) await dir.create(recursive: true);
+    final safe = fileName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final file = File('${dir.path}/$safe');
+    await file.writeAsBytes(res.bodyBytes);
+    return file.path;
+  }
 }

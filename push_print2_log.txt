@@ -1,0 +1,11 @@
+warning: in the working copy of 'push_print_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/EndpointsPrintController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Endpoints/PrintLog.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'RUN_PUSH_PRINT2.bat', LF will be replaced by CRLF the next time Git touches it
+[main 472ac89] Print Log: show employee the PC is assigned to (column, filter, Excel)
+ 5 files changed, 94 insertions(+), 28 deletions(-)
+ create mode 100644 RUN_PUSH_PRINT2.bat
+ create mode 100644 push_print2_log.txt
+To https://github.com/sandy199012/ampm-qh-serve.git
+   6876a33..472ac89  main -> main
+FINISHED errorlevel=0 

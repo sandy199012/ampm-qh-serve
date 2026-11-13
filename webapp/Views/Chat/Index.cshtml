@@ -1,0 +1,242 @@
+@{
+    ViewData["Title"] = "Chat";
+    var maxMb = (long)(ViewBag.MaxMb ?? 25L);
+}
+
+<style>
+    .chat-wrap { display:flex; height: calc(100vh - 110px); min-height:420px; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,.12); }
+    .chat-side { width:340px; max-width:100%; border-right:1px solid #e5e7eb; display:flex; flex-direction:column; background:#fff; }
+    .chat-side-head { padding:10px 12px; background:#f0f2f5; border-bottom:1px solid #e5e7eb; }
+    .chat-list { overflow-y:auto; flex:1; }
+    .chat-item { display:flex; gap:10px; padding:10px 12px; cursor:pointer; border-bottom:1px solid #f1f5f9; align-items:center; }
+    .chat-item:hover { background:#f5f6f6; }
+    .chat-item.active { background:#e9edef; }
+    .avatar { width:42px; height:42px; border-radius:50%; background:#0A192F; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:15px; flex:0 0 42px; }
+    .chat-item .meta { min-width:0; flex:1; }
+    .chat-item .nm { font-weight:600; font-size:14px; display:flex; justify-content:space-between; gap:6px; }
+    .chat-item .tm { font-weight:400; font-size:11px; color:#667781; white-space:nowrap; }
+    .chat-item .pv { font-size:12.5px; color:#667781; display:flex; justify-content:space-between; gap:6px; }
+    .chat-item .pv span.t { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .unread-badge { background:#25d366; color:#fff; border-radius:10px; font-size:11px; padding:1px 7px; font-weight:600; }
+    .chat-main { flex:1; display:flex; flex-direction:column; min-width:0; background:#efeae2; }
+    .chat-head { padding:8px 14px; background:#f0f2f5; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; gap:10px; }
+    .chat-msgs { flex:1; overflow-y:auto; padding:14px 6%; }
+    .day-sep { text-align:center; margin:10px 0; }
+    .day-sep span { background:#fff; color:#54656f; font-size:12px; padding:3px 10px; border-radius:8px; box-shadow:0 1px 1px rgba(0,0,0,.1); }
+    .bub-row { display:flex; margin-bottom:4px; }
+    .bub-row.mine { justify-content:flex-end; }
+    .bub { max-width:68%; padding:6px 9px 4px; border-radius:8px; background:#fff; box-shadow:0 1px 1px rgba(0,0,0,.13); font-size:14px; word-wrap:break-word; overflow-wrap:anywhere; white-space:pre-wrap; }
+    .mine .bub { background:#d9fdd3; }
+    .bub .tm { display:block; text-align:right; font-size:10.5px; color:#667781; margin-top:2px; }
+    .file-card { display:flex; align-items:center; gap:10px; background:rgba(0,0,0,.05); border-radius:6px; padding:8px 10px; margin-bottom:4px; white-space:normal; }
+    .file-card i.ic { font-size:26px; color:#54656f; }
+    .file-card .fn { font-weight:600; font-size:13px; word-break:break-all; }
+    .file-card .fs { font-size:11px; color:#667781; }
+    .file-exp { color:#b45309; font-size:12px; font-style:italic; }
+    .bub img.pic { max-width:260px; max-height:260px; border-radius:6px; display:block; margin-bottom:4px; cursor:pointer; }
+    .chat-compose { padding:8px 12px; background:#f0f2f5; display:flex; gap:8px; align-items:flex-end; }
+    .chat-compose textarea { flex:1; resize:none; border:none; border-radius:20px; padding:9px 14px; max-height:120px; outline:none; font-size:14px; }
+    .chat-compose .btn-round { width:42px; height:42px; border-radius:50%; border:none; color:#fff; background:#00a884; display:flex; align-items:center; justify-content:center; }
+    .chat-compose .btn-attach { background:transparent; color:#54656f; font-size:22px; }
+    .chat-empty { margin:auto; text-align:center; color:#667781; }
+    .back-btn { display:none; }
+    @@media (max-width: 767px) {
+        .chat-wrap { height: calc(100vh - 90px); }
+        .chat-side { width:100%; }
+        .chat-main { display:none; width:100%; }
+        .chat-wrap.open .chat-side { display:none; }
+        .chat-wrap.open .chat-main { display:flex; }
+        .back-btn { display:inline-block; }
+        .chat-msgs { padding:10px 8px; }
+        .bub { max-width:86%; }
+    }
+</style>
+
+<div class="chat-wrap" id="chatWrap">
+    <div class="chat-side">
+        <div class="chat-side-head">
+            <input type="text" id="search" class="form-control form-control-sm" placeholder="Search name or department..." autocomplete="off"/>
+        </div>
+        <div class="chat-list" id="list"><div class="p-3 text-muted small">Loading...</div></div>
+    </div>
+    <div class="chat-main">
+        <div id="emptyState" class="chat-empty">
+            <i class="bi bi-chat-dots" style="font-size:54px"></i>
+            <h5 class="mt-2">AMPM Chat</h5>
+            <div class="small">Left side se kisi employee ko chuno aur chat shuru karo.<br/>Chat sirf aap dono ko dikhti hai &middot; messages hamesha save rahte hain &middot; files 2 din baad auto-delete hoti hain.</div>
+        </div>
+        <div id="convo" style="display:none;flex:1;flex-direction:column;min-height:0">
+            <div class="chat-head">
+                <button class="btn btn-sm btn-light back-btn" id="backBtn"><i class="bi bi-arrow-left"></i></button>
+                <div class="avatar" id="hAv"></div>
+                <div><div class="fw-semibold" id="hName"></div><div class="small text-muted" id="hDept"></div></div>
+            </div>
+            <div class="chat-msgs" id="msgs"></div>
+            <div id="upStatus" class="small px-3 py-1 bg-warning-subtle" style="display:none"></div>
+            <div class="chat-compose">
+                <input type="file" id="fileIn" style="display:none"/>
+                <button class="btn-round btn-attach" id="attachBtn" title="File bhejo (max @maxMb MB)"><i class="bi bi-paperclip"></i></button>
+                <textarea id="txt" rows="1" placeholder="Message likho... (Enter = send, Shift+Enter = nayi line)"></textarea>
+                <button class="btn-round" id="sendBtn" title="Send"><i class="bi bi-send-fill"></i></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function () {
+    var MAXB = @(maxMb) * 1024 * 1024;
+    var contacts = [], peer = null, lastId = 0, firstLoad = true, busy = false;
+    var $ = function (id) { return document.getElementById(id); };
+    var wrap = $('chatWrap');
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+    function linkify(s) { return s.replace(/(https?:\/\/[^\s<]+)/g, function (u) { return '<a href="' + u + '" target="_blank" rel="noopener noreferrer">' + u + '</a>'; }); }
+    function initials(n) { var p = String(n || '?').trim().split(/\s+/); return ((p[0] || '?')[0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); }
+    function fmtSize(b) { if (b < 1024) return b + ' B'; if (b < 1048576) return (b / 1024).toFixed(0) + ' KB'; return (b / 1048576).toFixed(1) + ' MB'; }
+    function parseAt(s) { var m = /^(\d{4})-(\d\d)-(\d\d) (\d\d):(\d\d)/.exec(s || ''); return m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : null; }
+    function hhmm(d) { var h = d.getHours(), ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + ('0' + d.getMinutes()).slice(-2) + ' ' + ap; }
+    var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    function dayLabel(d) {
+        var t = new Date(); t.setHours(0,0,0,0); var x = new Date(d); x.setHours(0,0,0,0);
+        var diff = Math.round((t - x) / 86400000);
+        if (diff === 0) return 'Today'; if (diff === 1) return 'Yesterday';
+        return d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear();
+    }
+    function listTime(s) { var d = parseAt(s); if (!d) return ''; var t = new Date(); return d.toDateString() === t.toDateString() ? hhmm(d) : d.getDate() + ' ' + MON[d.getMonth()]; }
+    function fileIcon(n) {
+        var e = (n.split('.').pop() || '').toLowerCase();
+        if (['xls','xlsx','csv'].indexOf(e) >= 0) return 'bi-file-earmark-excel';
+        if (['doc','docx'].indexOf(e) >= 0) return 'bi-file-earmark-word';
+        if (e === 'pdf') return 'bi-file-earmark-pdf';
+        if (['jpg','jpeg','png','gif','webp','bmp'].indexOf(e) >= 0) return 'bi-file-earmark-image';
+        if (['zip','rar','7z'].indexOf(e) >= 0) return 'bi-file-earmark-zip';
+        return 'bi-file-earmark';
+    }
+    function isImg(n) { return /\.(jpe?g|png|gif|webp|bmp)$/i.test(n || ''); }
+
+    function api(url, opts) {
+        opts = opts || {}; opts.credentials = 'same-origin';
+        return fetch(url, opts).then(function (r) {
+            if (r.status === 401) { location.href = '/Account/Login'; throw new Error('login'); }
+            return r.json().then(function (j) { j._status = r.status; return j; });
+        });
+    }
+
+    // ---------- contacts ----------
+    function renderList() {
+        var q = $('search').value.trim().toLowerCase();
+        var html = '';
+        contacts.forEach(function (c) {
+            if (q && (c.name + ' ' + c.dept + ' ' + c.username).toLowerCase().indexOf(q) < 0) return;
+            html += '<div class="chat-item' + (peer && peer.username === c.username ? ' active' : '') + '" data-u="' + esc(c.username) + '">' +
+                '<div class="avatar">' + esc(initials(c.name)) + '</div><div class="meta">' +
+                '<div class="nm"><span>' + esc(c.name) + '</span><span class="tm">' + esc(listTime(c.lastAt)) + '</span></div>' +
+                '<div class="pv"><span class="t">' + (c.last ? (c.mine ? 'You: ' : '') + esc(c.last) : '<i>' + esc(c.dept || '') + '</i>') + '</span>' +
+                (c.unread > 0 ? '<span class="unread-badge">' + c.unread + '</span>' : '') + '</div></div></div>';
+        });
+        $('list').innerHTML = html || '<div class="p-3 text-muted small">Koi nahi mila.</div>';
+        var total = contacts.reduce(function (a, c) { return a + (c.unread || 0); }, 0);
+        document.title = (total > 0 ? '(' + total + ') ' : '') + 'Chat — AMPM IT Tool';
+    }
+    function loadContacts() {
+        return api('/api/chat/contacts').then(function (j) {
+            if (!j.ok) return;
+            contacts = j.contacts || [];
+            if (peer) { var p = contacts.find(function (c) { return c.username === peer.username; }); if (p) { p.unread = 0; } }
+            renderList();
+        }).catch(function () {});
+    }
+    $('list').addEventListener('click', function (e) {
+        var it = e.target.closest('.chat-item'); if (!it) return;
+        openChat(it.getAttribute('data-u'));
+    });
+    $('search').addEventListener('input', renderList);
+
+    // ---------- conversation ----------
+    function openChat(u) {
+        var c = contacts.find(function (x) { return x.username === u; }); if (!c) return;
+        peer = c; lastId = 0; firstLoad = true;
+        $('emptyState').style.display = 'none'; $('convo').style.display = 'flex';
+        $('hName').textContent = c.name; $('hDept').textContent = c.dept || ''; $('hAv').textContent = initials(c.name);
+        $('msgs').innerHTML = ''; wrap.classList.add('open');
+        history.replaceState(null, '', '#' + encodeURIComponent(u));
+        renderList(); poll(); $('txt').focus();
+    }
+    $('backBtn').addEventListener('click', function () { wrap.classList.remove('open'); peer = null; history.replaceState(null, '', location.pathname); renderList(); });
+
+    var lastDay = '';
+    function msgHtml(m) {
+        var d = parseAt(m.at), out = '';
+        var dk = d ? d.toDateString() : '';
+        if (dk && dk !== lastDay) { out += '<div class="day-sep"><span>' + esc(dayLabel(d)) + '</span></div>'; lastDay = dk; }
+        var body = '';
+        if (m.fileId || m.fileName) {
+            var url = '/api/chat/file/' + encodeURIComponent(m.fileId);
+            if (m.fileExpired) {
+                body += '<div class="file-card"><i class="bi ' + fileIcon(m.fileName) + ' ic"></i><div><div class="fn">' + esc(m.fileName) + '</div><div class="file-exp">File auto-delete ho chuki hai (2 din se purani)</div></div></div>';
+            } else {
+                if (isImg(m.fileName)) body += '<a href="' + url + '?inline=true" target="_blank"><img class="pic" src="' + url + '?inline=true" alt=""/></a>';
+                body += '<div class="file-card"><i class="bi ' + fileIcon(m.fileName) + ' ic"></i><div style="flex:1"><div class="fn">' + esc(m.fileName) + '</div><div class="fs">' + fmtSize(m.fileSize) + '</div></div>' +
+                    '<a class="btn btn-sm btn-outline-secondary" href="' + url + '" title="Download"><i class="bi bi-download"></i></a></div>';
+            }
+        }
+        if (m.text) body += linkify(esc(m.text));
+        out += '<div class="bub-row ' + (m.mine ? 'mine' : '') + '"><div class="bub">' + body + '<span class="tm">' + (d ? hhmm(d) : '') + '</span></div></div>';
+        return out;
+    }
+    function poll() {
+        if (!peer || busy) return; busy = true;
+        var p = peer;
+        api('/api/chat/messages?peer=' + encodeURIComponent(p.username) + '&after=' + lastId).then(function (j) {
+            if (!j.ok || !peer || peer.username !== p.username) return;
+            var ms = j.messages || [];
+            if (ms.length === 0) return;
+            var box = $('msgs');
+            var near = firstLoad || (box.scrollHeight - box.scrollTop - box.clientHeight < 140);
+            if (firstLoad) lastDay = '';
+            var h = ''; ms.forEach(function (m) { h += msgHtml(m); if (m.id > lastId) lastId = m.id; });
+            box.insertAdjacentHTML('beforeend', h);
+            if (near) box.scrollTop = box.scrollHeight;
+            firstLoad = false;
+            loadContacts();
+        }).catch(function () {}).then(function () { busy = false; });
+    }
+
+    // ---------- send ----------
+    function sendText() {
+        var t = $('txt').value.trim(); if (!t || !peer) return;
+        $('txt').value = ''; autoGrow();
+        api('/api/chat/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to: peer.username, text: t }) })
+            .then(function (j) { if (!j.ok) alert(j.error || 'Send nahi hua'); poll(); })
+            .catch(function () { alert('Send nahi hua - internet check karo'); });
+    }
+    $('sendBtn').addEventListener('click', sendText);
+    $('txt').addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); } });
+    function autoGrow() { var t = $('txt'); t.style.height = 'auto'; t.style.height = Math.min(120, t.scrollHeight) + 'px'; }
+    $('txt').addEventListener('input', autoGrow);
+
+    $('attachBtn').addEventListener('click', function () { $('fileIn').click(); });
+    $('fileIn').addEventListener('change', function () {
+        var f = this.files[0]; this.value = ''; if (!f || !peer) return;
+        if (f.size > MAXB) { alert('File bahut badi hai (max @maxMb MB).'); return; }
+        var fd = new FormData(); fd.append('to', peer.username); fd.append('text', $('txt').value.trim()); fd.append('file', f);
+        $('txt').value = ''; autoGrow();
+        var st = $('upStatus'); st.style.display = 'block'; st.textContent = 'Bhej rahi hoon: ' + f.name + ' ...';
+        fetch('/api/chat/upload', { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (j) { st.style.display = 'none'; if (!j.ok) alert(j.error || 'File send nahi hui'); poll(); })
+            .catch(function () { st.style.display = 'none'; alert('File send nahi hui - internet check karo'); });
+    });
+
+    // ---------- start ----------
+    loadContacts().then(function () {
+        var h = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+        if (h) openChat(h);
+    });
+    setInterval(function () { if (!document.hidden) poll(); }, 3000);
+    setInterval(function () { if (!document.hidden) loadContacts(); }, 8000);
+})();
+</script>
+}

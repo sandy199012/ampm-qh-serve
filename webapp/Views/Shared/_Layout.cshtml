@@ -34,6 +34,7 @@
                 {
                     <li class="nav-item"><a class="nav-link" href="/MyHelpdesk/Index"><i class="bi bi-headset"></i> My Helpdesk</a></li>
                 }
+                <li class="nav-item"><a class="nav-link" href="/Chat"><i class="bi bi-chat-dots"></i> Chat <span id="chatBadge" class="badge bg-danger rounded-pill d-none"></span></a></li>
                 @if (curUser.IsAdmin) { <li class="nav-item"><a class="nav-link" href="/Performance/Index"><i class="bi bi-graph-up-arrow"></i> Performance</a></li> }
                 @if (curUser.CanView("Employees")) { <li class="nav-item"><a class="nav-link" href="/Employees/Index"><i class="bi bi-people"></i> Employees</a></li> }
                 @if (curUser.CanView("Helpdesk")) { <li class="nav-item"><a class="nav-link" href="/Helpdesk/Index"><i class="bi bi-headset"></i> Helpdesk</a></li> }
@@ -79,6 +80,18 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="~/js/site.js"></script>
+<script>
+(function () {
+    if (!document.getElementById('chatBadge')) return;
+    function poll() {
+        fetch('/api/chat/unread', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+            if (!j) return; var b = document.getElementById('chatBadge');
+            if (j.unread > 0) { b.textContent = j.unread > 99 ? '99+' : j.unread; b.classList.remove('d-none'); } else { b.classList.add('d-none'); }
+        }).catch(function () {});
+    }
+    poll(); setInterval(function () { if (!document.hidden) poll(); }, 20000);
+})();
+</script>
 @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

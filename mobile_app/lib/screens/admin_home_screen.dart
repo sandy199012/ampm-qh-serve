@@ -12,6 +12,7 @@ import 'web_portal_screen.dart';
 import 'change_password_screen.dart';
 import 'about_screen.dart';
 import '../widgets/update_ui.dart';
+import '../widgets/chat_button.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   const AdminHomeScreen({super.key});
@@ -94,6 +95,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
           Text('Admin Dashboard', style: TextStyle(fontSize: 11, color: Color(0xFFFF5C93))),
         ]),
         actions: [
+          const ChatIconButton(),
           IconButton(icon: const Icon(Icons.refresh, color: Colors.white), onPressed: _load),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: Colors.white),
