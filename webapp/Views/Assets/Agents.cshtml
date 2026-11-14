@@ -161,6 +161,27 @@
 
 <div class="card border-0 shadow-sm mt-3">
   <div class="card-body">
+    <h6 class="fw-bold"><i class="bi bi-cloud-arrow-down-fill" style="color:#2563EB"></i> Deploy Agent <span class="badge bg-light text-dark border fw-normal">Windows &amp; Mac</span></h6>
+    <p class="small text-muted mb-2">Install it <b>once</b> on every computer. After that you can install software (<b>.exe / .msi / .pkg</b>) and update the AMPM agents on <b>all computers from the website</b> &mdash; open <a href="/Deploy">Deploy</a> (superadmin only). Each computer checks every 5 minutes, verifies the file (SHA-256), runs it with administrator rights and reports the result.</p>
+    <a href="/Assets/AgentDownload?type=deploy" class="btn btn-sm text-white" style="background:#2563EB"><i class="bi bi-download"></i> Download Deploy Agent (Windows)</a>
+    <a href="/Deploy" class="btn btn-outline-secondary btn-sm"><i class="bi bi-rocket-takeoff"></i> Open Deploy</a>
+    <ol class="small mt-3 mb-2 ps-3">
+        <li><b>Windows:</b> extract the ZIP, right-click <b>AMPM_Deploy_Agent_Setup.bat</b> &rarr; <b>Run as administrator</b> (once).</li>
+        <li><b>Mac:</b> paste this command in Terminal and press Enter (it asks the Mac admin password once):</li>
+    </ol>
+    <div class="input-group input-group-sm" style="max-width:820px">
+        <input type="text" class="form-control font-monospace" id="macDepCmd" readonly/>
+        <button class="btn btn-outline-primary" type="button" onclick="var i=document.getElementById('macDepCmd'); i.select(); document.execCommand('copy');"><i class="bi bi-clipboard"></i> Copy</button>
+    </div>
+    <div class="small text-muted mt-2">Tip: install this agent on the PCs through a login script / GPO or in person the first time. After that, updates and new software never need a visit.</div>
+    <script>
+        document.getElementById('macDepCmd').value = 'sudo bash -c "$(curl -fsSL \'' + location.origin + '/api/deploy/mac-install?key=' + encodeURIComponent(@Html.Raw(System.Text.Json.JsonSerializer.Serialize((string)(ViewBag.AgentKey ?? "")))) + '\')"';
+    </script>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm mt-3">
+  <div class="card-body">
     <h6 class="fw-bold"><i class="bi bi-phone" style="color:#7C3AED"></i> Mobile phones &amp; tablets &mdash; no agent needed</h6>
     <p class="small text-muted mb-2">
         Share this link with employees. They open it in Chrome / Safari <b>on their phone</b>, log in, and the page reads the model, Android/iOS version, screen, RAM hint and battery by itself.

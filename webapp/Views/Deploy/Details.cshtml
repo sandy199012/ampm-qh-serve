@@ -1,0 +1,93 @@
+@{
+    var t = (object[])ViewBag.T;
+    ViewData["Title"] = "Deployment #" + t[0];
+    var results = (List<object[]>)ViewBag.Results;
+    var waiting = (List<object[]>)ViewBag.Waiting;
+    bool cancelled = (string)t[10] == "cancelled";
+    bool expired = (bool)t[14];
+    int ok = results.Count(r => (string)r[1] == "success");
+    int bad = results.Count(r => (string)r[1] == "failed");
+    int run = results.Count(r => (string)r[1] == "running");
+    long size = (long)t[5];
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h5 class="fw-bold mb-0"><i class="bi bi-cloud-arrow-down-fill" style="color:#2563EB"></i> @t[1]</h5>
+    <div class="d-flex gap-2">
+        <a href="/Deploy" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> All deployments</a>
+        <form method="post" action="/Deploy/Retry/@t[0]"><button class="btn btn-outline-primary btn-sm" type="submit"><i class="bi bi-arrow-repeat"></i> Retry failed</button></form>
+        @if (!cancelled)
+        {
+            <form method="post" action="/Deploy/Cancel/@t[0]" onsubmit="return confirm('Cancel this task? Computers that have not started it will skip it.');"><button class="btn btn-outline-warning btn-sm" type="submit"><i class="bi bi-slash-circle"></i> Cancel</button></form>
+        }
+        <form method="post" action="/Deploy/Delete/@t[0]" onsubmit="return confirm('Delete this task and its installer file? This cannot be undone.');"><button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i> Delete</button></form>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3"><div class="card-body small">
+    <div class="row g-2">
+        <div class="col-md-3"><span class="text-muted">Computers:</span> @t[2]</div>
+        <div class="col-md-3"><span class="text-muted">What:</span> @((string)t[3] == "agent" ? "Agent update: " + t[8] : (string)t[4] + (size > 0 ? " (" + (size / 1048576.0).ToString("0.0") + " MB)" : ""))</div>
+        <div class="col-md-3"><span class="text-muted">Target:</span> @t[9]</div>
+        <div class="col-md-3"><span class="text-muted">State:</span>
+            @if (cancelled) { <span class="badge bg-secondary">Cancelled</span> }
+            else if (expired) { <span class="badge bg-secondary">Expired</span> }
+            else { <span class="badge bg-success">Active</span> }
+        </div>
+        <div class="col-md-3"><span class="text-muted">Created:</span> @t[12] by @t[11]</div>
+        <div class="col-md-3"><span class="text-muted">Valid until:</span> @t[13]</div>
+        @if (!string.IsNullOrEmpty((string)t[7])) { <div class="col-md-6"><span class="text-muted">Switches:</span> <code>@t[7]</code></div> }
+        @if (!string.IsNullOrEmpty((string)t[6])) { <div class="col-12"><span class="text-muted">SHA-256:</span> <code>@t[6]</code></div> }
+    </div>
+</div></div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2"><div class="small text-muted">Done</div><div class="fs-4 fw-bold text-success">@ok</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2"><div class="small text-muted">Failed</div><div class="fs-4 fw-bold text-danger">@bad</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2"><div class="small text-muted">Running</div><div class="fs-4 fw-bold">@run</div></div></div></div>
+    <div class="col-6 col-md-3"><div class="card border-0 shadow-sm"><div class="card-body py-2"><div class="small text-muted">Waiting for the computer</div><div class="fs-4 fw-bold">@waiting.Count</div></div></div></div>
+</div>
+
+<div class="card border-0 shadow-sm mb-3"><div class="card-body">
+    <h6 class="fw-bold">Result per computer</h6>
+    @if (results.Count == 0) { <div class="small text-muted">No computer has started this task yet.</div> }
+    else
+    {
+    <div class="table-responsive"><table class="table table-sm table-hover small align-middle mb-0">
+        <thead class="table-light"><tr><th>Computer</th><th>Status</th><th>Exit code</th><th>Started</th><th>Finished</th><th>Output</th></tr></thead>
+        <tbody>
+        @foreach (var r in results)
+        {
+            var st = (string)r[1];
+            <tr>
+                <td>@r[0]</td>
+                <td><span class="badge bg-@(st == "success" ? "success" : st == "failed" ? "danger" : "warning text-dark")">@st</span></td>
+                <td>@r[2]</td>
+                <td class="text-nowrap">@r[4]</td>
+                <td class="text-nowrap">@r[5]</td>
+                <td style="max-width:460px;white-space:pre-wrap;word-break:break-word">@r[3]</td>
+            </tr>
+        }
+        </tbody>
+    </table></div>
+    }
+</div></div>
+
+<div class="card border-0 shadow-sm"><div class="card-body">
+    <h6 class="fw-bold">Waiting <span class="badge bg-light text-dark border fw-normal">@waiting.Count</span></h6>
+    @if (waiting.Count == 0) { <div class="small text-muted">Every matching computer that has the agent has picked this task up.</div> }
+    else
+    {
+    <div class="table-responsive"><table class="table table-sm small mb-0">
+        <thead class="table-light"><tr><th>Computer</th><th>IP</th><th>Last seen</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var w in waiting)
+        {
+            <tr><td>@w[0]</td><td>@w[1]</td><td class="text-nowrap">@w[2]</td>
+                <td>@if ((bool)w[3]) { <span class="badge bg-success">online</span> } else { <span class="badge bg-secondary">offline</span> }</td></tr>
+        }
+        </tbody>
+    </table></div>
+    <div class="small text-muted mt-1">An online computer starts within about 5 minutes. An offline one starts when it is switched on again (until the task expires).</div>
+    }
+</div></div>

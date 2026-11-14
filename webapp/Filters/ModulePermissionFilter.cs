@@ -78,6 +78,12 @@ public class ModulePermissionFilter : IActionFilter
         if (ctx.Request.Path.StartsWithSegments("/api/endpoints/report-network", StringComparison.OrdinalIgnoreCase))
             return;
 
+        // Deploy Agent (AMPM_Deploy_Agent.ps1 / AMPM_Mac_Deploy_Agent.sh) asks for work, downloads
+        // files and reports results here - shared key, no cookie session (see DeployController).
+        // The admin pages under /Deploy are NOT exempt: they need a superadmin login.
+        if (ctx.Request.Path.StartsWithSegments("/api/deploy", StringComparison.OrdinalIgnoreCase))
+            return;
+
         if (!_auth.IsLoggedIn(ctx))
         {
             context.Result = new RedirectToActionResult("Login", "Account", null);

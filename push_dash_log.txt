@@ -1,0 +1,9 @@
+warning: in the working copy of 'push_get_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/AccountController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Shared/_Layout.cshtml', LF will be replaced by CRLF the next time Git touches it
+[main bd2f546] Fix: Dashboard link no longer shows the login page for signed-in users
+ 5 files changed, 40 insertions(+), 4 deletions(-)
+ create mode 100644 RUN_PUSH_DASH.bat
+ create mode 100644 push_dash_log.txt
+To https://github.com/sandy199012/ampm-qh-serve.git
+   0cb461e..bd2f546  main -> main
