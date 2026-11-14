@@ -1,0 +1,14 @@
+{
+  "name": "AMPM IT Helpdesk",
+  "short_name": "AMPM IT",
+  "description": "AMPM IT Tool - helpdesk, assets, chat and more",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A192F",
+  "theme_color": "#0A192F",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

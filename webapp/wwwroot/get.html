@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Get the AMPM IT app</title>
+<meta name="theme-color" content="#0A192F"/>
+<link rel="manifest" href="/manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"/>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#F1F5F9;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#0F172A}
+.wrap{max-width:560px;margin:0 auto;padding:24px 16px 40px}
+.hero{text-align:center;padding:12px 0 20px}
+.hero img{width:72px;height:72px;border-radius:18px;box-shadow:0 6px 20px rgba(10,25,47,.25)}
+.hero h1{margin:12px 0 4px;font-size:24px;color:#0A192F}
+.hero p{margin:0;color:#64748B;font-size:14px}
+.card{background:#fff;border:1px solid #E2E8F0;border-radius:18px;padding:18px 18px 20px;margin-bottom:16px}
+.card h2{margin:0 0 6px;font-size:19px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card p{margin:0 0 14px;color:#475569;font-size:14px;line-height:1.5}
+.badge{display:none;background:#DCFCE7;color:#166534;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+.card.rec .badge{display:inline-block}
+ol{margin:0 0 14px;padding-left:20px;color:#334155;font-size:14px;line-height:1.7}
+.btn{display:block;width:100%;text-align:center;text-decoration:none;border:1px solid #CBD5E1;background:#fff;color:#0F172A;padding:13px;border-radius:12px;font-weight:600;font-size:15px;cursor:pointer;font-family:inherit}
+.btn.primary{background:#0D4A9C;border-color:#0D4A9C;color:#fff}
+.btn.apk{background:#F0AD2E;border-color:#F0AD2E;color:#111}
+.btn+.btn{margin-top:10px}
+.muted{color:#64748B;font-size:12.5px;margin-top:10px}
+.share{display:flex;gap:8px;margin-top:6px}
+.share input{flex:1;min-width:0;padding:11px 12px;border:1px solid #CBD5E1;border-radius:10px;font-size:13px;background:#F8FAFC;color:#334155}
+.share button{padding:0 16px;border-radius:10px;border:1px solid #0D4A9C;background:#0D4A9C;color:#fff;font-weight:600;cursor:pointer}
+.login{font-size:13px;color:#475569;text-align:center;margin:4px 0 18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <img src="/icons/icon-192.png" alt="AMPM IT"/>
+    <h1>AMPM IT Helpdesk</h1>
+    <p>Install the app on your phone or computer</p>
+  </div>
+  <div class="login">Log in with your <b>Employee ID</b> and password.</div>
+
+  <div id="cards">
+    <div class="card" id="c-android">
+      <h2>Android phone <span class="badge">Recommended</span></h2>
+      <p>Download and install the app. If the phone asks, allow &ldquo;Install unknown apps&rdquo; for your browser or WhatsApp once.</p>
+      <a class="btn apk" id="apkBtn" href="/api/app/download">&#11015; Download app (APK)</a>
+      <div class="muted" id="apkInfo">&nbsp;</div>
+    </div>
+
+    <div class="card" id="c-ios">
+      <h2>iPhone / iPad <span class="badge">Recommended</span></h2>
+      <ol>
+        <li>Open this page in <b>Safari</b>.</li>
+        <li>Tap <b>Share</b> &#11014;&#65039; at the bottom.</li>
+        <li>Tap <b>Add to Home Screen</b> &rarr; <b>Add</b>.</li>
+      </ol>
+      <a class="btn" href="/">Open the team app</a>
+    </div>
+
+    <div class="card" id="c-desktop">
+      <h2>Laptop / computer <span class="badge">Recommended</span></h2>
+      <p>Open the team app in Chrome or Edge and click the install icon in the address bar &mdash; or use the button below.</p>
+      <button class="btn" id="installBtn" style="display:none">Install on this computer</button>
+      <a class="btn primary" href="/">Open the team app</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Share this page</h2>
+    <p>Send this link to your colleagues. It works on every device.</p>
+    <div class="share"><input id="shareUrl" readonly/><button id="copyBtn">Copy</button></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var ua = navigator.userAgent || '';
+  var isAndroid = /Android/i.test(ua);
+  var isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  var key = isAndroid ? 'c-android' : isIOS ? 'c-ios' : 'c-desktop';
+  var box = document.getElementById('cards');
+  var rec = document.getElementById(key);
+  rec.classList.add('rec');
+  box.insertBefore(rec, box.firstChild);
+
+  document.getElementById('shareUrl').value = location.origin + '/get';
+  document.getElementById('copyBtn').onclick = function () {
+    var i = document.getElementById('shareUrl'); i.select();
+    try { navigator.clipboard.writeText(i.value); } catch (e) { document.execCommand('copy'); }
+    this.textContent = 'Copied';
+    var b = this; setTimeout(function () { b.textContent = 'Copy'; }, 1500);
+  };
+
+  fetch('/api/app/latest').then(function (r) { return r.json(); }).then(function (j) {
+    if (!j || !j.ok) return;
+    var mb = j.size ? (j.size / 1048576).toFixed(1) + ' MB' : '';
+    document.getElementById('apkInfo').textContent = 'Version ' + j.version + (mb ? ' · ' + mb : '');
+  }).catch(function () {});
+
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault(); deferred = e;
+    var b = document.getElementById('installBtn'); b.style.display = 'block';
+    b.onclick = function () { deferred.prompt(); deferred = null; b.style.display = 'none'; };
+  });
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function () {});
+})();
+</script>
+</body>
+</html>

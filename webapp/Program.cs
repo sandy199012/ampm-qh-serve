@@ -55,6 +55,15 @@ app.Use(async (ctx, next) =>
 if (!AuthService.SessionSecretFromEnv)
     Console.WriteLine("WARNING: SESSION_SECRET is not set - logins will not survive a restart. Set a long random SESSION_SECRET in the server environment.");
 
+// Public "get the app" page: /get shows the download / install instructions page.
+app.Use(async (ctx, next) =>
+{
+    var p = ctx.Request.Path.Value ?? "";
+    if (p.Equals("/get", StringComparison.OrdinalIgnoreCase) || p.Equals("/get/", StringComparison.OrdinalIgnoreCase))
+        ctx.Request.Path = "/get.html";
+    await next();
+});
+
 app.UseStaticFiles();
 app.UseRouting();
 // The "default" route below maps a bare "/{Controller}" URL (action omitted)
