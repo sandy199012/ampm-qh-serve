@@ -1,0 +1,19 @@
+warning: in the working copy of 'push_english_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Program.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Account/Login.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Shared/_Layout.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/get.html', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/manifest.webmanifest', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/sw.js', LF will be replaced by CRLF the next time Git touches it
+[main 0cb461e] Add public /get page (Android APK, iPhone and desktop install) and installable web app manifest
+ 12 files changed, 199 insertions(+)
+ create mode 100644 RUN_PUSH_GET.bat
+ create mode 100644 push_get_log.txt
+ create mode 100644 webapp/wwwroot/get.html
+ create mode 100644 webapp/wwwroot/icons/apple-touch-icon.png
+ create mode 100644 webapp/wwwroot/icons/icon-192.png
+ create mode 100644 webapp/wwwroot/icons/icon-512.png
+ create mode 100644 webapp/wwwroot/manifest.webmanifest
+ create mode 100644 webapp/wwwroot/sw.js
+To https://github.com/sandy199012/ampm-qh-serve.git
+   42acd66..0cb461e  main -> main

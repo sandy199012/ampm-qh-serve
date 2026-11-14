@@ -11,9 +11,14 @@ public class AccountController : Controller
     [HttpGet]
     public IActionResult Login(string? returnUrl)
     {
-        // Already signed in and following a shared link (e.g. /MyDevice)? Go straight there.
-        if (_auth.IsLoggedIn(HttpContext) && !string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
-            return LocalRedirect(returnUrl);
+        // Already signed in? Never show the login form again (the "/" address maps to this
+        // action, so the Dashboard link used to look like a logout). Go to the shared link
+        // if there is one, otherwise to the dashboard (Home sends non-admins to My Helpdesk).
+        if (_auth.GetCurrentUser(HttpContext) != null)
+        {
+            if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl);
+            return RedirectToAction("Index", "Home");
+        }
         return View();
     }
 
