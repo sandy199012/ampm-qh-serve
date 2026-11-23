@@ -1,0 +1,25 @@
+warning: in the working copy of 'push_dash_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/AssetsController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Filters/ModulePermissionFilter.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Assets/Agents.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Shared/_Layout.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Controllers/DeployController.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Deploy/Details.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/Views/Deploy/Index.cshtml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/tools/AMPM_Deploy_Agent.ps1', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/tools/AMPM_Mac_Deploy_Agent.sh', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'webapp/wwwroot/tools/AMPM_Mac_Deploy_Install.sh', LF will be replaced by CRLF the next time Git touches it
+[main 9614f5b] Add Software Deploy: push installers (.exe/.msi/.pkg) and agent updates to Windows/Mac computers from the website
+ 15 files changed, 1279 insertions(+)
+ create mode 100644 RUN_PUSH_DEPLOY.bat
+ create mode 100644 push_deploy_log.txt
+ create mode 100644 webapp/Controllers/DeployController.cs
+ create mode 100644 webapp/Views/Deploy/Details.cshtml
+ create mode 100644 webapp/Views/Deploy/Index.cshtml
+ create mode 100644 webapp/wwwroot/tools/AMPM_Deploy_Agent.bat
+ create mode 100644 webapp/wwwroot/tools/AMPM_Deploy_Agent.ps1
+ create mode 100644 webapp/wwwroot/tools/AMPM_Deploy_Agent_Setup.bat
+ create mode 100644 webapp/wwwroot/tools/AMPM_Mac_Deploy_Agent.sh
+ create mode 100644 webapp/wwwroot/tools/AMPM_Mac_Deploy_Install.sh
+To https://github.com/sandy199012/ampm-qh-serve.git
+   bd2f546..9614f5b  main -> main
